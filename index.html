@@ -25,6 +25,34 @@
   .planner-frame.active{display:block}
   .loader{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#f6f8fc;color:#667085;font-weight:950}
   @media(max-width:740px){.top{padding:7px 8px}.head{margin-bottom:6px;display:block}.head .mini{display:none}h1{font-size:17px}button{padding:7px 10px;font-size:12px}.pill{font-size:11px;padding:4px 8px}.head>div:last-child{margin-top:6px;display:flex;gap:5px;overflow-x:auto}}
+
+  .top-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .server-btn{background:#eef7ff!important;color:#175cd3!important;border-color:#bcd3ff!important}
+  .server-btn.server-connected{background:#e7f7ef!important;color:#0f8a5f!important;border-color:#64c59a!important;box-shadow:0 0 0 2px rgba(15,138,95,.12)!important}
+  .server-btn.server-connected::after{content:" verbunden";font-size:11px;font-weight:950;margin-left:3px}
+  .server-btn.server-dirty{background:#fff7e6!important;color:#9a6700!important;border-color:#f3d28f!important;box-shadow:0 0 0 2px rgba(154,103,0,.10)!important}
+  .server-btn.server-dirty::after{content:" ungespeichert";font-size:11px;font-weight:950;margin-left:3px}
+  .server-btn.server-ready{background:#fff!important;color:#175cd3!important;border-color:#bcd3ff!important}
+  .server-btn.server-error{background:#fffafa!important;color:#c73636!important;border-color:#f2a3a3!important}
+  .emp-modal-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:14px}
+  .emp-modal-backdrop.show{display:flex}
+  .emp-modal{width:min(860px,100%);max-height:min(90vh,820px);overflow:auto;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 24px 80px rgba(15,23,42,.32);padding:18px;line-height:1.35}
+  .emp-modal h2{margin:0 0 4px;font-size:24px;letter-spacing:-.04em}
+  .emp-modal h3{margin:14px 0 7px;font-size:16px}
+  .emp-note{border:1px solid #c9dcff;background:#f7fbff;color:#2563eb;border-radius:14px;padding:9px 10px;font-size:12px;font-weight:850;margin-top:8px}
+  .emp-box{border:1px solid var(--line);border-radius:16px;background:#fbfcfe;padding:10px}
+  .emp-modal-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px}
+  .emp-modal .primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .emp-modal .danger{background:#ffe7e7;color:#c73636;border-color:#f2a3a3}
+  .server-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .server-grid .emp-box input{width:100%;border:1px solid var(--line);border-radius:12px;background:#fff;padding:8px;font-weight:850;color:var(--text)}
+  .server-status{border:1px solid #c9dcff;background:#f7fbff;color:#175cd3;border-radius:14px;padding:9px 10px;font-size:12px;font-weight:850;margin-top:8px;white-space:pre-wrap}
+  .server-status.bad{border-color:#f2a3a3;background:#fffafa;color:#c73636}
+  .server-status.ok{border-color:#b7e4ca;background:#e7f7ef;color:#0f8a5f}
+  .server-small{font-size:11px;color:var(--muted);font-weight:850;line-height:1.35;margin-top:6px}
+  .central-export-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  @media(max-width:740px){.server-grid{grid-template-columns:1fr}.server-btn{font-size:12px}.top-actions{flex-wrap:nowrap;overflow-x:auto}.emp-modal{padding:14px;border-radius:20px}.emp-modal h2{font-size:20px}}
+
 </style>
 </head>
 <body>
@@ -35,10 +63,11 @@
         <h1>POLYPOINT Adapter · V13.0.203</h1>
         <div class="mini">Split-Version: jede Gruppe bleibt als eigene HTML-Datei geladen.</div>
       </div>
-      <div>
+      <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
         <span class="pill green">GitHub Pages</span>
         <span class="pill brown">aufgeteilt</span>
+        <button id="serverSyncBtn" class="server-btn" type="button">☁️ Server</button>
       </div>
     </div>
     <nav class="tabs" aria-label="Bereiche">
@@ -56,6 +85,71 @@
     <div class="loader" id="loader">Bereich wird geladen…</div>
   </main>
 </div>
+
+<div id="serverSyncModal" class="emp-modal-backdrop" aria-hidden="true">
+  <div class="emp-modal" role="dialog" aria-modal="true" aria-labelledby="serverSyncTitle">
+    <h2 id="serverSyncTitle">Server-Speicher</h2>
+    <div class="mini">Der Server ist der Hauptspeicher. Der lokale Speicher dient als Arbeitskopie und Notfall-Backup.</div>
+    <div class="emp-note">Supabase ist fest verbunden. Nach dem Einloggen kann der Serverstand geladen und gespeichert werden. Vor dem Überschreiben wird lokal eine Notfallkopie angelegt.</div>
+    <div class="server-grid">
+      <div class="emp-box">
+        <h3>Supabase Verbindung</h3>
+        <label class="mini" for="serverUrlInput">Project URL</label>
+        <input id="serverUrlInput" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off" readonly>
+        <label class="mini" for="serverAnonInput" style="margin-top:8px;display:block">publishable key</label>
+        <input id="serverAnonInput" type="password" placeholder="fest eingebaut" autocomplete="off" readonly>
+        <label class="mini" for="serverStoreInput" style="margin-top:8px;display:block">Speicher-ID</label>
+        <input id="serverStoreInput" type="text" value="default" autocomplete="off">
+        <div class="emp-modal-actions" style="justify-content:flex-start">
+          <button type="button" id="serverSaveConfigBtn">Verbindung prüfen</button>
+          <button type="button" id="serverForgetConfigBtn">Vergessen</button>
+        </div>
+      </div>
+      <div class="emp-box">
+        <h3>Login</h3>
+        <label class="mini" for="serverEmailInput">E-Mail</label>
+        <input id="serverEmailInput" type="email" autocomplete="username" placeholder="name@example.ch">
+        <label class="mini" for="serverPasswordInput" style="margin-top:8px;display:block">Passwort</label>
+        <input id="serverPasswordInput" type="password" autocomplete="current-password" placeholder="Passwort">
+        <div class="emp-modal-actions" style="justify-content:flex-start">
+          <button type="button" class="primary" id="serverLoginBtn">Einloggen</button>
+          <button type="button" id="serverSignupBtn">Registrieren</button>
+          <button type="button" id="serverLogoutBtn">Abmelden</button>
+        </div>
+        <div class="server-small">Wenn der Benutzer im Supabase-Dashboard erstellt wurde, reicht „Einloggen“.</div>
+      </div>
+      <div class="emp-box">
+        <h3>Server-Hauptspeicher</h3>
+        <div class="central-export-actions">
+          <button type="button" class="primary" id="serverUploadBtn">Jetzt auf Server speichern</button>
+          <button type="button" id="serverDownloadBtn">Serverstand neu laden</button>
+          <button type="button" id="serverDownloadBackupBtn">Server-Sicherung herunterladen</button>
+        </div>
+        <div class="server-small">Speichert/lädt alle POLYPOINT-Browserdaten dieser GitHub-Seite, also auch die aufgeteilten Bereiche.</div>
+      </div>
+      <div class="emp-box">
+        <h3>Arbeitskopie</h3>
+        <div class="mini">Gespeichert werden Gruppenstände, Haus-Pikett, Haus-Dienstplan-Quellen und Profile. Login-Sitzung und Notfallkopien werden nicht auf den Server geschrieben.</div>
+        <div class="server-small" id="serverLocalInfo">Lokale Arbeitskopie wird gezählt.</div>
+      </div>
+      <div class="emp-box">
+        <h3>Notfall / Sync</h3>
+        <label style="display:flex;gap:8px;align-items:center;font-size:13px;font-weight:900;margin:6px 0"><input type="checkbox" id="serverAutosaveToggle" style="width:18px;height:18px" checked> Auto-Speichern auf Server</label>
+        <div class="central-export-actions">
+          <button type="button" id="serverCheckStatusBtn">Serverstatus prüfen</button>
+          <button type="button" id="serverLocalBackupBtn">Notfallkopie herunterladen</button>
+          <button type="button" id="serverRestoreBackupBtn">Letzte Notfallkopie wiederherstellen</button>
+        </div>
+        <div class="server-small" id="serverSyncInfo">Noch kein Sync-Status.</div>
+      </div>
+    </div>
+    <div id="serverSyncStatus" class="server-status">Nicht verbunden.</div>
+    <div class="emp-modal-actions">
+      <button type="button" class="danger" id="serverSyncCloseBtn">Schliessen</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   const labels = {"overview": "Startseite", "azoren": "Azoren", "bali": "Bali", "capri": "Capri", "delos": "Delos", "nachtwache": "Nachtwache", "pikett": "Haus-Pikett", "hausdienstplan": "Haus-Dienstplan"};
@@ -117,6 +211,404 @@
 
   window.addEventListener('hashchange', () => loadPlanner(location.hash, false));
   loadPlanner(location.hash || 'overview', false);
+
+
+  // Supabase Server-Speicher für Split-Version
+  const SERVER_CONFIG_KEY = 'polypoint_server_config_v2';
+  const SERVER_TOKEN_KEY = 'polypoint_server_session_v1';
+  const SERVER_META_KEY = 'polypoint_server_sync_meta_v1';
+  const SERVER_AUTOSAVE_KEY = 'polypoint_server_autosave_v1';
+  const SERVER_DEFAULT_URL = 'https://ezjufsxacihfdwpyoibs.supabase.co';
+  const SERVER_DEFAULT_ANON = 'sb_publishable_3AsChws4K7YjRusOk4m6Mw_aA6iBmdg';
+  let serverAutosaveTimer = null;
+  let serverAutosaveBusy = false;
+  let lastObservedServerHash = '';
+
+  function serverModal(){ return document.getElementById('serverSyncModal'); }
+  function serverStatus(text, kind=''){
+    const el = document.getElementById('serverSyncStatus');
+    if(!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('bad', kind === 'bad');
+    el.classList.toggle('ok', kind === 'ok');
+  }
+  function setServerButtonState(state, label){
+    const btn = document.getElementById('serverSyncBtn');
+    if(!btn) return;
+    btn.classList.remove('server-connected','server-ready','server-error','server-dirty');
+    if(state) btn.classList.add('server-' + state);
+    btn.textContent = state === 'connected' ? '☁️ Server ✓' : state === 'dirty' ? '☁️ Server •' : state === 'error' ? '☁️ Server !' : '☁️ Server';
+    btn.title = label || (state === 'connected' ? 'Server verbunden' : state === 'dirty' ? 'Lokale Änderungen noch nicht auf Server gespeichert' : state === 'error' ? 'Server-Verbindung prüfen' : 'Server bereit, bitte einloggen');
+    btn.setAttribute('aria-label', btn.title);
+  }
+  function normalizeServerUrl(url){ return String(url || '').trim().replace(/\/+$/, ''); }
+  function getServerInputs(){
+    return {
+      url: normalizeServerUrl(SERVER_DEFAULT_URL || document.getElementById('serverUrlInput')?.value || ''),
+      anon: String(SERVER_DEFAULT_ANON || document.getElementById('serverAnonInput')?.value || '').trim(),
+      store: String(document.getElementById('serverStoreInput')?.value || 'default').trim() || 'default',
+      email: String(document.getElementById('serverEmailInput')?.value || '').trim(),
+      password: String(document.getElementById('serverPasswordInput')?.value || '')
+    };
+  }
+  function loadServerMeta(){ try { return JSON.parse(localStorage.getItem(SERVER_META_KEY) || '{}') || {}; } catch(_) { return {}; } }
+  function saveServerMeta(meta){ localStorage.setItem(SERVER_META_KEY, JSON.stringify(Object.assign({}, loadServerMeta(), meta, {metaSavedAt:new Date().toISOString()}))); }
+  function relevantStorageKey(key){
+    key = String(key || '');
+    if(!/^polypoint_/i.test(key)) return false;
+    if(key === SERVER_CONFIG_KEY || key === SERVER_TOKEN_KEY || key === SERVER_META_KEY || key === SERVER_AUTOSAVE_KEY) return false;
+    if(/^polypoint_sicherung__/i.test(key)) return false;
+    return true;
+  }
+  function collectPolypointStorage(){
+    const items = {};
+    for(let i=0;i<localStorage.length;i++){
+      const key = localStorage.key(i);
+      if(relevantStorageKey(key)) items[key] = localStorage.getItem(key);
+    }
+    return items;
+  }
+  function stableHashFromItems(items){
+    const keys = Object.keys(items || {}).sort();
+    let h = 2166136261 >>> 0;
+    function mix(str){
+      str = String(str ?? '');
+      for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+      h ^= 124; h = Math.imul(h, 16777619) >>> 0;
+    }
+    keys.forEach(k => { mix(k); mix(items[k]); });
+    return keys.length + '-' + h.toString(16);
+  }
+  function localStorageSnapshot(){ const items = collectPolypointStorage(); return {items, hash: stableHashFromItems(items), count: Object.keys(items).length}; }
+  function isServerSessionFresh(s){ return !!(s && s.access_token && (!s.expires_at || s.expires_at > Date.now() + 30000)); }
+  function loadServerSession(){
+    try { const s = JSON.parse(localStorage.getItem(SERVER_TOKEN_KEY) || '{}'); if(s && (s.access_token || s.refresh_token)) return s; } catch(e){ console.warn(e); }
+    return null;
+  }
+  function refreshServerLocalInfo(){
+    const info = document.getElementById('serverLocalInfo');
+    if(!info) return;
+    const snap = localStorageSnapshot();
+    const bytes = Object.entries(snap.items).reduce((n,[k,v]) => n + k.length + String(v || '').length, 0);
+    info.textContent = 'Arbeitskopie: ' + snap.count + ' Planungs-Einträge · ca. ' + Math.round(bytes/1024) + ' KB · Hash ' + snap.hash + ' · Notfallkopien lokal: ' + countLocalEmergencyBackups();
+  }
+  function refreshServerSyncInfo(){
+    const el = document.getElementById('serverSyncInfo');
+    if(!el) return;
+    const meta = loadServerMeta();
+    const snap = localStorageSnapshot();
+    const same = meta.lastHash && snap.hash === meta.lastHash;
+    const last = meta.lastSyncAt ? new Date(meta.lastSyncAt).toLocaleString('de-CH') : 'noch nie';
+    el.textContent = (same ? 'Arbeitskopie entspricht dem letzten Serverstand.' : 'Arbeitskopie hat Änderungen oder Server wurde noch nie geladen.') + ' Letzter Server-Sync: ' + last + (meta.count != null ? ' · ' + meta.count + ' Planungs-Einträge' : '');
+  }
+  function refreshServerButtonFromSession(){
+    const s = loadServerSession();
+    const snap = localStorageSnapshot();
+    const meta = loadServerMeta();
+    if(isServerSessionFresh(s)){
+      if(meta.lastHash && snap.hash !== meta.lastHash) setServerButtonState('dirty','Server verbunden · lokale Änderungen noch nicht gespeichert');
+      else setServerButtonState('connected','Server verbunden' + (s.user?.email ? ' · ' + s.user.email : ''));
+    } else setServerButtonState('ready','Server bereit, bitte einloggen');
+    refreshServerSyncInfo();
+  }
+  function saveServerConfig(){
+    const cfg = getServerInputs();
+    if(!cfg.url || !cfg.anon){ serverStatus('Server-Verbindung ist unvollständig.', 'bad'); return null; }
+    localStorage.setItem(SERVER_CONFIG_KEY, JSON.stringify({url:cfg.url, anon:cfg.anon, store:cfg.store, email:cfg.email, savedAt:new Date().toISOString()}));
+    serverStatus('Server-Verbindung ist bereit. Login und Speichern/Laden sind aktiv.', 'ok');
+    refreshServerButtonFromSession();
+    refreshServerLocalInfo();
+    return cfg;
+  }
+  function loadServerConfig(){
+    try{
+      const cfg = JSON.parse(localStorage.getItem(SERVER_CONFIG_KEY) || '{}');
+      const urlEl = document.getElementById('serverUrlInput');
+      const anonEl = document.getElementById('serverAnonInput');
+      const storeEl = document.getElementById('serverStoreInput');
+      const emailEl = document.getElementById('serverEmailInput');
+      if(urlEl) urlEl.value = SERVER_DEFAULT_URL || cfg.url || '';
+      if(anonEl) anonEl.value = SERVER_DEFAULT_ANON || cfg.anon || '';
+      if(storeEl) storeEl.value = cfg.store || 'default';
+      if(emailEl && cfg.email) emailEl.value = cfg.email;
+      const autosaveEl = document.getElementById('serverAutosaveToggle');
+      if(autosaveEl) autosaveEl.checked = localStorage.getItem(SERVER_AUTOSAVE_KEY) !== '0';
+    } catch(e){ console.warn(e); }
+  }
+  function forgetServerConfig(){
+    localStorage.removeItem(SERVER_TOKEN_KEY);
+    localStorage.removeItem(SERVER_META_KEY);
+    ['serverEmailInput','serverPasswordInput'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    const urlEl = document.getElementById('serverUrlInput'); if(urlEl) urlEl.value = SERVER_DEFAULT_URL || '';
+    const anonEl = document.getElementById('serverAnonInput'); if(anonEl) anonEl.value = SERVER_DEFAULT_ANON || '';
+    const sid = document.getElementById('serverStoreInput'); if(sid) sid.value = 'default';
+    serverStatus('Sitzung und Sync-Merker gelöscht. Server-Verbindung bleibt fest eingebaut.', 'ok');
+    setServerButtonState('ready','Server bereit, bitte einloggen');
+    refreshServerLocalInfo(); refreshServerSyncInfo();
+  }
+  function storeServerSession(data, cfg){
+    const session = {access_token:data.access_token, refresh_token:data.refresh_token, user:data.user, expires_at:Date.now() + Math.max(60, (data.expires_in || 3600)) * 1000};
+    localStorage.setItem(SERVER_TOKEN_KEY, JSON.stringify(session));
+    if(cfg) localStorage.setItem(SERVER_CONFIG_KEY, JSON.stringify({url:cfg.url, anon:cfg.anon, store:cfg.store, email:cfg.email, savedAt:new Date().toISOString()}));
+    setServerButtonState('connected','Server verbunden' + (session.user?.email ? ' · ' + session.user.email : ''));
+    refreshServerSyncInfo();
+    return session;
+  }
+  async function supabaseRequest(path, options={}){
+    const cfg = getServerInputs();
+    if(!cfg.url || !cfg.anon) throw new Error('Project URL oder anon key fehlt.');
+    const headers = Object.assign({'apikey':cfg.anon}, options.headers || {});
+    const res = await fetch(cfg.url + path, Object.assign({}, options, {headers}));
+    const txt = await res.text();
+    let data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch(_) { data = txt; }
+    if(!res.ok){ const msg = (data && data.msg) || (data && data.message) || (typeof data === 'string' ? data : ('HTTP ' + res.status)); throw new Error(msg); }
+    return data;
+  }
+  async function refreshServerSession(){
+    const cfg = getServerInputs(); const old = loadServerSession();
+    if(!old?.refresh_token || !cfg.url || !cfg.anon) return null;
+    try{
+      const data = await supabaseRequest('/auth/v1/token?grant_type=refresh_token', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({refresh_token:old.refresh_token})});
+      return storeServerSession(data, cfg);
+    } catch(e){ console.warn('Server-Session konnte nicht erneuert werden', e); setServerButtonState('ready','Server bereit, bitte neu einloggen'); return null; }
+  }
+  async function getActiveServerSession(){
+    const s = loadServerSession();
+    if(isServerSessionFresh(s)){ refreshServerButtonFromSession(); return s; }
+    return await refreshServerSession();
+  }
+  async function serverLogin(){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    if(!cfg.email || !cfg.password){ serverStatus('Bitte E-Mail und Passwort eintragen.', 'bad'); return; }
+    try{
+      const data = await supabaseRequest('/auth/v1/token?grant_type=password', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:cfg.email, password:cfg.password})});
+      storeServerSession(data, cfg);
+      serverStatus('Eingeloggt als ' + (data.user?.email || cfg.email) + '. Die Sitzung wird automatisch weiterverwendet.', 'ok');
+      await serverCheckStatus(false);
+    } catch(e){ setServerButtonState('error','Login nicht möglich'); serverStatus('Login nicht möglich: ' + e.message, 'bad'); }
+  }
+  async function serverSignup(){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    if(!cfg.email || !cfg.password){ serverStatus('Bitte E-Mail und Passwort eintragen.', 'bad'); return; }
+    try{
+      const data = await supabaseRequest('/auth/v1/signup', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:cfg.email, password:cfg.password})});
+      serverStatus(data?.user ? 'Registriert. Falls E-Mail-Bestätigung aktiv ist, bitte Mail bestätigen. Danach einloggen.' : 'Registrierung gesendet.', 'ok');
+    } catch(e){ serverStatus('Registrierung nicht möglich: ' + e.message, 'bad'); }
+  }
+  function serverLogout(){ localStorage.removeItem(SERVER_TOKEN_KEY); setServerButtonState('ready','Server bereit, bitte einloggen'); serverStatus('Abgemeldet.', 'ok'); refreshServerSyncInfo(); }
+  function countLocalEmergencyBackups(){
+    let n = 0;
+    for(let i=0;i<localStorage.length;i++){ if(/^polypoint_sicherung__/i.test(localStorage.key(i) || '')) n++; }
+    return n;
+  }
+  function makeFullLocalBackup(reason, download=false){
+    const payload = {kind:'polypoint-local-backup', version:'13.0.203-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
+    try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
+    if(download){
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = key + '.json'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    }
+    refreshServerLocalInfo();
+    return key;
+  }
+  function latestLocalEmergencyBackup(){
+    const keys = [];
+    for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i); if(/^polypoint_sicherung__/i.test(k || '')) keys.push(k); }
+    keys.sort().reverse();
+    for(const key of keys){ try { const payload = JSON.parse(localStorage.getItem(key) || '{}'); if(payload && payload.items) return {key, payload}; } catch(_){} }
+    return null;
+  }
+  function reloadSplitFrames(){
+    frames.forEach(frame => { try { frame.remove(); } catch(_){} });
+    frames.clear();
+    loadPlanner(activeId || 'overview', false);
+  }
+  function restoreLatestLocalEmergencyBackup(){
+    const found = latestLocalEmergencyBackup();
+    if(!found){ serverStatus('Keine lokale Notfallkopie gefunden.', 'bad'); return; }
+    if(!confirm('Letzte lokale Notfallkopie wiederherstellen? Der aktuelle Arbeitsstand wird vorher nochmals als Notfallkopie gesichert.')) return;
+    const currentBackup = makeFullLocalBackup('before_restore_emergency_backup', false);
+    const incoming = found.payload.items || {};
+    Object.keys(collectPolypointStorage()).forEach(key => { if(!(key in incoming) && relevantStorageKey(key)) localStorage.removeItem(key); });
+    Object.entries(incoming).forEach(([key,val]) => { if(relevantStorageKey(key)) localStorage.setItem(key, String(val ?? '')); });
+    reloadSplitFrames();
+    saveServerMeta({lastHash:'', lastSyncAt:'', restoredFrom:found.key, restoredAt:new Date().toISOString()});
+    setServerButtonState('dirty','Notfallkopie wiederhergestellt · noch nicht auf Server gespeichert');
+    serverStatus('Notfallkopie wiederhergestellt: ' + found.key + '\nVorherige Arbeitskopie gesichert als: ' + currentBackup + '\nBitte prüfen und danach auf Server speichern.', 'ok');
+    refreshServerLocalInfo(); refreshServerSyncInfo(); scheduleServerAutosave('restore_backup');
+  }
+  async function fetchServerRow(cfg, session){
+    const data = await supabaseRequest('/rest/v1/planer_store?id=eq.' + encodeURIComponent(cfg.store) + '&select=id,data,updated_at', {method:'GET', headers:{'Authorization':'Bearer ' + session.access_token}});
+    return Array.isArray(data) ? data[0] : null;
+  }
+  async function serverUpload(opts={}){
+    const cfg = saveServerConfig(); if(!cfg) return false;
+    const session = await getActiveServerSession();
+    if(!session){ if(!opts.auto) serverStatus('Bitte zuerst einloggen.', 'bad'); return false; }
+    if(serverAutosaveBusy) return false;
+    serverAutosaveBusy = true;
+    const snap = localStorageSnapshot();
+    const payload = {kind:'polypoint-server-store', version:'13.0.203-split', savedAt:new Date().toISOString(), origin:location.href, hash:snap.hash, count:snap.count, items:snap.items};
+    try{
+      const meta = loadServerMeta();
+      let row = null;
+      try { row = await fetchServerRow(cfg, session); } catch(e){ if(!opts.auto) console.warn(e); }
+      const serverHash = row?.data?.hash || stableHashFromItems(row?.data?.items || {});
+      if(row && serverHash && meta.lastHash && serverHash !== meta.lastHash && !opts.force){
+        if(opts.auto){ serverStatus('Auto-Speichern pausiert: Server wurde seit dem letzten Laden/Speichern verändert. Bitte Serverstatus prüfen.', 'bad'); setServerButtonState('error','Konflikt: Server wurde anderswo geändert'); return false; }
+        if(!confirm('Der Serverstand wurde seit deinem letzten Sync geändert. Lokalen Stand trotzdem auf den Server schreiben?')){ serverStatus('Speichern abgebrochen. Bitte zuerst Server laden oder Sicherung machen.', 'bad'); return false; }
+      }
+      if(!opts.auto) makeFullLocalBackup('before_server_upload', false);
+      await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data:payload, updated_at:new Date().toISOString()})});
+      saveServerMeta({store:cfg.store, lastHash:snap.hash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:new Date().toISOString(), count:snap.count, origin:location.href});
+      lastObservedServerHash = snap.hash;
+      setServerButtonState('connected', opts.auto ? 'Server verbunden · automatisch gespeichert' : 'Server verbunden · zuletzt gespeichert');
+      serverStatus((opts.auto ? 'Automatisch auf Server gespeichert: ' : 'Auf Server gespeichert: ') + snap.count + ' Planungs-Einträge · Speicher-ID ' + cfg.store, 'ok');
+      refreshServerLocalInfo(); refreshServerSyncInfo();
+      return true;
+    } catch(e){ setServerButtonState('error','Server speichern nicht möglich'); serverStatus('Server speichern nicht möglich: ' + e.message, 'bad'); return false; }
+    finally { serverAutosaveBusy = false; }
+  }
+  async function serverDownload(){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      if(!row || !row.data || !row.data.items) throw new Error('Keine Serverdaten für Speicher-ID ' + cfg.store + ' gefunden.');
+      const snap = localStorageSnapshot(); const meta = loadServerMeta();
+      if(meta.lastHash && snap.hash !== meta.lastHash){
+        if(!confirm('Lokale Änderungen sind noch nicht auf dem Server gespeichert. Trotzdem Serverstand laden? Eine lokale Sicherung wird vorher erstellt.')){ serverStatus('Server laden abgebrochen.', 'bad'); return; }
+      }
+      const backupKey = makeFullLocalBackup('before_server_download', false);
+      const incoming = row.data.items || {};
+      Object.keys(collectPolypointStorage()).forEach(key => { if(!(key in incoming) && relevantStorageKey(key)) localStorage.removeItem(key); });
+      Object.entries(incoming).forEach(([key,val]) => { if(relevantStorageKey(key)) localStorage.setItem(key, String(val ?? '')); });
+      reloadSplitFrames();
+      const newHash = row.data.hash || stableHashFromItems(incoming);
+      saveServerMeta({store:cfg.store, lastHash:newHash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:row.updated_at, count:Object.keys(incoming).length, origin:row.data.origin || ''});
+      lastObservedServerHash = newHash;
+      refreshServerLocalInfo(); refreshServerSyncInfo();
+      setServerButtonState('connected','Server verbunden · zuletzt geladen');
+      serverStatus('Server-Hauptspeicher geladen: ' + Object.keys(incoming).length + ' Einträge. Vorherige Arbeitskopie als Notfallkopie: ' + backupKey, 'ok');
+    } catch(e){ setServerButtonState('error','Server laden nicht möglich'); serverStatus('Server laden nicht möglich: ' + e.message, 'bad'); }
+  }
+  async function serverBackupDownload(){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      if(!row) throw new Error('Keine Serverdaten gefunden.');
+      const blob = new Blob([JSON.stringify(row, null, 2)], {type:'application/json;charset=utf-8'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'polypoint_server_sicherung_' + cfg.store + '_' + new Date().toISOString().slice(0,10) + '.json';
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      serverStatus('Server-Sicherung heruntergeladen.', 'ok');
+    } catch(e){ serverStatus('Server-Sicherung nicht möglich: ' + e.message, 'bad'); }
+  }
+  async function serverCheckStatus(showStatus=true){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      const snap = localStorageSnapshot(); const meta = loadServerMeta();
+      const serverHash = row?.data?.hash || stableHashFromItems(row?.data?.items || {});
+      let msg = 'Lokal: ' + snap.count + ' Einträge · ' + snap.hash + '\n';
+      msg += 'Server: ' + (row ? ((row.data?.count || Object.keys(row.data?.items || {}).length) + ' Einträge · ' + serverHash + ' · ' + new Date(row.updated_at).toLocaleString('de-CH')) : 'noch leer') + '\n';
+      msg += 'Letzter Sync-Merker: ' + (meta.lastSyncAt ? new Date(meta.lastSyncAt).toLocaleString('de-CH') : 'nie');
+      if(row && meta.lastHash && serverHash !== meta.lastHash){ setServerButtonState('error','Server wurde seit dem letzten Sync verändert'); serverStatus(msg + '\n\nAchtung: Server wurde seit dem letzten Sync verändert. Erst laden oder bewusst überschreiben.', 'bad'); }
+      else if(meta.lastHash && snap.hash !== meta.lastHash){ setServerButtonState('dirty','Lokale Änderungen noch nicht gespeichert'); serverStatus(msg + '\n\nLokale Änderungen sind noch nicht auf Server gespeichert.', ''); }
+      else { setServerButtonState('connected','Server und lokaler Stand passen zum Sync-Merker'); if(showStatus) serverStatus(msg + '\n\nAlles synchron.', 'ok'); }
+      refreshServerSyncInfo();
+    } catch(e){ setServerButtonState('error','Serverstatus nicht möglich'); serverStatus('Serverstatus nicht möglich: ' + e.message, 'bad'); }
+  }
+  function isAutosaveEnabled(){ return localStorage.getItem(SERVER_AUTOSAVE_KEY) !== '0'; }
+  function setAutosaveEnabled(on){ localStorage.setItem(SERVER_AUTOSAVE_KEY, on ? '1' : '0'); refreshServerSyncInfo(); }
+  function scheduleServerAutosave(reason='change'){
+    if(!isAutosaveEnabled()) return;
+    const session = loadServerSession();
+    if(!isServerSessionFresh(session)) return;
+    const snap = localStorageSnapshot(); const meta = loadServerMeta();
+    if(meta.lastHash && snap.hash === meta.lastHash){ setServerButtonState('connected','Server verbunden'); return; }
+    setServerButtonState('dirty','Arbeitskopie geändert · Server-Speichern geplant');
+    clearTimeout(serverAutosaveTimer);
+    serverAutosaveTimer = setTimeout(() => serverUpload({auto:true}), 9000);
+  }
+  function startServerAutosaveWatcher(){
+    lastObservedServerHash = localStorageSnapshot().hash;
+    setInterval(() => {
+      const snap = localStorageSnapshot();
+      if(snap.hash !== lastObservedServerHash){ lastObservedServerHash = snap.hash; scheduleServerAutosave('poll'); refreshServerLocalInfo(); refreshServerSyncInfo(); }
+    }, 12000);
+    window.addEventListener('storage', ev => { if(relevantStorageKey(ev.key)){ lastObservedServerHash = localStorageSnapshot().hash; scheduleServerAutosave('storage'); refreshServerLocalInfo(); refreshServerSyncInfo(); } });
+  }
+  async function serverLoadPrimaryOnStart(){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Server ist Hauptspeicher. Bitte einloggen; bis dahin wird nur die lokale Arbeitskopie angezeigt.', ''); return; }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      const localSnap = localStorageSnapshot();
+      if(!row || !row.data || !row.data.items){
+        if(localSnap.count > 0){ serverStatus('Server ist noch leer. Lokale Arbeitskopie wird als erster Serverstand gespeichert…', ''); await serverUpload({auto:true, force:true}); }
+        else { saveServerMeta({store:cfg.store, lastHash:localSnap.hash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:'', count:0, origin:location.href}); setServerButtonState('connected','Server verbunden · noch leer'); }
+        return;
+      }
+      const incoming = row.data.items || {};
+      const serverHash = row.data.hash || stableHashFromItems(incoming);
+      if(localSnap.hash !== serverHash){
+        const backupKey = makeFullLocalBackup('before_auto_server_primary_load', false);
+        Object.keys(collectPolypointStorage()).forEach(key => { if(!(key in incoming) && relevantStorageKey(key)) localStorage.removeItem(key); });
+        Object.entries(incoming).forEach(([key,val]) => { if(relevantStorageKey(key)) localStorage.setItem(key, String(val ?? '')); });
+        reloadSplitFrames();
+        serverStatus('Server-Hauptspeicher automatisch geladen. Vorherige lokale Arbeitskopie als Notfallkopie gesichert: ' + backupKey, 'ok');
+      } else {
+        serverStatus('Server-Hauptspeicher verbunden. Arbeitskopie ist aktuell.', 'ok');
+      }
+      saveServerMeta({store:cfg.store, lastHash:serverHash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:row.updated_at, count:Object.keys(incoming).length, origin:row.data.origin || ''});
+      lastObservedServerHash = localStorageSnapshot().hash;
+      setServerButtonState('connected','Server-Hauptspeicher aktiv');
+      refreshServerLocalInfo(); refreshServerSyncInfo();
+    } catch(e){
+      setServerButtonState('error','Server-Hauptspeicher nicht erreichbar');
+      serverStatus('Server-Hauptspeicher nicht erreichbar. Lokale Arbeitskopie bleibt sichtbar: ' + e.message, 'bad');
+    }
+  }
+  async function openServerSync(){
+    loadServerConfig(); refreshServerLocalInfo(); refreshServerSyncInfo();
+    serverStatus('Verbindung wird geprüft…', '');
+    serverModal().classList.add('show'); serverModal().setAttribute('aria-hidden','false');
+    const cfg = getServerInputs();
+    if(!cfg.anon){ serverStatus('Server-Verbindung ist unvollständig.', 'bad'); return; }
+    const s = await getActiveServerSession();
+    setServerButtonState(s ? 'connected' : 'ready', s ? 'Server verbunden' : 'Server bereit, bitte einloggen');
+    serverStatus(s ? 'Server-Hauptspeicher verbunden.' : 'Server erreichbar. Bitte einloggen, damit der Serverstand geladen wird.', s ? 'ok' : '');
+    if(s) serverCheckStatus(false);
+  }
+  function closeServerSync(){ serverModal().classList.remove('show'); serverModal().setAttribute('aria-hidden','true'); }
+  document.getElementById('serverSyncBtn')?.addEventListener('click', openServerSync);
+  document.getElementById('serverSyncCloseBtn')?.addEventListener('click', closeServerSync);
+  document.getElementById('serverSyncModal')?.addEventListener('click', ev => { if(ev.target === serverModal()) closeServerSync(); });
+  document.getElementById('serverSaveConfigBtn')?.addEventListener('click', saveServerConfig);
+  document.getElementById('serverForgetConfigBtn')?.addEventListener('click', forgetServerConfig);
+  document.getElementById('serverLoginBtn')?.addEventListener('click', serverLogin);
+  document.getElementById('serverSignupBtn')?.addEventListener('click', serverSignup);
+  document.getElementById('serverLogoutBtn')?.addEventListener('click', serverLogout);
+  document.getElementById('serverUploadBtn')?.addEventListener('click', () => serverUpload({manual:true}));
+  document.getElementById('serverDownloadBtn')?.addEventListener('click', serverDownload);
+  document.getElementById('serverDownloadBackupBtn')?.addEventListener('click', serverBackupDownload);
+  document.getElementById('serverCheckStatusBtn')?.addEventListener('click', () => serverCheckStatus(true));
+  document.getElementById('serverLocalBackupBtn')?.addEventListener('click', () => { const k = makeFullLocalBackup('manual_local_download', true); serverStatus('Notfallkopie heruntergeladen und lokal abgelegt: ' + k, 'ok'); });
+  document.getElementById('serverRestoreBackupBtn')?.addEventListener('click', restoreLatestLocalEmergencyBackup);
+  document.getElementById('serverAutosaveToggle')?.addEventListener('change', ev => { setAutosaveEnabled(!!ev.target.checked); serverStatus(ev.target.checked ? 'Auto-Speichern aktiv.' : 'Auto-Speichern ausgeschaltet.', 'ok'); });
+  loadServerConfig();
+  refreshServerButtonFromSession();
+  startServerAutosaveWatcher();
+  getActiveServerSession().then(s => { refreshServerButtonFromSession(); if(s) serverLoadPrimaryOnStart(); }).catch(() => setServerButtonState('error','Server-Verbindung prüfen'));
+
 })();
 </script>
 </body>
