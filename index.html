@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.211 · Split · Speicherstand-Vergleich</title>
+<title>POLYPOINT Adapter · V13.0.212 · Split · Wunschportal</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -92,13 +92,14 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.211</h1>
+        <h1>POLYPOINT Adapter · V13.0.212</h1>
         <div class="mini">Split-Version mit Server-Speicherständen, Benutzeranzeige, Konflikt-Schutz und Speicherstand-Vergleich.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
         <span class="pill green">GitHub Pages</span>
         <span class="pill brown">aufgeteilt</span>
+        <button type="button" onclick="window.open('wunschportal.html','_blank')">👤 Wunschportal</button>
         <button id="serverSyncBtn" class="server-btn" type="button">☁️ Server</button>
       </div>
     </div>
@@ -254,11 +255,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.211'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211)/g,'V13.0.212'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.211'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211)/g,'V13.0.212'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -505,7 +506,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.211-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.212-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -665,7 +666,7 @@
       hash,
       count: data.count != null ? data.count : Object.keys(items).length,
       origin: data.origin || location.href,
-      version: data.version || '13.0.211-split',
+      version: data.version || '13.0.212-split',
       restoredFrom: data.restoredFrom || null,
       items
     };
@@ -706,7 +707,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.211 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.212 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -733,7 +734,7 @@
   }
   function downloadServerActivity(){
     if(!serverActivityCache.length){ serverStatus('Keine Aktivität zum Herunterladen geladen.', 'bad'); return; }
-    const payload = {kind:'polypoint-activity-log', version:'13.0.211-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
+    const payload = {kind:'polypoint-activity-log', version:'13.0.212-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -764,7 +765,7 @@
     }
     return {
       kind:'polypoint-server-store',
-      version:'13.0.211-split',
+      version:'13.0.212-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -927,7 +928,7 @@
       const restoreActivity = buildActivityLog(row?.data, makeActivityEntry('Speicherstand wiederhergestellt', session, {area:'Server', hash:snap.hash, count:snap.count, note:'wiederhergestellt: ' + formatHistoryDate(entry.savedAt)}));
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.211-split',
+        version:'13.0.212-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),

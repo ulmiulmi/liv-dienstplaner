@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>POLYPOINT Bali – V13.0.211 – Speicher dieses Geräts</title>
+<title>POLYPOINT Bali – V13.0.212 – Speicher dieses Geräts</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--purple:#6f42c1;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -27,12 +27,12 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 
 .candidate-main{min-width:0}.candidate-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto}.candidate-action{font-size:11px!important;padding:5px 8px!important;border-radius:999px!important;background:#eaf2ff!important;color:#2563eb!important;border:1px solid #c9dcff!important;white-space:nowrap}.candidate-action.force{background:#fff4d8!important;color:#9a6700!important;border-color:#f3d28f!important}.candidate-action:disabled,.candidate-action.disabled{background:#eef2f7!important;color:#98a2b3!important;border-color:#d9e2ef!important;cursor:not-allowed!important}.candidate-row.assignable{border-color:#c9dcff;background:#f7fbff}.candidate-row.assignable:hover{box-shadow:0 6px 18px rgba(37,99,235,.12);transform:translateY(-1px)}.candidate-note{font-size:11px;color:#667085;font-weight:850;line-height:1.2;max-width:92px;text-align:right}.candidate-balance{font-size:10px;color:#667085;font-weight:900;white-space:nowrap}.candidate-ratio{display:block;font-size:10px;color:#667085;font-weight:850}.balance-chip{display:inline-flex;align-items:center;border:1px solid #d9e2ef;border-radius:999px;padding:1px 6px;background:#fbfcfe;font-size:11px;font-weight:900;color:#344054}.team-addon{box-shadow:0 0 0 2px rgba(124,58,237,.10);margin-right:3px}.teamadd{background:#f1e9ff;color:#7c3aed;border-color:#dec9ff}.missing-duty-help{font-size:11px;color:#667085;font-weight:850;margin-top:6px;line-height:1.25}
 
-/* V13.0.211: Namen bleiben im Mitarbeiter-Tab sichtbar, auch wenn horizontal gescrollt wird. */
+/* V13.0.212: Namen bleiben im Mitarbeiter-Tab sichtbar, auch wenn horizontal gescrollt wird. */
 #empTable th:first-child,#empTable td:first-child{position:sticky;left:0;background:#fff!important;z-index:6;box-shadow:8px 0 12px rgba(20,35,60,.08)}
 #empTable th:first-child{background:#f8fafc!important;z-index:7}
 
 
-/* V13.0.211: Dienstkatalog-Hinweise für Spaltenköpfe. */
+/* V13.0.212: Dienstkatalog-Hinweise für Spaltenköpfe. */
 .duty-col-help{position:relative;display:inline-flex;align-items:center;gap:4px;cursor:help;outline:0;white-space:nowrap}
 .info-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;background:#eaf2ff;color:#2563eb;font-size:11px;font-weight:950;border:1px solid #c9dcff;line-height:1}
 .duty-col-pop{display:none;position:absolute;left:0;top:calc(100% + 8px);width:240px;max-width:72vw;background:#172033;color:#fff;border-radius:12px;padding:9px 10px;font-size:12px;line-height:1.3;font-weight:850;text-transform:none;letter-spacing:0;box-shadow:0 14px 35px rgba(16,24,40,.28);z-index:2000;white-space:normal;text-align:left}
@@ -62,7 +62,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 @media(max-width:740px){.control-title{font-size:22px}.control-accordion summary{font-size:16px;padding:13px 14px}.control-results-title{font-size:16px;align-items:flex-start;flex-direction:column}}
 
 
-    /* V13.0.211: Doppelte Hauptaktionen bleiben technisch vorhanden, werden aber in der Plan-Leiste ausgeblendet. */
+    /* V13.0.212: Doppelte Hauptaktionen bleiben technisch vorhanden, werden aber in der Plan-Leiste ausgeblendet. */
     .dup-hidden{display:none!important}
 </style>
 </head>
@@ -132,7 +132,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 
 <main class="app">
   <section class="hero no-print">
-    <div><div class="eyebrow">POLYPOINT Adapter · BALI</div><h1>Bali · V13.0.211</h1></div>
+    <div><div class="eyebrow">POLYPOINT Adapter · BALI</div><h1>Bali · V13.0.212</h1></div>
     <div class="toolbar"><button onclick="makePlan(true)">Monat planen</button><button onclick="fixCurrentMonth()">Monat sperren</button><button onclick="unfixCurrentMonth()">Monat freigeben</button></div>
   </section>
   <nav class="tabs no-print">
@@ -223,7 +223,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
     <details class="control-accordion"><summary>Klare Befehle an die KI</summary><div class="cmd-box">Diese Befehle sind die Planungsanweisung. Planung, Kontrolle und Korrektur sollen dieselben Befehle verwenden.</div><div id="aiCommandList" class="commandgrid"></div></details>
     <div class="toolbar control-actions"><button class="primary" onclick="renderRules(); renderChecks()">Kontrolle aktualisieren</button><button onclick="makePlan(true); renderRules(); renderChecks()">Neu berechnen & kontrollieren</button></div><div id="planningPhaseLog" class="issue green" style="display:none;margin-top:10px"></div><div class="control-results-title"><span>Prüfung & Konflikte</span><span class="mini">Ergebnis der aktuellen Kontrolle</span></div><div id="issueList" style="margin-top:12px"></div></article></section>
 
-  <section id="system" class="view"><article class="card"><div class="section"><h2>Speicher & System</h2><span class="pill blue">Bali · V13.0.211</span></div><div class="toolbar"><button onclick="tryMigrateV12()">alte Daten suchen</button><button class="okbtn" onclick="rescueBestStoredState(true)">Daten retten</button><button class="danger" onclick="clearV13Storage()">Speicher dieses Geräts löschen</button></div><div id="systemInfo" class="issue green" style="margin-top:12px"></div>
+  <section id="system" class="view"><article class="card"><div class="section"><h2>Speicher & System</h2><span class="pill blue">Bali · V13.0.212</span></div><div class="toolbar"><button onclick="tryMigrateV12()">alte Daten suchen</button><button class="okbtn" onclick="rescueBestStoredState(true)">Daten retten</button><button class="danger" onclick="clearV13Storage()">Speicher dieses Geräts löschen</button></div><div id="systemInfo" class="issue green" style="margin-top:12px"></div>
     <details open style="margin-top:12px"><summary><b>OpenAI API direkt ohne Server</b></summary>
       <div class="issue yellow" style="margin-top:10px"><b>Hinweis</b><div>Der API-Key wird lokal im Browser gespeichert und im Sicherung mit exportiert. Diese Datei und Sicherungs deshalb privat halten.</div></div>
       <div class="formgrid">
@@ -1825,7 +1825,7 @@ function weekendStartsForEmployeeInYear(emp,y=state.selectedYear){
   return weekendStartsTouchingYear(y).filter(ws=>weekendDatesFromStart(ws).some(d=>parseDate(d).getFullYear()===y&&isActiveOn(emp,d)));
 }
 function weekendFairnessMaxPerMonth(y=state.selectedYear,m=state.selectedMonth){
-  // Legacy-Wert für alte Sicherungen. Die harte Prüfung läuft seit V13.0.211 über das Jahreskonto.
+  // Legacy-Wert für alte Sicherungen. Die harte Prüfung läuft seit V13.0.212 über das Jahreskonto.
   const cfg=state.rules?.weekendFairness||{};
   const normal=parseInt(cfg.maxPerMonth)||2;
   const five=parseInt(cfg.maxPerMonthFiveWeekend)||3;
@@ -2451,7 +2451,7 @@ function storedStates(){
   return knownStorageKeys().map(storedStateInfo).filter(Boolean).sort((a,b)=>b.rank-a.rank);
 }
 function shouldShowStartupStorageChoice(){
-  // V13.0.211: Server ist Hauptspeicher. Alte lokale Browserstände dürfen den Bereich nicht mehr beim Öffnen blockieren.
+  // V13.0.212: Server ist Hauptspeicher. Alte lokale Browserstände dürfen den Bereich nicht mehr beim Öffnen blockieren.
   // Wer alte Geräte-/Gruppenstände braucht, nutzt bewusst den Tab "Speicher" / "Daten retten".
   return false;
 }
@@ -3153,7 +3153,7 @@ function installEditorAutosave(){
 }
 
 function repairDutyCatalogChecksFromUI(){
-  // V13.0.211: Diensthaken-Reparatur. Verhindert, dass fehlende Haken im Dienstkatalog massenhaft Folgefehler erzeugen.
+  // V13.0.212: Diensthaken-Reparatur. Verhindert, dass fehlende Haken im Dienstkatalog massenhaft Folgefehler erzeugen.
   syncDutyCatalogFromUI({quiet:true});
   if(!Array.isArray(state.duties))state.duties=[];
   const core=new Set(typeof coreAutoDutyCodes==='function'?coreAutoDutyCodes():[]);
@@ -6299,7 +6299,7 @@ function printPageCSS(){return `
 *{box-sizing:border-box}html,body{margin:0;background:#eef2f7;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}.screenbar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #d9e2ef;padding:10px 12px;display:flex;gap:8px;align-items:center;justify-content:space-between;box-shadow:0 4px 18px rgba(15,23,42,.08)}.screenbar b{font-size:14px}.screenbar .mini{font-size:12px;color:var(--muted);font-weight:800}.screenbar button{border:0;background:#eef2f7;color:var(--text);border-radius:999px;padding:9px 13px;font-weight:900;cursor:pointer}.screenbar .primary{background:#2563eb;color:#fff}.paper{width:297mm;height:210mm;margin:12px auto;background:#fff;box-shadow:0 12px 35px rgba(15,23,42,.18);padding:4mm;overflow:hidden;display:flex;flex-direction:column}.print-head{flex:0 0 auto;min-height:10mm;display:flex;justify-content:space-between;gap:8px;align-items:flex-start;border-bottom:1px solid #d9e2ef;margin-bottom:2mm;padding-bottom:1.5mm}.print-head h1{margin:0;font-size:15px;letter-spacing:-.03em}.print-head .meta{font-size:8.5px;color:#475467;font-weight:800;text-align:right}.fitbox{width:100%;flex:1 1 auto;min-height:0;overflow:hidden}.fitcontent{transform-origin:top left;display:inline-block}.print-note{display:none;font-size:9px;color:#667085;font-weight:800;margin-top:2mm}.mini{font-size:7px;color:#475467;font-weight:800;line-height:1.15}.balance-chip{font-weight:900}table{border-collapse:collapse;width:auto;font-size:6.5px;color:#172033}th,td{border:1px solid #c7d2e0;padding:1.1px .9px;text-align:center;white-space:nowrap;vertical-align:middle}th{background:#f8fafc;color:#475467;font-size:5.8px;text-transform:uppercase}th.name,td.name{position:static;text-align:left;background:#fff;width:30mm;min-width:30mm;max-width:32mm;box-shadow:none;white-space:normal;overflow:hidden}th.name{background:#f8fafc}td.name b{display:block;font-size:7px;line-height:1.05;white-space:normal;overflow:hidden;text-overflow:ellipsis}.print-role{display:block;margin-top:1px;font-size:5.5px;line-height:1.05;color:#667085;font-weight:850;white-space:normal}.name .mini,.name .meta-line{display:none!important}.cell{border-radius:5px;padding:.8px;min-width:21px;min-height:18px}.day-head{border-radius:5px;padding:.8px}.weekend{background:#fff7e6!important}.holiday{background:#fff0f0!important}.today{box-shadow:inset 0 -1.5px 0 #2563eb}.code{display:inline-flex;align-items:center;justify-content:center;min-width:15px;border-radius:5px;padding:1px 2px;font-size:6px;line-height:1;font-weight:950;border:1px solid transparent}.early{background:#e7f7ef;color:#0f8a5f;border-color:#b7e4ca}.late{background:#f0e9ff;color:#6f42c1;border-color:#ddd0ff}.mid{background:#eaf2ff;color:#2563eb;border-color:#c9dcff}.split{background:#fff4d8;color:#9a6700;border-color:#f3d28f}.office{background:#eef2f7;color:#475467}.absence{background:#f3e8ff;color:#7c3aed}.schoolfree{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}.emergency{background:#111827;color:#fff}.open{background:#ffe7e7;color:#c73636}.free{background:#f8fafc;color:#98a2b3}.badges{display:flex;gap:.6px;justify-content:center;flex-wrap:wrap;margin-top:.6px}.badge{border-radius:999px;padding:.5px 1.8px;font-size:4.6px;line-height:1;font-weight:950;background:#eef2f7;color:#475467}.badge.work{display:none}.badge.fp{background:#0f8a5f;color:#fff}.badge.warn{background:#9a6700;color:#fff}.badge.bad{background:#c73636;color:#fff}.badge.day{background:#2563eb;color:#fff}.badge.officeadd{background:#475467;color:#fff}.badge.pikett{background:#7c2d12;color:#fff}.badge.fix{background:#0f8a5f;color:#fff}.badge.out{background:#475467;color:#fff}.worktime{font-size:4.9px;line-height:1.02;margin-top:.5px;color:#475467;font-weight:800}.target-input{display:none!important}.no-print,.plan-issue-strip{display:none!important}.selected,.has-issue,.has-warn,.has-ai{outline:none!important}
 @page{size:A4 landscape;margin:5mm}
 
-/* V13.0.211: Druckansicht kompakt: nur Name/Rolle, keine langen Saldo-Zeilen im Namensfeld. */
+/* V13.0.212: Druckansicht kompakt: nur Name/Rolle, keine langen Saldo-Zeilen im Namensfeld. */
 #empTable th:first-child,#empTable td:first-child{position:sticky;left:0;background:#fff!important;z-index:6;box-shadow:8px 0 12px rgba(20,35,60,.08)}
 #empTable th:first-child{background:#f8fafc!important;z-index:7}
 
