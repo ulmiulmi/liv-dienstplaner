@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.213 · Split · Wunschportal</title>
+<title>POLYPOINT Adapter · V13.0.215 · Split · Wunschportal</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -127,8 +127,8 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.213</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal und Rollen-Sperre.</div>
+        <h1>POLYPOINT Adapter · V13.0.215</h1>
+        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, bedarfsgerechten Vorschlägen und Wunsch-Anzeige im Plan.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -300,11 +300,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211)/g,'V13.0.213'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213)/g,'V13.0.215'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211)/g,'V13.0.213'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213)/g,'V13.0.215'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -362,6 +362,7 @@
   const SERVER_TOKEN_KEY = 'polypoint_server_session_v1';
   const SERVER_META_KEY = 'polypoint_server_sync_meta_v1';
   const SERVER_AUTOSAVE_KEY = 'polypoint_server_autosave_v1';
+  const WISH_CACHE_KEY = 'polypoint_employee_wishes_v1';
   const SERVER_DEFAULT_URL = 'https://ezjufsxacihfdwpyoibs.supabase.co';
   const SERVER_DEFAULT_ANON = 'sb_publishable_3AsChws4K7YjRusOk4m6Mw_aA6iBmdg';
   let serverAutosaveTimer = null;
@@ -402,10 +403,22 @@
   function relevantStorageKey(key){
     key = String(key || '');
     if(!/^polypoint_/i.test(key)) return false;
-    if(key === SERVER_CONFIG_KEY || key === SERVER_TOKEN_KEY || key === SERVER_META_KEY || key === SERVER_AUTOSAVE_KEY) return false;
+    if(key === SERVER_CONFIG_KEY || key === SERVER_TOKEN_KEY || key === SERVER_META_KEY || key === SERVER_AUTOSAVE_KEY || key === WISH_CACHE_KEY) return false;
     if(/^polypoint_sicherung__/i.test(key)) return false;
     return true;
   }
+
+  // V13.0.215: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
+  // damit die aufgeteilten Planseiten sie anzeigen können. Der Cache wird nicht als Planungsdaten hochgeladen.
+  function cacheServerWishesFromData(data){
+    try{
+      const wishes = data && data.wishes && typeof data.wishes === 'object' ? data.wishes : {version:'13.0.215', people:{}, updatedAt:''};
+      localStorage.setItem(WISH_CACHE_KEY, JSON.stringify(wishes));
+      window.__polypointEmployeeWishes = wishes;
+      try{ frames && frames.forEach(frame => frame.contentWindow?.postMessage({type:'polypointWishesUpdated'}, '*')); }catch(_){ }
+    }catch(e){ console.warn('Wünsche konnten nicht lokal bereitgestellt werden', e); }
+  }
+
   function collectPolypointStorage(){
     const items = {};
     for(let i=0;i<localStorage.length;i++){
@@ -552,7 +565,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.213-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.215-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -691,18 +704,19 @@
     if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
     try{
       const row = await fetchServerRow(cfg, session);
-      const data = row?.data && typeof row.data === 'object' ? row.data : {kind:'polypoint-server-store', version:'13.0.213-split', items:{}, history:[], activity:[]};
+      const data = row?.data && typeof row.data === 'object' ? row.data : {kind:'polypoint-server-store', version:'13.0.215-split', items:{}, history:[], activity:[]};
       const user = serverUserFromSession(session);
       const email = normEmail(user.email);
       if(!email) throw new Error('Keine E-Mail im Login gefunden.');
       const roles = Object.assign({}, roleStore(data));
       roles[email] = {role:ROLE_ADMIN, email, name:user.name || email, updatedAt:new Date().toISOString(), updatedBy:user, source:'admin-planer'};
       data.accessRoles = roles;
-      data.roleVersion = '13.0.213';
+      data.roleVersion = '13.0.215';
       data.activity = buildActivityLog(data, makeActivityEntry('Admin-Rolle gespeichert', session, {area:'Rollen', count:Object.keys(roles).length, note:email}));
       await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data, updated_at:new Date().toISOString()})});
       setServerRoleInfo('Admin-Rolle gespeichert für ' + email + '. Rollen im Server: ' + Object.keys(roles).length, 'ok');
       serverStatus('Admin-Rolle gespeichert: ' + email, 'ok');
+      cacheServerWishesFromData(data);
       renderServerActivity({data, updated_at:new Date().toISOString()});
       await evaluateAdminAccess(false);
     }catch(e){ setServerRoleInfo('Admin-Rolle konnte nicht gespeichert werden: ' + e.message, 'bad'); serverStatus('Admin-Rolle konnte nicht gespeichert werden: ' + e.message, 'bad'); }
@@ -868,7 +882,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.213 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.215 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -895,7 +909,7 @@
   }
   function downloadServerActivity(){
     if(!serverActivityCache.length){ serverStatus('Keine Aktivität zum Herunterladen geladen.', 'bad'); return; }
-    const payload = {kind:'polypoint-activity-log', version:'13.0.213-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
+    const payload = {kind:'polypoint-activity-log', version:'13.0.215-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -924,9 +938,9 @@
       unique.push(h);
       if(unique.length >= 20) break;
     }
-    return {
+    const payload = {
       kind:'polypoint-server-store',
-      version:'13.0.213-split',
+      version:'13.0.215-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -938,6 +952,12 @@
       activity:activity,
       restoredFrom: extra.restoredFrom || null
     };
+    if(previousData && typeof previousData === 'object'){
+      if(previousData.wishes) payload.wishes = previousData.wishes;
+      if(previousData.accessRoles) payload.accessRoles = previousData.accessRoles;
+      if(previousData.roleVersion) payload.roleVersion = previousData.roleVersion;
+    }
+    return payload;
   }
   function serverHistoryEntriesFromRow(row){
     const data = row?.data || null;
@@ -1089,7 +1109,7 @@
       const restoreActivity = buildActivityLog(row?.data, makeActivityEntry('Speicherstand wiederhergestellt', session, {area:'Server', hash:snap.hash, count:snap.count, note:'wiederhergestellt: ' + formatHistoryDate(entry.savedAt)}));
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.213-split',
+        version:'13.0.215-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),
@@ -1150,6 +1170,7 @@
       if(!opts.auto) makeFullLocalBackup('before_server_upload', false);
       const action = opts.auto ? 'Auto-Speicherung' : (opts.manual ? 'manuell gespeichert' : 'gespeichert');
       const payload = buildServerPayload(snap, action, session, row?.data || null);
+      cacheServerWishesFromData(payload);
       await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data:payload, updated_at:new Date().toISOString()})});
       saveServerMeta({store:cfg.store, lastHash:snap.hash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:payload.savedAt, count:snap.count, origin:location.href, user:payload.savedBy});
       lastObservedServerHash = snap.hash;
@@ -1176,6 +1197,7 @@
         if(!confirm('Lokale Änderungen sind noch nicht auf dem Server gespeichert. Trotzdem Serverstand laden? Eine lokale Sicherung wird vorher erstellt.')){ serverStatus('Server laden abgebrochen.', 'bad'); return; }
       }
       const backupKey = makeFullLocalBackup('before_server_download', false);
+      cacheServerWishesFromData(row.data);
       const incoming = row.data.items || {};
       Object.keys(collectPolypointStorage()).forEach(key => { if(!(key in incoming) && relevantStorageKey(key)) localStorage.removeItem(key); });
       Object.entries(incoming).forEach(([key,val]) => { if(relevantStorageKey(key)) localStorage.setItem(key, String(val ?? '')); });
@@ -1256,6 +1278,7 @@
         else { saveServerMeta({store:cfg.store, lastHash:localSnap.hash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:'', count:0, origin:location.href}); setServerButtonState('connected','Server verbunden · noch leer'); }
         return;
       }
+      cacheServerWishesFromData(row.data);
       const incoming = row.data.items || {};
       const serverHash = row.data.hash || stableHashFromItems(incoming);
       if(localSnap.hash !== serverHash){
