@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.203 · Split</title>
+<title>POLYPOINT Adapter · V13.0.204 · Split</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -60,7 +60,7 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.203</h1>
+        <h1>POLYPOINT Adapter · V13.0.204</h1>
         <div class="mini">Split-Version: jede Gruppe bleibt als eigene HTML-Datei geladen.</div>
       </div>
       <div class="top-actions">
@@ -172,14 +172,49 @@
     iframe.dataset.planner = id;
     iframe.title = labels[id];
     iframe.src = id + '.html';
-    iframe.addEventListener('load', () => { if(activeId === id) loader.style.display = 'none'; });
+    iframe.addEventListener('load', () => { cleanVisibleLocalButtonsInFrame(iframe); if(activeId === id) loader.style.display = 'none'; });
     frameWrap.appendChild(iframe);
     frames.set(id, iframe);
     return iframe;
   }
 
   function setActiveButton(id){
-    document.querySelectorAll('[data-planner]').forEach(btn => {
+  
+
+  function cleanVisibleLocalButtonsInFrame(frame){
+    let doc;
+    try{ doc = frame && frame.contentDocument; }catch(_){ return; }
+    if(!doc || !doc.body) return;
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.203/g,'V13.0.204'); }catch(_){}
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    const nodes=[];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(n => { if(n.nodeValue && n.nodeValue.includes('V13.0.203')) n.nodeValue = n.nodeValue.replace(/V13\.0\.203/g,'V13.0.204'); });
+    doc.querySelectorAll('button').forEach(btn => {
+      const onclick = btn.getAttribute('onclick') || '';
+      const text = (btn.textContent || '').trim();
+      if(onclick.startsWith('saveState(') || onclick.startsWith('loadState(') || onclick.startsWith('rescueBestStoredState(') || text === 'Speichern' || text === 'Laden' || text === 'Daten retten'){
+        btn.remove();
+      }
+    });
+    doc.querySelectorAll('.action-group').forEach(group => {
+      const title = group.querySelector('.action-title');
+      if(title && (title.textContent || '').trim() === 'Speicher') group.remove();
+    });
+    if(!frame.dataset.localButtonObserver){
+      frame.dataset.localButtonObserver = '1';
+      try{
+        const obs = new MutationObserver(() => {
+          if(frame.dataset.localButtonCleaning === '1') return;
+          frame.dataset.localButtonCleaning = '1';
+          setTimeout(() => { frame.dataset.localButtonCleaning = '0'; cleanVisibleLocalButtonsInFrame(frame); }, 50);
+        });
+        obs.observe(doc.body, {childList:true, subtree:true, characterData:true});
+      }catch(_){ }
+    }
+  }
+
+  document.querySelectorAll('[data-planner]').forEach(btn => {
       const on = btn.dataset.planner === id;
       btn.classList.toggle('active', on);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -197,6 +232,41 @@
     activeLabel.textContent = 'geladen: ' + labels[id];
     if(pushHash && location.hash.replace('#','') !== id) history.replaceState(null, '', '#' + id);
     setTimeout(() => { if(activeId === id) loader.style.display = 'none'; }, 900);
+  }
+
+
+
+  function cleanVisibleLocalButtonsInFrame(frame){
+    let doc;
+    try{ doc = frame && frame.contentDocument; }catch(_){ return; }
+    if(!doc || !doc.body) return;
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.203/g,'V13.0.204'); }catch(_){}
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    const nodes=[];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(n => { if(n.nodeValue && n.nodeValue.includes('V13.0.203')) n.nodeValue = n.nodeValue.replace(/V13\.0\.203/g,'V13.0.204'); });
+    doc.querySelectorAll('button').forEach(btn => {
+      const onclick = btn.getAttribute('onclick') || '';
+      const text = (btn.textContent || '').trim();
+      if(onclick.startsWith('saveState(') || onclick.startsWith('loadState(') || onclick.startsWith('rescueBestStoredState(') || text === 'Speichern' || text === 'Laden' || text === 'Daten retten'){
+        btn.remove();
+      }
+    });
+    doc.querySelectorAll('.action-group').forEach(group => {
+      const title = group.querySelector('.action-title');
+      if(title && (title.textContent || '').trim() === 'Speicher') group.remove();
+    });
+    if(!frame.dataset.localButtonObserver){
+      frame.dataset.localButtonObserver = '1';
+      try{
+        const obs = new MutationObserver(() => {
+          if(frame.dataset.localButtonCleaning === '1') return;
+          frame.dataset.localButtonCleaning = '1';
+          setTimeout(() => { frame.dataset.localButtonCleaning = '0'; cleanVisibleLocalButtonsInFrame(frame); }, 50);
+        });
+        obs.observe(doc.body, {childList:true, subtree:true, characterData:true});
+      }catch(_){ }
+    }
   }
 
   document.querySelectorAll('[data-planner]').forEach(btn => {
@@ -403,7 +473,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.203-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.204-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -450,7 +520,7 @@
     if(serverAutosaveBusy) return false;
     serverAutosaveBusy = true;
     const snap = localStorageSnapshot();
-    const payload = {kind:'polypoint-server-store', version:'13.0.203-split', savedAt:new Date().toISOString(), origin:location.href, hash:snap.hash, count:snap.count, items:snap.items};
+    const payload = {kind:'polypoint-server-store', version:'13.0.204-split', savedAt:new Date().toISOString(), origin:location.href, hash:snap.hash, count:snap.count, items:snap.items};
     try{
       const meta = loadServerMeta();
       let row = null;
