@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.209 · Split · Speicherstand-Vergleich</title>
+<title>POLYPOINT Adapter · V13.0.210 · Split · Speicherstand-Vergleich</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -91,7 +91,7 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.209</h1>
+        <h1>POLYPOINT Adapter · V13.0.210</h1>
         <div class="mini">Split-Version mit Server-Speicherständen, Benutzeranzeige, Konflikt-Schutz und Speicherstand-Vergleich.</div>
       </div>
       <div class="top-actions">
@@ -193,6 +193,7 @@
         </div>
         <div id="serverHistoryList" class="server-history-list">Noch nicht geladen.</div>
         <div id="serverHistoryCompare" class="server-history-compare"></div>
+        <div id="serverHistoryRestorePreview" class="server-history-compare"></div>
       </div>
     </div>
     <div id="serverSyncStatus" class="server-status">Nicht verbunden.</div>
@@ -243,11 +244,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.209'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.210'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.209'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.210'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -493,7 +494,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.209-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.210-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -653,7 +654,7 @@
       hash,
       count: data.count != null ? data.count : Object.keys(items).length,
       origin: data.origin || location.href,
-      version: data.version || '13.0.209-split',
+      version: data.version || '13.0.210-split',
       restoredFrom: data.restoredFrom || null,
       items
     };
@@ -678,7 +679,7 @@
     }
     return {
       kind:'polypoint-server-store',
-      version:'13.0.209-split',
+      version:'13.0.210-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -777,6 +778,40 @@
     serverStatus(total ? 'Vergleich erstellt: ' + total + ' Unterschied(e).' : 'Vergleich erstellt: keine Unterschiede.', total ? '' : 'ok');
   }
 
+
+  function renderHistoryRestorePreview(index){
+    const box = document.getElementById('serverHistoryRestorePreview');
+    if(!box){ serverStatus('Wiederherstellungs-Vorschau nicht gefunden.', 'bad'); return; }
+    const entry = serverHistoryCache[Number(index)];
+    const current = serverHistoryCache[0];
+    if(!entry || entry.current){ serverStatus('Dieser Speicherstand kann nicht wiederhergestellt werden.', 'bad'); return; }
+    if(!current){ serverStatus('Aktueller Serverstand fehlt. Bitte zuerst Speicherstände laden.', 'bad'); return; }
+    const compareBox = document.getElementById('serverHistoryCompare');
+    if(compareBox){ compareBox.classList.remove('show'); compareBox.innerHTML=''; }
+    const groups = compareItemMaps(current.items || {}, entry.items || {});
+    const total = groups.reduce((n,g) => n + g.geaendert + g.nurAktuell + g.nurAlt, 0);
+    const oldLabel = formatHistoryDate(entry.savedAt) + ' · ' + serverUserLabel(entry.user) + ' · ' + (entry.action || 'gespeichert');
+    const currentLabel = formatHistoryDate(current.savedAt) + ' · ' + serverUserLabel(current.user) + ' · ' + (current.action || 'aktueller Serverstand');
+    const cards = groups.map(g => {
+      const changed = g.geaendert + g.nurAktuell + g.nurAlt;
+      const cls = changed ? 'changed' : (g.gleich ? 'same' : 'empty');
+      const examples = g.beispiele.length ? '<div class="compare-meta">Beispiele: ' + escapeHtml(g.beispiele.join(', ')) + '</div>' : '';
+      return '<div class="compare-card ' + cls + '"><div class="compare-area">' + escapeHtml(g.area) + '</div><div class="compare-counts"><span class="compare-pill ' + (changed ? 'warn' : 'ok') + '">' + (changed ? 'wird geändert' : 'bleibt gleich') + '</span><span class="compare-pill blue">gleich ' + g.gleich + '</span><span class="compare-pill warn">geändert ' + g.geaendert + '</span><span class="compare-pill bad">nur alter Stand ' + g.nurAlt + '</span><span class="compare-pill blue">nur aktuell ' + g.nurAktuell + '</span></div>' + examples + '</div>';
+    }).join('') || '<div class="compare-card same"><div class="compare-area">Keine Unterschiede gefunden.</div></div>';
+    box.innerHTML = '<div class="compare-head"><div><div class="compare-title">Wiederherstellen mit Sicherheitsvorschau</div><div class="compare-meta">Wiederherstellen auf: ' + escapeHtml(oldLabel) + '</div><div class="compare-meta">Aktueller Serverstand: ' + escapeHtml(currentLabel) + '</div></div><button type="button" id="serverHistoryRestoreCloseBtn">Schliessen</button></div>' +
+      '<div class="server-conflict-info warn"><b>Achtung:</b> Du stellst einen alten Speicherstand wieder her. Vorher wird der aktuelle Serverstand automatisch im Verlauf als <b>„vor Wiederherstellung gesichert“</b> abgelegt und zusätzlich lokal als Notfallkopie gesichert.</div>' +
+      '<div class="compare-meta" style="margin-top:8px"><b>' + (total ? total + ' Unterschied(e) gegenüber aktuell.' : 'Keine Unterschiede gegenüber aktuell.') + '</b> Bitte prüfen, dann erst wirklich wiederherstellen.</div>' +
+      '<div class="compare-grid">' + cards + '</div>' +
+      '<div class="central-export-actions" style="justify-content:flex-end"><button type="button" id="serverHistoryRestoreCancelBtn">Abbrechen</button><button type="button" id="serverHistoryRestoreDownloadCurrentBtn">Aktuellen Stand herunterladen</button><button type="button" class="primary" id="serverHistoryRestoreConfirmBtn">Wirklich wiederherstellen</button></div>';
+    box.classList.add('show');
+    const close = () => { box.classList.remove('show'); box.innerHTML=''; };
+    document.getElementById('serverHistoryRestoreCloseBtn')?.addEventListener('click', close);
+    document.getElementById('serverHistoryRestoreCancelBtn')?.addEventListener('click', close);
+    document.getElementById('serverHistoryRestoreDownloadCurrentBtn')?.addEventListener('click', () => downloadHistoryEntry(0));
+    document.getElementById('serverHistoryRestoreConfirmBtn')?.addEventListener('click', () => { close(); restoreHistoryEntry(index, true); });
+    serverStatus('Wiederherstellungs-Vorschau erstellt. Bitte prüfen und erst dann bestätigen.', total ? '' : 'ok');
+  }
+
   function downloadHistoryEntry(index){
     const entry = serverHistoryCache[Number(index)];
     if(!entry){ serverStatus('Speicherstand nicht gefunden.', 'bad'); return; }
@@ -790,10 +825,10 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
     serverStatus('Speicherstand heruntergeladen: ' + formatHistoryDate(entry.savedAt), 'ok');
   }
-  async function restoreHistoryEntry(index){
+  async function restoreHistoryEntry(index, confirmed=false){
     const entry = serverHistoryCache[Number(index)];
     if(!entry || entry.current){ serverStatus('Dieser Speicherstand kann nicht wiederhergestellt werden.', 'bad'); return; }
-    if(!confirm('Speicherstand vom ' + formatHistoryDate(entry.savedAt) + ' wiederherstellen? Der aktuelle Stand wird vorher im Verlauf gesichert.')) return;
+    if(!confirmed){ renderHistoryRestorePreview(index); return; }
     const cfg = saveServerConfig(); if(!cfg) return;
     const session = await getActiveServerSession();
     if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
@@ -805,7 +840,7 @@
       const snap = {items, hash:entry.hash || stableHashFromItems(items), count:Object.keys(items).length};
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.209-split',
+        version:'13.0.210-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),
