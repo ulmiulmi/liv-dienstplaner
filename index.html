@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.210 · Split · Speicherstand-Vergleich</title>
+<title>POLYPOINT Adapter · V13.0.211 · Split · Speicherstand-Vergleich</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -59,6 +59,7 @@
   .server-conflict-info.ok{border-color:#b7e4ca;background:#e7f7ef;color:#0f8a5f}
 
   .server-history-box{grid-column:1/-1}
+  .server-activity-box{grid-column:1/-1}
   .server-history-list{border:1px solid var(--line);border-radius:14px;background:#fff;margin-top:8px;overflow:auto;max-height:300px}
   .server-history-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid #edf1f6}
   .server-history-row:last-child{border-bottom:0}
@@ -91,7 +92,7 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.210</h1>
+        <h1>POLYPOINT Adapter · V13.0.211</h1>
         <div class="mini">Split-Version mit Server-Speicherständen, Benutzeranzeige, Konflikt-Schutz und Speicherstand-Vergleich.</div>
       </div>
       <div class="top-actions">
@@ -195,6 +196,15 @@
         <div id="serverHistoryCompare" class="server-history-compare"></div>
         <div id="serverHistoryRestorePreview" class="server-history-compare"></div>
       </div>
+      <div class="emp-box server-activity-box">
+        <h3>📋 Aktivität</h3>
+        <div class="mini">Vorsichtiges Protokoll: Es werden nur echte Server-Schreibaktionen protokolliert, zum Beispiel Speichern und Wiederherstellen. Kein zusätzlicher Server-Lock.</div>
+        <div class="central-export-actions">
+          <button type="button" id="serverActivityRefreshBtn">Aktivität laden</button>
+          <button type="button" id="serverActivityDownloadBtn">Aktivität herunterladen</button>
+        </div>
+        <div id="serverActivityList" class="server-history-list">Noch nicht geladen.</div>
+      </div>
     </div>
     <div id="serverSyncStatus" class="server-status">Nicht verbunden.</div>
     <div class="emp-modal-actions">
@@ -244,11 +254,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.210'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.211'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.210'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.211'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -312,6 +322,7 @@
   let serverAutosaveBusy = false;
   let lastObservedServerHash = '';
   let serverHistoryCache = [];
+  let serverActivityCache = [];
 
   function serverModal(){ return document.getElementById('serverSyncModal'); }
   function serverStatus(text, kind=''){
@@ -494,7 +505,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.210-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.211-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -654,14 +665,88 @@
       hash,
       count: data.count != null ? data.count : Object.keys(items).length,
       origin: data.origin || location.href,
-      version: data.version || '13.0.210-split',
+      version: data.version || '13.0.211-split',
       restoredFrom: data.restoredFrom || null,
       items
     };
   }
+
+  function serverActivityFromData(data){
+    return Array.isArray(data?.activity) ? data.activity.filter(a => a && (a.at || a.action)).slice(0, 50) : [];
+  }
+  function makeActivityEntry(action, session, extra={}){
+    return {
+      id: extra.id || makeHistoryId('act'),
+      at: extra.at || new Date().toISOString(),
+      action: action || 'Aktion',
+      user: extra.user || serverUserFromSession(session),
+      area: extra.area || 'Server',
+      hash: extra.hash || '',
+      count: extra.count != null ? extra.count : null,
+      note: extra.note || ''
+    };
+  }
+  function buildActivityLog(previousData, entry){
+    const old = serverActivityFromData(previousData);
+    const merged = entry ? [entry].concat(old) : old.slice();
+    const unique = [];
+    const seen = new Set();
+    for(const a of merged){
+      if(!a) continue;
+      const key = (a.id || '') + '|' + (a.at || '') + '|' + (a.action || '') + '|' + serverUserLabel(a.user);
+      if(seen.has(key)) continue;
+      seen.add(key);
+      unique.push(a);
+      if(unique.length >= 50) break;
+    }
+    return unique;
+  }
+  function renderServerActivity(row){
+    const list = document.getElementById('serverActivityList');
+    if(!list) return;
+    serverActivityCache = serverActivityFromData(row?.data);
+    if(!serverActivityCache.length){
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.211 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      return;
+    }
+    list.innerHTML = serverActivityCache.map(a => {
+      const title = escapeHtml(formatHistoryDate(a.at)) + ' · ' + escapeHtml(a.action || 'Aktion');
+      const metaParts = [
+        'Benutzer: ' + serverUserLabel(a.user),
+        'Bereich: ' + (a.area || 'Server')
+      ];
+      if(a.count != null) metaParts.push(String(a.count) + ' Einträge');
+      if(a.hash) metaParts.push(String(a.hash));
+      if(a.note) metaParts.push(String(a.note));
+      return '<div class="server-history-row"><div><div class="server-history-title">' + title + '</div><div class="server-history-meta">' + escapeHtml(metaParts.join(' · ')) + '</div></div></div>';
+    }).join('');
+  }
+  async function serverActivityLoad(showStatus=true){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      renderServerActivity(row);
+      if(showStatus) serverStatus(row ? 'Aktivität geladen: ' + serverActivityCache.length + ' Einträge.' : 'Noch kein Serverstand vorhanden.', row ? 'ok' : '');
+    } catch(e){ serverStatus('Aktivität konnte nicht geladen werden: ' + e.message, 'bad'); }
+  }
+  function downloadServerActivity(){
+    if(!serverActivityCache.length){ serverStatus('Keine Aktivität zum Herunterladen geladen.', 'bad'); return; }
+    const payload = {kind:'polypoint-activity-log', version:'13.0.211-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'polypoint_aktivitaet_' + new Date().toISOString().replace(/[:.]/g,'-').slice(0,19) + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    serverStatus('Aktivitätsprotokoll heruntergeladen.', 'ok');
+  }
   function buildServerPayload(snap, action, session, previousData, extra={}){
     const now = new Date().toISOString();
     const user = serverUserFromSession(session);
+    const activityEntry = makeActivityEntry(action || 'gespeichert', session, {area:'Server', hash:snap.hash, count:snap.count});
+    const activity = buildActivityLog(previousData, activityEntry);
     const history = serverHistoryFromData(previousData);
     if(previousData && previousData.items){
       const previous = makeHistoryEntryFromData(previousData, previousData.action || 'vorheriger Serverstand', session, {id:makeHistoryId('prev')});
@@ -679,7 +764,7 @@
     }
     return {
       kind:'polypoint-server-store',
-      version:'13.0.210-split',
+      version:'13.0.211-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -688,6 +773,7 @@
       count:snap.count,
       items:snap.items,
       history:unique,
+      activity:activity,
       restoredFrom: extra.restoredFrom || null
     };
   }
@@ -838,9 +924,10 @@
       const existingHistory = serverHistoryFromData(row?.data).filter(h => h.id !== entry.id);
       const items = entry.items || {};
       const snap = {items, hash:entry.hash || stableHashFromItems(items), count:Object.keys(items).length};
+      const restoreActivity = buildActivityLog(row?.data, makeActivityEntry('Speicherstand wiederhergestellt', session, {area:'Server', hash:snap.hash, count:snap.count, note:'wiederhergestellt: ' + formatHistoryDate(entry.savedAt)}));
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.210-split',
+        version:'13.0.211-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),
@@ -849,7 +936,8 @@
         count:snap.count,
         items:snap.items,
         restoredFrom:{id:entry.id, savedAt:entry.savedAt, hash:entry.hash, user:entry.user, action:entry.action},
-        history:(currentEntry ? [currentEntry] : []).concat(existingHistory).slice(0,20)
+        history:(currentEntry ? [currentEntry] : []).concat(existingHistory).slice(0,20),
+        activity:restoreActivity
       };
       makeFullLocalBackup('before_history_restore', false);
       await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data:payload, updated_at:new Date().toISOString()})});
@@ -860,6 +948,7 @@
       lastObservedServerHash = snap.hash;
       setServerButtonState('connected','Speicherstand wiederhergestellt');
       renderServerHistory({data:payload, updated_at:payload.savedAt});
+      renderServerActivity({data:payload, updated_at:payload.savedAt});
       renderServerConflict({data:payload, updated_at:payload.savedAt}, loadServerMeta(), session, true);
       refreshServerLocalInfo(); refreshServerSyncInfo();
       serverStatus('Speicherstand wiederhergestellt: ' + formatHistoryDate(entry.savedAt) + ' · ' + snap.count + ' Einträge.', 'ok');
@@ -905,6 +994,7 @@
       setServerButtonState('connected', opts.auto ? 'Server verbunden · automatisch gespeichert' : 'Server verbunden · zuletzt gespeichert');
       serverStatus((opts.auto ? 'Automatisch auf Server gespeichert: ' : 'Auf Server gespeichert: ') + snap.count + ' Planungs-Einträge · Benutzer: ' + serverUserLabel(payload.savedBy) + ' · Speicherstände: ' + (1 + payload.history.length), 'ok');
       renderServerHistory({data:payload, updated_at:payload.savedAt});
+      renderServerActivity({data:payload, updated_at:payload.savedAt});
       renderServerConflict({data:payload, updated_at:payload.savedAt}, loadServerMeta(), session, true);
       refreshServerLocalInfo(); refreshServerSyncInfo();
       return true;
@@ -934,6 +1024,7 @@
       refreshServerLocalInfo(); refreshServerSyncInfo();
       setServerButtonState('connected','Server verbunden · zuletzt geladen');
       renderServerHistory(row);
+      renderServerActivity(row);
       renderServerConflict(row, loadServerMeta(), session, true);
       serverStatus('Server-Hauptspeicher geladen: ' + Object.keys(incoming).length + ' Einträge. Vorherige Arbeitskopie als Notfallkopie: ' + backupKey, 'ok');
     } catch(e){ setServerButtonState('error','Server laden nicht möglich'); serverStatus('Server laden nicht möglich: ' + e.message, 'bad'); }
@@ -1018,6 +1109,7 @@
       lastObservedServerHash = localStorageSnapshot().hash;
       setServerButtonState('connected','Server-Hauptspeicher aktiv');
       renderServerHistory(row);
+      renderServerActivity(row);
       refreshServerLocalInfo(); refreshServerSyncInfo();
     } catch(e){
       setServerButtonState('error','Server-Hauptspeicher nicht erreichbar');
@@ -1033,7 +1125,7 @@
     const s = await getActiveServerSession();
     setServerButtonState(s ? 'connected' : 'ready', s ? 'Server verbunden' : 'Server bereit, bitte einloggen');
     serverStatus(s ? 'Server-Hauptspeicher verbunden.' : 'Server erreichbar. Bitte einloggen, damit der Serverstand geladen wird.', s ? 'ok' : '');
-    if(s){ serverCheckStatus(false); serverHistoryLoad(false); serverConflictCheck(false); }
+    if(s){ serverCheckStatus(false); serverHistoryLoad(false); serverActivityLoad(false); serverConflictCheck(false); }
   }
   function closeServerSync(){ serverModal().classList.remove('show'); serverModal().setAttribute('aria-hidden','true'); }
   document.getElementById('serverSyncBtn')?.addEventListener('click', openServerSync);
@@ -1051,6 +1143,8 @@
   document.getElementById('serverConflictCheckBtn')?.addEventListener('click', () => serverConflictCheck(true));
   document.getElementById('serverConflictLoadBtn')?.addEventListener('click', () => serverDownload());
   document.getElementById('serverHistoryRefreshBtn')?.addEventListener('click', () => serverHistoryLoad(true));
+  document.getElementById('serverActivityRefreshBtn')?.addEventListener('click', () => serverActivityLoad(true));
+  document.getElementById('serverActivityDownloadBtn')?.addEventListener('click', downloadServerActivity);
   document.getElementById('serverHistoryDownloadCurrentBtn')?.addEventListener('click', () => { if(serverHistoryCache[0]) downloadHistoryEntry(0); else serverHistoryLoad(true); });
   document.getElementById('serverHistoryList')?.addEventListener('click', ev => { const btn = ev.target.closest('[data-history-action]'); if(!btn) return; const idx = btn.dataset.historyIndex; if(btn.dataset.historyAction === 'download') downloadHistoryEntry(idx); if(btn.dataset.historyAction === 'compare') renderHistoryCompare(idx); if(btn.dataset.historyAction === 'restore') restoreHistoryEntry(idx); });
   document.getElementById('serverLocalBackupBtn')?.addEventListener('click', () => { const k = makeFullLocalBackup('manual_local_download', true); serverStatus('Notfallkopie heruntergeladen und lokal abgelegt: ' + k, 'ok'); });
