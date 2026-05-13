@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.208 · Split · Benutzer-Speicherstände</title>
+<title>POLYPOINT Adapter · V13.0.209 · Split · Speicherstand-Vergleich</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -67,7 +67,21 @@
   .server-history-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
   .server-history-actions button{padding:6px 9px;font-size:11px}
   .server-history-current{background:#f7fbff}
-  @media(max-width:740px){.server-history-row{grid-template-columns:1fr}.server-history-actions{justify-content:flex-start}.server-history-list{max-height:260px}}
+  .server-history-compare{border:1px solid #c9dcff;background:#f7fbff;border-radius:14px;margin-top:8px;padding:10px;display:none}
+  .server-history-compare.show{display:block}
+  .compare-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
+  .compare-title{font-weight:950;font-size:14px;color:var(--text)}
+  .compare-meta{font-size:11px;color:var(--muted);font-weight:850;line-height:1.35;margin-top:2px}
+  .compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:8px}
+  .compare-card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:8px}
+  .compare-card.changed{border-color:#f3d28f;background:#fffdf5}
+  .compare-card.same{border-color:#b7e4ca;background:#f7fff9}
+  .compare-card.empty{opacity:.66}
+  .compare-area{font-weight:950;font-size:12px;color:var(--text)}
+  .compare-counts{font-size:11px;color:var(--muted);font-weight:850;line-height:1.45;margin-top:4px}
+  .compare-pill{display:inline-flex;border-radius:999px;padding:2px 6px;font-size:10px;font-weight:950;margin:2px 4px 0 0;background:#eef2f7;color:#475467}
+  .compare-pill.warn{background:#fff4d8;color:#9a6700}.compare-pill.ok{background:#e7f7ef;color:#0f8a5f}.compare-pill.bad{background:#ffe7e7;color:#c73636}.compare-pill.blue{background:#eaf2ff;color:#2563eb}
+  @media(max-width:740px){.server-history-row{grid-template-columns:1fr}.server-history-actions{justify-content:flex-start}.server-history-list{max-height:260px}.compare-grid{grid-template-columns:1fr}}
   @media(max-width:740px){.server-grid{grid-template-columns:1fr}.server-btn{font-size:12px}.top-actions{flex-wrap:nowrap;overflow-x:auto}.emp-modal{padding:14px;border-radius:20px}.emp-modal h2{font-size:20px}}
 
 </style>
@@ -77,8 +91,8 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.208</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen, Benutzeranzeige und sicherem Konflikt-Schutz.</div>
+        <h1>POLYPOINT Adapter · V13.0.209</h1>
+        <div class="mini">Split-Version mit Server-Speicherständen, Benutzeranzeige, Konflikt-Schutz und Speicherstand-Vergleich.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -178,6 +192,7 @@
           <button type="button" id="serverHistoryDownloadCurrentBtn">Aktuellen Stand herunterladen</button>
         </div>
         <div id="serverHistoryList" class="server-history-list">Noch nicht geladen.</div>
+        <div id="serverHistoryCompare" class="server-history-compare"></div>
       </div>
     </div>
     <div id="serverSyncStatus" class="server-status">Nicht verbunden.</div>
@@ -228,11 +243,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.208'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.209'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.208'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.209'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -478,7 +493,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.208-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.209-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -638,7 +653,7 @@
       hash,
       count: data.count != null ? data.count : Object.keys(items).length,
       origin: data.origin || location.href,
-      version: data.version || '13.0.208-split',
+      version: data.version || '13.0.209-split',
       restoredFrom: data.restoredFrom || null,
       items
     };
@@ -663,7 +678,7 @@
     }
     return {
       kind:'polypoint-server-store',
-      version:'13.0.208-split',
+      version:'13.0.209-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -695,7 +710,7 @@
       const current = h.current ? ' server-history-current' : '';
       const title = (h.current ? 'Aktueller Serverstand' : 'Speicherstand') + ' · ' + escapeHtml(formatHistoryDate(h.savedAt));
       const meta = escapeHtml(serverUserLabel(h.user)) + ' · ' + escapeHtml(h.action || 'gespeichert') + ' · ' + escapeHtml(String(h.count ?? Object.keys(h.items || {}).length)) + ' Einträge · ' + escapeHtml(h.hash || '');
-      return '<div class="server-history-row' + current + '"><div><div class="server-history-title">' + title + '</div><div class="server-history-meta">' + meta + '</div></div><div class="server-history-actions"><button type="button" data-history-action="download" data-history-index="' + idx + '">Herunterladen</button>' + (h.current ? '' : '<button type="button" class="primary" data-history-action="restore" data-history-index="' + idx + '">Wiederherstellen</button>') + '</div></div>';
+      return '<div class="server-history-row' + current + '"><div><div class="server-history-title">' + title + '</div><div class="server-history-meta">' + meta + '</div></div><div class="server-history-actions"><button type="button" data-history-action="download" data-history-index="' + idx + '">Herunterladen</button>' + (h.current ? '' : '<button type="button" data-history-action="compare" data-history-index="' + idx + '">Vergleichen</button><button type="button" class="primary" data-history-action="restore" data-history-index="' + idx + '">Wiederherstellen</button>') + '</div></div>';
     }).join('');
   }
   async function serverHistoryLoad(showStatus=true){
@@ -708,6 +723,60 @@
       if(showStatus) serverStatus(row ? 'Speicherstände geladen: ' + serverHistoryCache.length + ' Stand/stände.' : 'Noch kein Serverstand vorhanden.', row ? 'ok' : '');
     } catch(e){ serverStatus('Speicherstände konnten nicht geladen werden: ' + e.message, 'bad'); }
   }
+  function classifyHistoryKey(key){
+    const k = String(key || '').toLowerCase();
+    const areas = [
+      ['azoren','Azoren'],['bali','Bali'],['capri','Capri'],['delos','Delos'],['nachtwache','Nachtwache'],['pikett','Haus-Pikett'],['hausdienstplan','Haus-Dienstplan'],['overview','Startseite'],['start','Startseite']
+    ];
+    for(const [needle,label] of areas){ if(k.includes(needle)) return label; }
+    if(k.includes('employee') || k.includes('mitarbeiter') || k.includes('profile')) return 'Profile / Mitarbeiter';
+    if(k.includes('rules') || k.includes('regel') || k.includes('duty') || k.includes('dienst')) return 'Regeln / Dienste';
+    return 'Sonstiges';
+  }
+  function compareItemMaps(currentItems, oldItems){
+    const groups = {};
+    function ensure(area){
+      if(!groups[area]) groups[area] = {area, gleich:0, geaendert:0, nurAktuell:0, nurAlt:0, beispiele:[]};
+      return groups[area];
+    }
+    const keys = new Set(Object.keys(currentItems || {}).concat(Object.keys(oldItems || {})));
+    keys.forEach(key => {
+      const area = classifyHistoryKey(key);
+      const g = ensure(area);
+      const hasCur = Object.prototype.hasOwnProperty.call(currentItems || {}, key);
+      const hasOld = Object.prototype.hasOwnProperty.call(oldItems || {}, key);
+      if(hasCur && hasOld){
+        if(String(currentItems[key] ?? '') === String(oldItems[key] ?? '')) g.gleich++;
+        else { g.geaendert++; if(g.beispiele.length < 3) g.beispiele.push(key); }
+      } else if(hasCur){ g.nurAktuell++; if(g.beispiele.length < 3) g.beispiele.push(key); }
+      else { g.nurAlt++; if(g.beispiele.length < 3) g.beispiele.push(key); }
+    });
+    const order = ['Azoren','Bali','Capri','Delos','Nachtwache','Haus-Pikett','Haus-Dienstplan','Startseite','Profile / Mitarbeiter','Regeln / Dienste','Sonstiges'];
+    return order.filter(a => groups[a]).map(a => groups[a]).concat(Object.keys(groups).filter(a => !order.includes(a)).sort().map(a => groups[a]));
+  }
+  function renderHistoryCompare(index){
+    const box = document.getElementById('serverHistoryCompare');
+    if(!box) return;
+    const entry = serverHistoryCache[Number(index)];
+    const current = serverHistoryCache[0];
+    if(!entry || !current){ serverStatus('Vergleich nicht möglich: Speicherstände fehlen.', 'bad'); return; }
+    if(entry.current){ box.classList.remove('show'); box.innerHTML = ''; serverStatus('Der aktuelle Stand wird gegen einen älteren Speicherstand verglichen. Bitte einen alten Stand wählen.', ''); return; }
+    const groups = compareItemMaps(current.items || {}, entry.items || {});
+    const total = groups.reduce((n,g) => n + g.geaendert + g.nurAktuell + g.nurAlt, 0);
+    const oldLabel = formatHistoryDate(entry.savedAt) + ' · ' + serverUserLabel(entry.user) + ' · ' + (entry.action || 'gespeichert');
+    const currentLabel = formatHistoryDate(current.savedAt) + ' · ' + serverUserLabel(current.user) + ' · ' + (current.action || 'aktueller Serverstand');
+    const cards = groups.map(g => {
+      const changed = g.geaendert + g.nurAktuell + g.nurAlt;
+      const cls = changed ? 'changed' : (g.gleich ? 'same' : 'empty');
+      const examples = g.beispiele.length ? '<div class="compare-meta">Beispiele: ' + escapeHtml(g.beispiele.join(', ')) + '</div>' : '';
+      return '<div class="compare-card ' + cls + '"><div class="compare-area">' + escapeHtml(g.area) + '</div><div class="compare-counts"><span class="compare-pill ' + (changed ? 'warn' : 'ok') + '">' + (changed ? 'anders' : 'gleich') + '</span><span class="compare-pill blue">gleich ' + g.gleich + '</span><span class="compare-pill warn">geändert ' + g.geaendert + '</span><span class="compare-pill bad">nur alt ' + g.nurAlt + '</span><span class="compare-pill blue">nur aktuell ' + g.nurAktuell + '</span></div>' + examples + '</div>';
+    }).join('') || '<div class="compare-card same"><div class="compare-area">Keine Unterschiede gefunden.</div></div>';
+    box.innerHTML = '<div class="compare-head"><div><div class="compare-title">Speicherstand-Vergleich</div><div class="compare-meta">Alt: ' + escapeHtml(oldLabel) + '</div><div class="compare-meta">Aktuell: ' + escapeHtml(currentLabel) + '</div></div><button type="button" id="serverHistoryCompareCloseBtn">Schliessen</button></div><div class="compare-meta"><b>' + (total ? total + ' Unterschied(e) gefunden.' : 'Keine Unterschiede gefunden.') + '</b> Vergleich nach gespeicherten POLYPOINT-Browserdaten.</div><div class="compare-grid">' + cards + '</div>';
+    box.classList.add('show');
+    document.getElementById('serverHistoryCompareCloseBtn')?.addEventListener('click', () => { box.classList.remove('show'); box.innerHTML=''; });
+    serverStatus(total ? 'Vergleich erstellt: ' + total + ' Unterschied(e).' : 'Vergleich erstellt: keine Unterschiede.', total ? '' : 'ok');
+  }
+
   function downloadHistoryEntry(index){
     const entry = serverHistoryCache[Number(index)];
     if(!entry){ serverStatus('Speicherstand nicht gefunden.', 'bad'); return; }
@@ -736,7 +805,7 @@
       const snap = {items, hash:entry.hash || stableHashFromItems(items), count:Object.keys(items).length};
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.208-split',
+        version:'13.0.209-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),
@@ -948,7 +1017,7 @@
   document.getElementById('serverConflictLoadBtn')?.addEventListener('click', () => serverDownload());
   document.getElementById('serverHistoryRefreshBtn')?.addEventListener('click', () => serverHistoryLoad(true));
   document.getElementById('serverHistoryDownloadCurrentBtn')?.addEventListener('click', () => { if(serverHistoryCache[0]) downloadHistoryEntry(0); else serverHistoryLoad(true); });
-  document.getElementById('serverHistoryList')?.addEventListener('click', ev => { const btn = ev.target.closest('[data-history-action]'); if(!btn) return; const idx = btn.dataset.historyIndex; if(btn.dataset.historyAction === 'download') downloadHistoryEntry(idx); if(btn.dataset.historyAction === 'restore') restoreHistoryEntry(idx); });
+  document.getElementById('serverHistoryList')?.addEventListener('click', ev => { const btn = ev.target.closest('[data-history-action]'); if(!btn) return; const idx = btn.dataset.historyIndex; if(btn.dataset.historyAction === 'download') downloadHistoryEntry(idx); if(btn.dataset.historyAction === 'compare') renderHistoryCompare(idx); if(btn.dataset.historyAction === 'restore') restoreHistoryEntry(idx); });
   document.getElementById('serverLocalBackupBtn')?.addEventListener('click', () => { const k = makeFullLocalBackup('manual_local_download', true); serverStatus('Notfallkopie heruntergeladen und lokal abgelegt: ' + k, 'ok'); });
   document.getElementById('serverRestoreBackupBtn')?.addEventListener('click', restoreLatestLocalEmergencyBackup);
   document.getElementById('serverAutosaveToggle')?.addEventListener('change', ev => { setAutosaveEnabled(!!ev.target.checked); serverStatus(ev.target.checked ? 'Auto-Speichern aktiv.' : 'Auto-Speichern ausgeschaltet.', 'ok'); });
