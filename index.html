@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.207 · Split · sicherer Konfliktschutz</title>
+<title>POLYPOINT Adapter · V13.0.208 · Split · Benutzer-Speicherstände</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -77,8 +77,8 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.207</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen und sicherem Konflikt-Schutz.</div>
+        <h1>POLYPOINT Adapter · V13.0.208</h1>
+        <div class="mini">Split-Version mit Server-Speicherständen, Benutzeranzeige und sicherem Konflikt-Schutz.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -172,7 +172,7 @@
       </div>
       <div class="emp-box server-history-box">
         <h3>🕘 Speicherstände</h3>
-        <div class="mini">Zeigt den aktuellen Serverstand und die letzten 20 früheren Speicherstände mit Benutzer, Aktion und Zeit.</div>
+        <div class="mini">Zeigt den aktuellen Serverstand und die letzten 20 früheren Speicherstände mit Benutzer/E-Mail, Aktion und Zeit.</div>
         <div class="central-export-actions">
           <button type="button" id="serverHistoryRefreshBtn">Speicherstände laden</button>
           <button type="button" id="serverHistoryDownloadCurrentBtn">Aktuellen Stand herunterladen</button>
@@ -228,11 +228,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204)/g,'V13.0.207'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.208'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204)/g,'V13.0.207'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207)/g,'V13.0.208'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -420,7 +420,9 @@
     refreshServerLocalInfo(); refreshServerSyncInfo();
   }
   function storeServerSession(data, cfg){
-    const session = {access_token:data.access_token, refresh_token:data.refresh_token, user:data.user, expires_at:Date.now() + Math.max(60, (data.expires_in || 3600)) * 1000};
+    const userWithFallback = Object.assign({}, data.user || {});
+    if(!userWithFallback.email && cfg?.email) userWithFallback.email = cfg.email;
+    const session = {access_token:data.access_token, refresh_token:data.refresh_token, user:userWithFallback, expires_at:Date.now() + Math.max(60, (data.expires_in || 3600)) * 1000};
     localStorage.setItem(SERVER_TOKEN_KEY, JSON.stringify(session));
     if(cfg) localStorage.setItem(SERVER_CONFIG_KEY, JSON.stringify({url:cfg.url, anon:cfg.anon, store:cfg.store, email:cfg.email, savedAt:new Date().toISOString()}));
     setServerButtonState('connected','Server verbunden' + (session.user?.email ? ' · ' + session.user.email : ''));
@@ -476,7 +478,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.207-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.208-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -517,16 +519,36 @@
     return Array.isArray(data) ? data[0] : null;
   }
 
+  function storedServerEmail(){
+    try{
+      const input = document.getElementById('serverEmailInput');
+      const fromInput = String(input?.value || '').trim();
+      if(fromInput) return fromInput;
+    }catch(_){}
+    try{
+      const cfg = JSON.parse(localStorage.getItem(SERVER_CONFIG_KEY) || '{}') || {};
+      const fromConfig = String(cfg.email || '').trim();
+      if(fromConfig) return fromConfig;
+    }catch(_){}
+    return '';
+  }
   function serverUserFromSession(session){
     const user = session?.user || {};
     const meta = user.user_metadata || {};
-    const email = user.email || '';
-    const name = meta.full_name || meta.name || meta.display_name || email || 'unbekannt';
-    return {id:user.id || '', email:email, name:String(name)};
+    const email = String(user.email || storedServerEmail() || '').trim();
+    const rawName = meta.full_name || meta.name || meta.display_name || '';
+    const name = String(rawName || email || user.id || 'unbekannt');
+    return {id:user.id || '', email:email, name:name};
   }
   function serverUserLabel(user){
     user = user || {};
-    return user.name || user.email || user.id || 'unbekannt';
+    const name = String(user.name || '').trim();
+    const email = String(user.email || '').trim();
+    const id = String(user.id || '').trim();
+    if(name && name !== 'unbekannt') return name;
+    if(email) return email;
+    if(id) return id;
+    return 'unbekannt';
   }
   function escapeHtml(txt){
     return String(txt ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -568,7 +590,7 @@
     const snap = localStorageSnapshot();
     meta = meta || loadServerMeta();
     const st = serverConflictState(row, meta, snap);
-    const who = row?.data ? serverUserLabel(row.data.savedBy) : 'unbekannt';
+    const who = row?.data ? serverUserLabel(row.data.savedBy || loadServerMeta().user || serverUserFromSession(loadServerSession())) : 'unbekannt';
     const when = row ? formatHistoryDate(serverRowTime(row)) : 'ohne Serverstand';
     const serverLine = row ? ('Server: ' + serverRowCount(row) + ' Einträge · ' + (st.serverHash || 'ohne Hash') + ' · ' + when + ' · Benutzer: ' + who) : 'Server: noch leer';
     const localLine = 'Lokal: ' + snap.count + ' Einträge · ' + snap.hash;
@@ -616,7 +638,7 @@
       hash,
       count: data.count != null ? data.count : Object.keys(items).length,
       origin: data.origin || location.href,
-      version: data.version || '13.0.207-split',
+      version: data.version || '13.0.208-split',
       restoredFrom: data.restoredFrom || null,
       items
     };
@@ -641,7 +663,7 @@
     }
     return {
       kind:'polypoint-server-store',
-      version:'13.0.207-split',
+      version:'13.0.208-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -656,7 +678,8 @@
   function serverHistoryEntriesFromRow(row){
     const data = row?.data || null;
     if(!data || !data.items) return [];
-    const current = makeHistoryEntryFromData(data, data.action || 'aktueller Serverstand', null, {id:'current', savedAt:data.savedAt || row.updated_at || new Date().toISOString(), user:data.savedBy || {name:'unbekannt'}});
+    const fallbackCurrentUser = data.savedBy || loadServerMeta().user || serverUserFromSession(loadServerSession()) || {name:'unbekannt'};
+    const current = makeHistoryEntryFromData(data, data.action || 'aktueller Serverstand', null, {id:'current', savedAt:data.savedAt || row.updated_at || new Date().toISOString(), user:fallbackCurrentUser});
     if(current) current.current = true;
     return [current].concat(serverHistoryFromData(data));
   }
@@ -713,7 +736,7 @@
       const snap = {items, hash:entry.hash || stableHashFromItems(items), count:Object.keys(items).length};
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.207-split',
+        version:'13.0.208-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),
@@ -754,7 +777,7 @@
       const conflict = renderServerConflict(row, meta, session, false);
       const protectedConflict = row && conflict && (conflict.serverChanged || conflict.neverSyncedHere);
       if(protectedConflict && !opts.force){
-        const who = row?.data ? serverUserLabel(row.data.savedBy) : 'unbekannt';
+        const who = row?.data ? serverUserLabel(row.data.savedBy || loadServerMeta().user || serverUserFromSession(loadServerSession())) : 'unbekannt';
         const when = row ? formatHistoryDate(serverRowTime(row)) : 'unbekannt';
         if(opts.auto){
           serverStatus('Auto-Speichern pausiert: Serverstand ist geschützt. Letzter Serverstand von ' + who + ' · ' + when + '. Bitte ☁️ Server öffnen und Konflikt prüfen.', 'bad');
