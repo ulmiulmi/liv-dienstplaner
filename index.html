@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.206 · Split · Konfliktschutz</title>
+<title>POLYPOINT Adapter · V13.0.207 · Split · sicherer Konfliktschutz</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -52,11 +52,11 @@
   .server-small{font-size:11px;color:var(--muted);font-weight:850;line-height:1.35;margin-top:6px}
   .central-export-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 
-  .server-lock-info{border:1px solid #c9dcff;background:#f7fbff;color:#175cd3;border-radius:14px;padding:9px 10px;font-size:12px;font-weight:850;margin-top:8px;white-space:pre-wrap}
-  .server-lock-info.warn{border-color:#f3d28f;background:#fffdf5;color:#9a6700}
-  .server-lock-info.bad{border-color:#f2a3a3;background:#fffafa;color:#c73636}
-  .server-lock-info.ok{border-color:#b7e4ca;background:#e7f7ef;color:#0f8a5f}
-  .server-lock-box{grid-column:1/-1}
+  .server-conflict-box{grid-column:1/-1}
+  .server-conflict-info{border:1px solid #c9dcff;background:#f7fbff;color:#175cd3;border-radius:14px;padding:9px 10px;font-size:12px;font-weight:850;margin-top:8px;white-space:pre-wrap}
+  .server-conflict-info.warn{border-color:#f3d28f;background:#fffdf5;color:#9a6700}
+  .server-conflict-info.bad{border-color:#f2a3a3;background:#fffafa;color:#c73636}
+  .server-conflict-info.ok{border-color:#b7e4ca;background:#e7f7ef;color:#0f8a5f}
 
   .server-history-box{grid-column:1/-1}
   .server-history-list{border:1px solid var(--line);border-radius:14px;background:#fff;margin-top:8px;overflow:auto;max-height:300px}
@@ -77,8 +77,8 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.206</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen und Bearbeitungsschutz.</div>
+        <h1>POLYPOINT Adapter · V13.0.207</h1>
+        <div class="mini">Split-Version mit Server-Speicherständen und sicherem Konflikt-Schutz.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -160,16 +160,16 @@
         <div class="server-small" id="serverSyncInfo">Noch kein Sync-Status.</div>
       </div>
 
-      <div class="emp-box server-lock-box">
-        <h3>🛡️ Bearbeitungsschutz</h3>
-        <div class="mini">Warnt, wenn der aktuell geöffnete Bereich von einem anderen eingeloggten Benutzer bearbeitet wird. So wird nicht blind überschrieben.</div>
-        <div class="central-export-actions">
-          <button type="button" id="serverLockRefreshBtn">Bearbeitung prüfen</button>
-          <button type="button" id="serverLockTakeoverBtn">Meine Bearbeitung markieren</button>
-        </div>
-        <div id="serverLockInfo" class="server-lock-info">Noch nicht geprüft.</div>
-      </div>
 
+      <div class="emp-box server-conflict-box">
+        <h3>🛡️ Konflikt-Schutz</h3>
+        <div class="mini">Passiver Schutz: Es wird nichts extra auf den Server geschrieben. Vor jedem Speichern wird geprüft, ob der Server seit deinem letzten Laden/Speichern von einem anderen Benutzer verändert wurde.</div>
+        <div class="central-export-actions">
+          <button type="button" id="serverConflictCheckBtn">Konflikt prüfen</button>
+          <button type="button" id="serverConflictLoadBtn">Serverstand laden</button>
+        </div>
+        <div id="serverConflictInfo" class="server-conflict-info">Noch nicht geprüft.</div>
+      </div>
       <div class="emp-box server-history-box">
         <h3>🕘 Speicherstände</h3>
         <div class="mini">Zeigt den aktuellen Serverstand und die letzten 20 früheren Speicherstände mit Benutzer, Aktion und Zeit.</div>
@@ -228,11 +228,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204)/g,'V13.0.206'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204)/g,'V13.0.207'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204)/g,'V13.0.206'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204)/g,'V13.0.207'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -268,7 +268,6 @@
     setActiveButton(id);
     activeLabel.textContent = 'geladen: ' + labels[id];
     if(pushHash && location.hash.replace('#','') !== id) history.replaceState(null, '', '#' + id);
-    scheduleActiveAreaLock('open');
     setTimeout(() => { if(activeId === id) loader.style.display = 'none'; }, 900);
   }
 
@@ -296,12 +295,6 @@
   let serverAutosaveTimer = null;
   let serverAutosaveBusy = false;
   let lastObservedServerHash = '';
-
-  const SERVER_CLIENT_ID_KEY = 'polypoint_server_client_id_v1';
-  const SERVER_LOCK_TTL_MS = 4 * 60 * 1000;
-  const SERVER_LOCK_WRITE_GAP_MS = 45 * 1000;
-  let serverLockTimer = null;
-  const lastServerLockWriteAt = {};
   let serverHistoryCache = [];
 
   function serverModal(){ return document.getElementById('serverSyncModal'); }
@@ -483,7 +476,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.206-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.207-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -543,142 +536,67 @@
     try{ return new Date(iso).toLocaleString('de-CH'); }catch(_){ return String(iso); }
   }
 
-  function getServerClientId(){
-    let id = '';
-    try { id = localStorage.getItem(SERVER_CLIENT_ID_KEY) || ''; } catch(_) {}
-    if(!id){
-      id = 'client_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36);
-      try { localStorage.setItem(SERVER_CLIENT_ID_KEY, id); } catch(_) {}
-    }
-    return id;
-  }
-  function serverUserKeyFromSession(session){
-    const u = session?.user || {};
-    return String(u.id || u.email || '');
-  }
-  function serverUserKeyFromLock(lock){
-    const u = lock?.user || {};
-    return String(u.id || u.email || '');
-  }
-  function serverLockExpired(lock){
-    const t = Date.parse(lock?.expiresAt || '');
-    return !t || t <= Date.now();
-  }
-  function serverLockIsMine(lock, session){
-    if(!lock) return false;
-    if(lock.clientId && lock.clientId === getServerClientId()) return true;
-    const a = serverUserKeyFromLock(lock), b = serverUserKeyFromSession(session);
-    return !!a && !!b && a === b;
-  }
-  function activeServerLocks(data){
-    const raw = (data && data.editLocks && typeof data.editLocks === 'object') ? data.editLocks : {};
-    const locks = {};
-    Object.entries(raw).forEach(([id, lock]) => {
-      if(labels[id] && lock && !serverLockExpired(lock)) locks[id] = lock;
-    });
-    return locks;
-  }
-  function serverLockEntry(id, session, hash){
-    const now = new Date();
-    return {
-      area:id,
-      areaLabel:labels[id] || id,
-      user:serverUserFromSession(session),
-      clientId:getServerClientId(),
-      openedAt:(activeServerLocks.__openedAt && activeServerLocks.__openedAt[id]) || now.toISOString(),
-      lastSeenAt:now.toISOString(),
-      expiresAt:new Date(now.getTime() + SERVER_LOCK_TTL_MS).toISOString(),
-      hashAtOpen:hash || ''
-    };
-  }
-  function otherActiveLock(row, id, session){
-    const lock = activeServerLocks(row?.data || {})[normalize(id || activeId || 'overview')];
-    if(lock && !serverLockIsMine(lock, session)) return lock;
-    return null;
-  }
-  function formatServerLock(lock){
-    if(!lock) return '';
-    const who = serverUserLabel(lock.user);
-    const area = labels[lock.area] || lock.area || 'Bereich';
-    const seen = lock.lastSeenAt ? formatHistoryDate(lock.lastSeenAt) : 'unbekannt';
-    const until = lock.expiresAt ? formatHistoryDate(lock.expiresAt) : 'unbekannt';
-    return area + ' wird bearbeitet von ' + who + ' · zuletzt aktiv: ' + seen + ' · reserviert bis: ' + until;
-  }
-  function setServerLockInfo(text, kind=''){
-    const el = document.getElementById('serverLockInfo');
+  function setServerConflictInfo(text, kind=''){
+    const el = document.getElementById('serverConflictInfo');
     if(!el) return;
     el.textContent = text || '';
     el.classList.toggle('ok', kind === 'ok');
     el.classList.toggle('warn', kind === 'warn');
     el.classList.toggle('bad', kind === 'bad');
   }
-  function renderServerLocks(row, session, showAll=false){
-    const id = normalize(activeId || 'overview');
-    const locks = activeServerLocks(row?.data || {});
-    const lock = locks[id];
-    const all = Object.values(locks);
-    if(lock && !serverLockIsMine(lock, session)){
-      setServerLockInfo('⚠️ ' + formatServerLock(lock) + '\nNicht blind speichern. Erst Serverstand prüfen oder bewusst überschreiben.', 'bad');
-      return lock;
+  function serverRowHash(row){
+    if(!row || !row.data) return '';
+    return row.data.hash || stableHashFromItems(row.data.items || {});
+  }
+  function serverRowCount(row){
+    if(!row || !row.data) return 0;
+    if(row.data.count != null) return row.data.count;
+    return Object.keys(row.data.items || {}).length;
+  }
+  function serverRowTime(row){
+    return row?.data?.savedAt || row?.updated_at || '';
+  }
+  function serverConflictState(row, meta, snap){
+    const serverHash = serverRowHash(row);
+    const hasServer = !!(row && row.data && row.data.items && Object.keys(row.data.items || {}).length);
+    const neverSyncedHere = hasServer && !meta.lastHash;
+    const serverChanged = !!(hasServer && meta.lastHash && serverHash && serverHash !== meta.lastHash);
+    const localChanged = !!(meta.lastHash && snap.hash !== meta.lastHash);
+    return {hasServer, serverHash, neverSyncedHere, serverChanged, localChanged};
+  }
+  function renderServerConflict(row, meta, session, showOk=true){
+    const snap = localStorageSnapshot();
+    meta = meta || loadServerMeta();
+    const st = serverConflictState(row, meta, snap);
+    const who = row?.data ? serverUserLabel(row.data.savedBy) : 'unbekannt';
+    const when = row ? formatHistoryDate(serverRowTime(row)) : 'ohne Serverstand';
+    const serverLine = row ? ('Server: ' + serverRowCount(row) + ' Einträge · ' + (st.serverHash || 'ohne Hash') + ' · ' + when + ' · Benutzer: ' + who) : 'Server: noch leer';
+    const localLine = 'Lokal: ' + snap.count + ' Einträge · ' + snap.hash;
+    if(st.neverSyncedHere){
+      setServerConflictInfo('🟡 Dieser Browser hat den vorhandenen Serverstand noch nie geladen.\n' + serverLine + '\n' + localLine + '\n\nSchutz: Auto-Speichern überschreibt diesen Serverstand nicht. Erst „Serverstand laden“ benutzen oder bewusst manuell überschreiben.', 'warn');
+      return st;
     }
-    const ownText = lock && serverLockIsMine(lock, session) ? '\nDeine Bearbeitung ist markiert bis: ' + formatHistoryDate(lock.expiresAt) : '';
-    const other = all.filter(l => l && !serverLockIsMine(l, session)).map(formatServerLock);
-    let txt = '🟢 ' + (labels[id] || id) + ' ist für dich frei.' + ownText;
-    if(showAll && other.length) txt += '\n\nAndere aktive Bearbeitungen:\n- ' + other.join('\n- ');
-    setServerLockInfo(txt, other.length ? 'warn' : 'ok');
-    return null;
-  }
-  async function patchServerRowIfUnchanged(cfg, session, row, nextData){
-    if(!row || !row.updated_at) return null;
-    const path = '/rest/v1/planer_store?id=eq.' + encodeURIComponent(cfg.store) + '&updated_at=eq.' + encodeURIComponent(row.updated_at);
-    const data = await supabaseRequest(path, {method:'PATCH', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'return=representation'}, body:JSON.stringify({data:nextData, updated_at:new Date().toISOString()})});
-    return Array.isArray(data) && data.length ? data[0] : null;
-  }
-  function mergeLocksForPayload(previousData, session, hash){
-    const locks = activeServerLocks(previousData || {});
-    const id = normalize(activeId || 'overview');
-    if(session) locks[id] = serverLockEntry(id, session, hash || (previousData && previousData.hash) || '');
-    return locks;
-  }
-  function scheduleActiveAreaLock(reason='open'){
-    clearTimeout(serverLockTimer);
-    serverLockTimer = setTimeout(() => markActiveAreaEditing(reason), reason === 'manual' ? 0 : 1200);
-  }
-  async function markActiveAreaEditing(reason='open'){
-    const session = loadServerSession();
-    if(!isServerSessionFresh(session)) { setServerLockInfo('Bearbeitungsschutz aktiv, aber noch nicht eingeloggt.', 'warn'); return; }
-    const cfg = getServerInputs();
-    if(!cfg.url || !cfg.anon) return;
-    if(serverAutosaveBusy) return;
-    const id = normalize(activeId || 'overview');
-    const now = Date.now();
-    if(reason !== 'manual' && lastServerLockWriteAt[id] && now - lastServerLockWriteAt[id] < SERVER_LOCK_WRITE_GAP_MS) return;
-    lastServerLockWriteAt[id] = now;
-    try{
-      const row = await fetchServerRow(cfg, session);
-      if(!row || !row.data){ setServerLockInfo('Noch kein Serverstand vorhanden. Nach dem ersten Speichern greift der Bearbeitungsschutz.', 'warn'); return; }
-      const data = Object.assign({}, row.data);
-      const locks = activeServerLocks(data);
-      const other = locks[id] && !serverLockIsMine(locks[id], session) ? locks[id] : null;
-      if(other && reason !== 'manual') { renderServerLocks(row, session, true); return; }
-      locks[id] = serverLockEntry(id, session, data.hash || '');
-      data.editLocks = locks;
-      data.lockUpdatedAt = new Date().toISOString();
-      const updated = await patchServerRowIfUnchanged(cfg, session, row, data);
-      renderServerLocks(updated || {data}, session, true);
-    } catch(e){
-      setServerLockInfo('Bearbeitungsschutz konnte nicht geprüft werden: ' + e.message, 'bad');
+    if(st.serverChanged){
+      setServerConflictInfo('🔴 Konflikt möglich: Der Server wurde seit deinem letzten Sync verändert.\n' + serverLine + '\n' + localLine + '\nLetzter lokaler Sync: ' + (meta.lastSyncAt ? formatHistoryDate(meta.lastSyncAt) : 'nie') + '\n\nSchutz: Auto-Speichern ist pausiert. Erst Serverstand laden oder bewusst manuell überschreiben.', 'bad');
+      return st;
     }
+    if(st.localChanged){
+      setServerConflictInfo('🟡 Lokale Änderungen sind noch nicht auf dem Server.\n' + serverLine + '\n' + localLine + '\n\nBeim Speichern wird der Server vorher nochmals geprüft.', 'warn');
+      return st;
+    }
+    if(showOk) setServerConflictInfo('🟢 Kein Konflikt erkannt.\n' + serverLine + '\n' + localLine + '\n\nServer und Arbeitskopie passen zum letzten Sync-Merker.', 'ok');
+    return st;
   }
-  async function serverLockCheck(showStatus=true){
-    const cfg = saveServerConfig(); if(!cfg) return;
+  async function serverConflictCheck(showStatus=true){
+    const cfg = saveServerConfig(); if(!cfg) return null;
     const session = await getActiveServerSession();
-    if(!session){ setServerLockInfo('Bitte zuerst einloggen.', 'bad'); if(showStatus) serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    if(!session){ setServerConflictInfo('Bitte zuerst einloggen.', 'bad'); if(showStatus) serverStatus('Bitte zuerst einloggen.', 'bad'); return null; }
     try{
       const row = await fetchServerRow(cfg, session);
-      const lock = renderServerLocks(row, session, true);
-      if(showStatus) serverStatus(lock ? 'Bearbeitungskonflikt: ' + formatServerLock(lock) : 'Bearbeitungsschutz geprüft. Aktueller Bereich ist frei oder von dir markiert.', lock ? 'bad' : 'ok');
-    } catch(e){ setServerLockInfo('Bearbeitungsschutz nicht möglich: ' + e.message, 'bad'); if(showStatus) serverStatus('Bearbeitungsschutz nicht möglich: ' + e.message, 'bad'); }
+      const st = renderServerConflict(row, loadServerMeta(), session, true);
+      if(showStatus) serverStatus(st && (st.serverChanged || st.neverSyncedHere) ? 'Konflikt-Schutz: Bitte zuerst Serverstand laden oder bewusst entscheiden.' : 'Konflikt-Schutz geprüft.', st && st.serverChanged ? 'bad' : (st && st.neverSyncedHere ? '' : 'ok'));
+      return st;
+    }catch(e){ setServerConflictInfo('Konfliktprüfung nicht möglich: ' + e.message, 'bad'); if(showStatus) serverStatus('Konfliktprüfung nicht möglich: ' + e.message, 'bad'); return null; }
   }
   function serverHistoryFromData(data){
     return Array.isArray(data?.history) ? data.history.filter(h => h && h.items && typeof h.items === 'object').slice(0, 20) : [];
@@ -698,7 +616,7 @@
       hash,
       count: data.count != null ? data.count : Object.keys(items).length,
       origin: data.origin || location.href,
-      version: data.version || '13.0.206-split',
+      version: data.version || '13.0.207-split',
       restoredFrom: data.restoredFrom || null,
       items
     };
@@ -723,7 +641,7 @@
     }
     return {
       kind:'polypoint-server-store',
-      version:'13.0.206-split',
+      version:'13.0.207-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -732,9 +650,7 @@
       count:snap.count,
       items:snap.items,
       history:unique,
-      restoredFrom: extra.restoredFrom || null,
-      editLocks: mergeLocksForPayload(previousData, session, snap.hash),
-      lockUpdatedAt:now
+      restoredFrom: extra.restoredFrom || null
     };
   }
   function serverHistoryEntriesFromRow(row){
@@ -797,7 +713,7 @@
       const snap = {items, hash:entry.hash || stableHashFromItems(items), count:Object.keys(items).length};
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.206-split',
+        version:'13.0.207-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),
@@ -806,9 +722,7 @@
         count:snap.count,
         items:snap.items,
         restoredFrom:{id:entry.id, savedAt:entry.savedAt, hash:entry.hash, user:entry.user, action:entry.action},
-        history:(currentEntry ? [currentEntry] : []).concat(existingHistory).slice(0,20),
-        editLocks: mergeLocksForPayload(row?.data || null, session, snap.hash),
-        lockUpdatedAt:new Date().toISOString()
+        history:(currentEntry ? [currentEntry] : []).concat(existingHistory).slice(0,20)
       };
       makeFullLocalBackup('before_history_restore', false);
       await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data:payload, updated_at:new Date().toISOString()})});
@@ -819,7 +733,7 @@
       lastObservedServerHash = snap.hash;
       setServerButtonState('connected','Speicherstand wiederhergestellt');
       renderServerHistory({data:payload, updated_at:payload.savedAt});
-      renderServerLocks({data:payload, updated_at:payload.savedAt}, session, true);
+      renderServerConflict({data:payload, updated_at:payload.savedAt}, loadServerMeta(), session, true);
       refreshServerLocalInfo(); refreshServerSyncInfo();
       serverStatus('Speicherstand wiederhergestellt: ' + formatHistoryDate(entry.savedAt) + ' · ' + snap.count + ' Einträge.', 'ok');
     } catch(e){ setServerButtonState('error','Speicherstand konnte nicht wiederhergestellt werden'); serverStatus('Speicherstand konnte nicht wiederhergestellt werden: ' + e.message, 'bad'); }
@@ -837,15 +751,23 @@
       let row = null;
       try { row = await fetchServerRow(cfg, session); } catch(e){ if(!opts.auto) console.warn(e); }
       const serverHash = row?.data?.hash || stableHashFromItems(row?.data?.items || {});
-      const activeOtherLock = otherActiveLock(row, activeId, session);
-      if(activeOtherLock && !opts.force){
-        const msg = 'Bearbeitungsschutz: ' + formatServerLock(activeOtherLock);
-        if(opts.auto){ serverStatus('Auto-Speichern pausiert: ' + msg, 'bad'); setServerButtonState('error','Bearbeitungskonflikt'); renderServerLocks(row, session, true); return false; }
-        if(!confirm(msg + '\n\nTrotzdem auf Server speichern?')){ serverStatus('Speichern abgebrochen. Bereich wird gerade von einem anderen Benutzer bearbeitet.', 'bad'); return false; }
-      }
-      if(row && serverHash && meta.lastHash && serverHash !== meta.lastHash && !opts.force){
-        if(opts.auto){ serverStatus('Auto-Speichern pausiert: Server wurde seit dem letzten Laden/Speichern verändert. Bitte Serverstatus prüfen.', 'bad'); setServerButtonState('error','Konflikt: Server wurde anderswo geändert'); return false; }
-        if(!confirm('Konflikt-Schutz: Der Serverstand wurde seit deinem letzten Sync geändert. Letzte Änderung: ' + serverUserLabel(row?.data?.savedBy) + ' · ' + formatHistoryDate(row?.data?.savedAt || row?.updated_at) + '\n\nLokalen Stand trotzdem auf den Server schreiben?')){ serverStatus('Speichern abgebrochen. Bitte zuerst Server laden oder Sicherung machen.', 'bad'); return false; }
+      const conflict = renderServerConflict(row, meta, session, false);
+      const protectedConflict = row && conflict && (conflict.serverChanged || conflict.neverSyncedHere);
+      if(protectedConflict && !opts.force){
+        const who = row?.data ? serverUserLabel(row.data.savedBy) : 'unbekannt';
+        const when = row ? formatHistoryDate(serverRowTime(row)) : 'unbekannt';
+        if(opts.auto){
+          serverStatus('Auto-Speichern pausiert: Serverstand ist geschützt. Letzter Serverstand von ' + who + ' · ' + when + '. Bitte ☁️ Server öffnen und Konflikt prüfen.', 'bad');
+          setServerButtonState('error','Konflikt-Schutz: Auto-Speichern pausiert');
+          return false;
+        }
+        const msg = conflict.neverSyncedHere
+          ? 'Dieser Browser hat den vorhandenen Serverstand noch nie geladen.\nLetzter Serverstand: ' + who + ' · ' + when + '\n\nTrotzdem mit diesem lokalen Stand überschreiben?'
+          : 'Der Serverstand wurde seit deinem letzten Sync geändert.\nLetzter Serverstand: ' + who + ' · ' + when + '\n\nLokalen Stand trotzdem auf den Server schreiben?';
+        if(!confirm(msg)){
+          serverStatus('Speichern abgebrochen. Bitte zuerst Serverstand laden oder Sicherung machen.', 'bad');
+          return false;
+        }
       }
       if(!opts.auto) makeFullLocalBackup('before_server_upload', false);
       const action = opts.auto ? 'Auto-Speicherung' : (opts.manual ? 'manuell gespeichert' : 'gespeichert');
@@ -856,7 +778,7 @@
       setServerButtonState('connected', opts.auto ? 'Server verbunden · automatisch gespeichert' : 'Server verbunden · zuletzt gespeichert');
       serverStatus((opts.auto ? 'Automatisch auf Server gespeichert: ' : 'Auf Server gespeichert: ') + snap.count + ' Planungs-Einträge · Benutzer: ' + serverUserLabel(payload.savedBy) + ' · Speicherstände: ' + (1 + payload.history.length), 'ok');
       renderServerHistory({data:payload, updated_at:payload.savedAt});
-      renderServerLocks({data:payload, updated_at:payload.savedAt}, session, true);
+      renderServerConflict({data:payload, updated_at:payload.savedAt}, loadServerMeta(), session, true);
       refreshServerLocalInfo(); refreshServerSyncInfo();
       return true;
     } catch(e){ setServerButtonState('error','Server speichern nicht möglich'); serverStatus('Server speichern nicht möglich: ' + e.message, 'bad'); return false; }
@@ -885,7 +807,7 @@
       refreshServerLocalInfo(); refreshServerSyncInfo();
       setServerButtonState('connected','Server verbunden · zuletzt geladen');
       renderServerHistory(row);
-      renderServerLocks(row, session, true);
+      renderServerConflict(row, loadServerMeta(), session, true);
       serverStatus('Server-Hauptspeicher geladen: ' + Object.keys(incoming).length + ' Einträge. Vorherige Arbeitskopie als Notfallkopie: ' + backupKey, 'ok');
     } catch(e){ setServerButtonState('error','Server laden nicht möglich'); serverStatus('Server laden nicht möglich: ' + e.message, 'bad'); }
   }
@@ -914,7 +836,9 @@
       msg += 'Server: ' + (row ? ((row.data?.count || Object.keys(row.data?.items || {}).length) + ' Einträge · ' + serverHash + ' · ' + new Date(row.updated_at).toLocaleString('de-CH')) : 'noch leer') + '\n';
       msg += 'Letzter Sync-Merker: ' + (meta.lastSyncAt ? new Date(meta.lastSyncAt).toLocaleString('de-CH') : 'nie');
       if(row && row.data){ msg += '\nBenutzer letzter Serverstand: ' + serverUserLabel(row.data.savedBy) + ' · Speicherstände: ' + (1 + serverHistoryFromData(row.data).length); }
-      if(row && meta.lastHash && serverHash !== meta.lastHash){ setServerButtonState('error','Server wurde seit dem letzten Sync verändert'); serverStatus(msg + '\n\nAchtung: Server wurde seit dem letzten Sync verändert. Erst laden oder bewusst überschreiben.', 'bad'); }
+      const conflict = renderServerConflict(row, meta, session, showStatus);
+      if(conflict && conflict.neverSyncedHere){ setServerButtonState('error','Konflikt-Schutz: Server zuerst laden'); serverStatus(msg + '\n\nKonflikt-Schutz: Dieser Browser hat den vorhandenen Serverstand noch nie geladen. Erst Serverstand laden.', 'bad'); }
+      else if(conflict && conflict.serverChanged){ setServerButtonState('error','Server wurde seit dem letzten Sync verändert'); serverStatus(msg + '\n\nAchtung: Server wurde seit dem letzten Sync verändert. Erst laden oder bewusst überschreiben.', 'bad'); }
       else if(meta.lastHash && snap.hash !== meta.lastHash){ setServerButtonState('dirty','Lokale Änderungen noch nicht gespeichert'); serverStatus(msg + '\n\nLokale Änderungen sind noch nicht auf Server gespeichert.', ''); }
       else { setServerButtonState('connected','Server und lokaler Stand passen zum Sync-Merker'); if(showStatus) serverStatus(msg + '\n\nAlles synchron.', 'ok'); }
       refreshServerSyncInfo();
@@ -939,7 +863,6 @@
       if(snap.hash !== lastObservedServerHash){ lastObservedServerHash = snap.hash; scheduleServerAutosave('poll'); refreshServerLocalInfo(); refreshServerSyncInfo(); }
     }, 12000);
     window.addEventListener('storage', ev => { if(relevantStorageKey(ev.key)){ lastObservedServerHash = localStorageSnapshot().hash; scheduleServerAutosave('storage'); refreshServerLocalInfo(); refreshServerSyncInfo(); } });
-    setInterval(() => markActiveAreaEditing('heartbeat'), Math.floor(SERVER_LOCK_TTL_MS / 2));
   }
   async function serverLoadPrimaryOnStart(){
     const cfg = saveServerConfig(); if(!cfg) return;
@@ -968,8 +891,6 @@
       lastObservedServerHash = localStorageSnapshot().hash;
       setServerButtonState('connected','Server-Hauptspeicher aktiv');
       renderServerHistory(row);
-      renderServerLocks(row, session, true);
-      scheduleActiveAreaLock('open');
       refreshServerLocalInfo(); refreshServerSyncInfo();
     } catch(e){
       setServerButtonState('error','Server-Hauptspeicher nicht erreichbar');
@@ -985,7 +906,7 @@
     const s = await getActiveServerSession();
     setServerButtonState(s ? 'connected' : 'ready', s ? 'Server verbunden' : 'Server bereit, bitte einloggen');
     serverStatus(s ? 'Server-Hauptspeicher verbunden.' : 'Server erreichbar. Bitte einloggen, damit der Serverstand geladen wird.', s ? 'ok' : '');
-    if(s){ serverCheckStatus(false); serverHistoryLoad(false); serverLockCheck(false); }
+    if(s){ serverCheckStatus(false); serverHistoryLoad(false); serverConflictCheck(false); }
   }
   function closeServerSync(){ serverModal().classList.remove('show'); serverModal().setAttribute('aria-hidden','true'); }
   document.getElementById('serverSyncBtn')?.addEventListener('click', openServerSync);
@@ -1000,8 +921,8 @@
   document.getElementById('serverDownloadBtn')?.addEventListener('click', serverDownload);
   document.getElementById('serverDownloadBackupBtn')?.addEventListener('click', serverBackupDownload);
   document.getElementById('serverCheckStatusBtn')?.addEventListener('click', () => serverCheckStatus(true));
-  document.getElementById('serverLockRefreshBtn')?.addEventListener('click', () => serverLockCheck(true));
-  document.getElementById('serverLockTakeoverBtn')?.addEventListener('click', () => markActiveAreaEditing('manual'));
+  document.getElementById('serverConflictCheckBtn')?.addEventListener('click', () => serverConflictCheck(true));
+  document.getElementById('serverConflictLoadBtn')?.addEventListener('click', () => serverDownload());
   document.getElementById('serverHistoryRefreshBtn')?.addEventListener('click', () => serverHistoryLoad(true));
   document.getElementById('serverHistoryDownloadCurrentBtn')?.addEventListener('click', () => { if(serverHistoryCache[0]) downloadHistoryEntry(0); else serverHistoryLoad(true); });
   document.getElementById('serverHistoryList')?.addEventListener('click', ev => { const btn = ev.target.closest('[data-history-action]'); if(!btn) return; const idx = btn.dataset.historyIndex; if(btn.dataset.historyAction === 'download') downloadHistoryEntry(idx); if(btn.dataset.historyAction === 'restore') restoreHistoryEntry(idx); });
