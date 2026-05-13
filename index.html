@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.204 · Split</title>
+<title>POLYPOINT Adapter · V13.0.205 · Split</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -51,6 +51,17 @@
   .server-status.ok{border-color:#b7e4ca;background:#e7f7ef;color:#0f8a5f}
   .server-small{font-size:11px;color:var(--muted);font-weight:850;line-height:1.35;margin-top:6px}
   .central-export-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+  .server-history-box{grid-column:1/-1}
+  .server-history-list{border:1px solid var(--line);border-radius:14px;background:#fff;margin-top:8px;overflow:auto;max-height:300px}
+  .server-history-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid #edf1f6}
+  .server-history-row:last-child{border-bottom:0}
+  .server-history-title{font-weight:950;font-size:13px;color:var(--text)}
+  .server-history-meta{font-size:11px;color:var(--muted);font-weight:850;line-height:1.35;margin-top:2px}
+  .server-history-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .server-history-actions button{padding:6px 9px;font-size:11px}
+  .server-history-current{background:#f7fbff}
+  @media(max-width:740px){.server-history-row{grid-template-columns:1fr}.server-history-actions{justify-content:flex-start}.server-history-list{max-height:260px}}
   @media(max-width:740px){.server-grid{grid-template-columns:1fr}.server-btn{font-size:12px}.top-actions{flex-wrap:nowrap;overflow-x:auto}.emp-modal{padding:14px;border-radius:20px}.emp-modal h2{font-size:20px}}
 
 </style>
@@ -60,7 +71,7 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.204</h1>
+        <h1>POLYPOINT Adapter · V13.0.205</h1>
         <div class="mini">Split-Version: jede Gruppe bleibt als eigene HTML-Datei geladen.</div>
       </div>
       <div class="top-actions">
@@ -142,6 +153,16 @@
         </div>
         <div class="server-small" id="serverSyncInfo">Noch kein Sync-Status.</div>
       </div>
+
+      <div class="emp-box server-history-box">
+        <h3>🕘 Speicherstände</h3>
+        <div class="mini">Zeigt den aktuellen Serverstand und die letzten 20 früheren Speicherstände mit Benutzer, Aktion und Zeit.</div>
+        <div class="central-export-actions">
+          <button type="button" id="serverHistoryRefreshBtn">Speicherstände laden</button>
+          <button type="button" id="serverHistoryDownloadCurrentBtn">Aktuellen Stand herunterladen</button>
+        </div>
+        <div id="serverHistoryList" class="server-history-list">Noch nicht geladen.</div>
+      </div>
     </div>
     <div id="serverSyncStatus" class="server-status">Nicht verbunden.</div>
     <div class="emp-modal-actions">
@@ -179,17 +200,23 @@
   }
 
   function setActiveButton(id){
-  
+    document.querySelectorAll('[data-planner]').forEach(btn => {
+      const on = btn.dataset.planner === id;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
 
   function cleanVisibleLocalButtonsInFrame(frame){
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.203/g,'V13.0.204'); }catch(_){}
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204)/g,'V13.0.205'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue && n.nodeValue.includes('V13.0.203')) n.nodeValue = n.nodeValue.replace(/V13\.0\.203/g,'V13.0.204'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204)/g,'V13.0.205'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -214,12 +241,6 @@
     }
   }
 
-  document.querySelectorAll('[data-planner]').forEach(btn => {
-      const on = btn.dataset.planner === id;
-      btn.classList.toggle('active', on);
-      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    });
-  }
 
   function loadPlanner(id, pushHash=true){
     id = normalize(id);
@@ -232,41 +253,6 @@
     activeLabel.textContent = 'geladen: ' + labels[id];
     if(pushHash && location.hash.replace('#','') !== id) history.replaceState(null, '', '#' + id);
     setTimeout(() => { if(activeId === id) loader.style.display = 'none'; }, 900);
-  }
-
-
-
-  function cleanVisibleLocalButtonsInFrame(frame){
-    let doc;
-    try{ doc = frame && frame.contentDocument; }catch(_){ return; }
-    if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.203/g,'V13.0.204'); }catch(_){}
-    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-    const nodes=[];
-    while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue && n.nodeValue.includes('V13.0.203')) n.nodeValue = n.nodeValue.replace(/V13\.0\.203/g,'V13.0.204'); });
-    doc.querySelectorAll('button').forEach(btn => {
-      const onclick = btn.getAttribute('onclick') || '';
-      const text = (btn.textContent || '').trim();
-      if(onclick.startsWith('saveState(') || onclick.startsWith('loadState(') || onclick.startsWith('rescueBestStoredState(') || text === 'Speichern' || text === 'Laden' || text === 'Daten retten'){
-        btn.remove();
-      }
-    });
-    doc.querySelectorAll('.action-group').forEach(group => {
-      const title = group.querySelector('.action-title');
-      if(title && (title.textContent || '').trim() === 'Speicher') group.remove();
-    });
-    if(!frame.dataset.localButtonObserver){
-      frame.dataset.localButtonObserver = '1';
-      try{
-        const obs = new MutationObserver(() => {
-          if(frame.dataset.localButtonCleaning === '1') return;
-          frame.dataset.localButtonCleaning = '1';
-          setTimeout(() => { frame.dataset.localButtonCleaning = '0'; cleanVisibleLocalButtonsInFrame(frame); }, 50);
-        });
-        obs.observe(doc.body, {childList:true, subtree:true, characterData:true});
-      }catch(_){ }
-    }
   }
 
   document.querySelectorAll('[data-planner]').forEach(btn => {
@@ -293,6 +279,7 @@
   let serverAutosaveTimer = null;
   let serverAutosaveBusy = false;
   let lastObservedServerHash = '';
+  let serverHistoryCache = [];
 
   function serverModal(){ return document.getElementById('serverSyncModal'); }
   function serverStatus(text, kind=''){
@@ -473,7 +460,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.204-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.205-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -513,6 +500,165 @@
     const data = await supabaseRequest('/rest/v1/planer_store?id=eq.' + encodeURIComponent(cfg.store) + '&select=id,data,updated_at', {method:'GET', headers:{'Authorization':'Bearer ' + session.access_token}});
     return Array.isArray(data) ? data[0] : null;
   }
+
+  function serverUserFromSession(session){
+    const user = session?.user || {};
+    const meta = user.user_metadata || {};
+    const email = user.email || '';
+    const name = meta.full_name || meta.name || meta.display_name || email || 'unbekannt';
+    return {id:user.id || '', email:email, name:String(name)};
+  }
+  function serverUserLabel(user){
+    user = user || {};
+    return user.name || user.email || user.id || 'unbekannt';
+  }
+  function escapeHtml(txt){
+    return String(txt ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+  function formatHistoryDate(iso){
+    if(!iso) return 'ohne Zeit';
+    try{ return new Date(iso).toLocaleString('de-CH'); }catch(_){ return String(iso); }
+  }
+  function serverHistoryFromData(data){
+    return Array.isArray(data?.history) ? data.history.filter(h => h && h.items && typeof h.items === 'object').slice(0, 20) : [];
+  }
+  function makeHistoryId(prefix='stand'){
+    return prefix + '_' + new Date().toISOString().replace(/[:.]/g,'-') + '_' + Math.random().toString(36).slice(2,8);
+  }
+  function makeHistoryEntryFromData(data, action, session, extra={}){
+    if(!data || !data.items) return null;
+    const items = data.items || {};
+    const hash = data.hash || stableHashFromItems(items);
+    return {
+      id: extra.id || data.id || makeHistoryId('stand'),
+      savedAt: extra.savedAt || data.savedAt || data.createdAt || new Date().toISOString(),
+      action: action || data.action || 'Serverstand',
+      user: extra.user || data.savedBy || serverUserFromSession(session),
+      hash,
+      count: data.count != null ? data.count : Object.keys(items).length,
+      origin: data.origin || location.href,
+      version: data.version || '13.0.205-split',
+      restoredFrom: data.restoredFrom || null,
+      items
+    };
+  }
+  function buildServerPayload(snap, action, session, previousData, extra={}){
+    const now = new Date().toISOString();
+    const user = serverUserFromSession(session);
+    const history = serverHistoryFromData(previousData);
+    if(previousData && previousData.items){
+      const previous = makeHistoryEntryFromData(previousData, previousData.action || 'vorheriger Serverstand', session, {id:makeHistoryId('prev')});
+      if(previous && previous.hash !== snap.hash) history.unshift(previous);
+    }
+    const unique = [];
+    const seen = new Set();
+    for(const h of history){
+      if(!h || !h.items) continue;
+      const key = (h.id || '') + '|' + (h.hash || '') + '|' + (h.savedAt || '') + '|' + (h.action || '');
+      if(seen.has(key)) continue;
+      seen.add(key);
+      unique.push(h);
+      if(unique.length >= 20) break;
+    }
+    return {
+      kind:'polypoint-server-store',
+      version:'13.0.205-split',
+      savedAt:now,
+      action: action || 'manuell gespeichert',
+      savedBy:user,
+      origin:location.href,
+      hash:snap.hash,
+      count:snap.count,
+      items:snap.items,
+      history:unique,
+      restoredFrom: extra.restoredFrom || null
+    };
+  }
+  function serverHistoryEntriesFromRow(row){
+    const data = row?.data || null;
+    if(!data || !data.items) return [];
+    const current = makeHistoryEntryFromData(data, data.action || 'aktueller Serverstand', null, {id:'current', savedAt:data.savedAt || row.updated_at || new Date().toISOString(), user:data.savedBy || {name:'unbekannt'}});
+    if(current) current.current = true;
+    return [current].concat(serverHistoryFromData(data));
+  }
+  function renderServerHistory(row){
+    const list = document.getElementById('serverHistoryList');
+    if(!list) return;
+    serverHistoryCache = serverHistoryEntriesFromRow(row);
+    if(!serverHistoryCache.length){
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Speicherstände gefunden.</div><div class="server-history-meta">Nach dem ersten Server-Speichern erscheint hier der Verlauf.</div></div></div>';
+      return;
+    }
+    list.innerHTML = serverHistoryCache.map((h, idx) => {
+      const current = h.current ? ' server-history-current' : '';
+      const title = (h.current ? 'Aktueller Serverstand' : 'Speicherstand') + ' · ' + escapeHtml(formatHistoryDate(h.savedAt));
+      const meta = escapeHtml(serverUserLabel(h.user)) + ' · ' + escapeHtml(h.action || 'gespeichert') + ' · ' + escapeHtml(String(h.count ?? Object.keys(h.items || {}).length)) + ' Einträge · ' + escapeHtml(h.hash || '');
+      return '<div class="server-history-row' + current + '"><div><div class="server-history-title">' + title + '</div><div class="server-history-meta">' + meta + '</div></div><div class="server-history-actions"><button type="button" data-history-action="download" data-history-index="' + idx + '">Herunterladen</button>' + (h.current ? '' : '<button type="button" class="primary" data-history-action="restore" data-history-index="' + idx + '">Wiederherstellen</button>') + '</div></div>';
+    }).join('');
+  }
+  async function serverHistoryLoad(showStatus=true){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      renderServerHistory(row);
+      if(showStatus) serverStatus(row ? 'Speicherstände geladen: ' + serverHistoryCache.length + ' Stand/stände.' : 'Noch kein Serverstand vorhanden.', row ? 'ok' : '');
+    } catch(e){ serverStatus('Speicherstände konnten nicht geladen werden: ' + e.message, 'bad'); }
+  }
+  function downloadHistoryEntry(index){
+    const entry = serverHistoryCache[Number(index)];
+    if(!entry){ serverStatus('Speicherstand nicht gefunden.', 'bad'); return; }
+    const payload = {kind:'polypoint-history-entry', exportedAt:new Date().toISOString(), entry};
+    const safeTime = String(entry.savedAt || new Date().toISOString()).replace(/[:.]/g,'-').slice(0,19);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'polypoint_speicherstand_' + (entry.current ? 'aktuell' : safeTime) + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    serverStatus('Speicherstand heruntergeladen: ' + formatHistoryDate(entry.savedAt), 'ok');
+  }
+  async function restoreHistoryEntry(index){
+    const entry = serverHistoryCache[Number(index)];
+    if(!entry || entry.current){ serverStatus('Dieser Speicherstand kann nicht wiederhergestellt werden.', 'bad'); return; }
+    if(!confirm('Speicherstand vom ' + formatHistoryDate(entry.savedAt) + ' wiederherstellen? Der aktuelle Stand wird vorher im Verlauf gesichert.')) return;
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      const currentEntry = makeHistoryEntryFromData(row?.data, 'vor Wiederherstellung gesichert', session, {id:makeHistoryId('restore_prev')});
+      const existingHistory = serverHistoryFromData(row?.data).filter(h => h.id !== entry.id);
+      const items = entry.items || {};
+      const snap = {items, hash:entry.hash || stableHashFromItems(items), count:Object.keys(items).length};
+      const payload = {
+        kind:'polypoint-server-store',
+        version:'13.0.205-split',
+        savedAt:new Date().toISOString(),
+        action:'Speicherstand wiederhergestellt',
+        savedBy:serverUserFromSession(session),
+        origin:location.href,
+        hash:snap.hash,
+        count:snap.count,
+        items:snap.items,
+        restoredFrom:{id:entry.id, savedAt:entry.savedAt, hash:entry.hash, user:entry.user, action:entry.action},
+        history:(currentEntry ? [currentEntry] : []).concat(existingHistory).slice(0,20)
+      };
+      makeFullLocalBackup('before_history_restore', false);
+      await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data:payload, updated_at:new Date().toISOString()})});
+      Object.keys(collectPolypointStorage()).forEach(key => { if(!(key in items) && relevantStorageKey(key)) localStorage.removeItem(key); });
+      Object.entries(items).forEach(([key,val]) => { if(relevantStorageKey(key)) localStorage.setItem(key, String(val ?? '')); });
+      reloadSplitFrames();
+      saveServerMeta({store:cfg.store, lastHash:snap.hash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:payload.savedAt, count:snap.count, origin:location.href, restoredFrom:entry.id});
+      lastObservedServerHash = snap.hash;
+      setServerButtonState('connected','Speicherstand wiederhergestellt');
+      renderServerHistory({data:payload, updated_at:payload.savedAt});
+      refreshServerLocalInfo(); refreshServerSyncInfo();
+      serverStatus('Speicherstand wiederhergestellt: ' + formatHistoryDate(entry.savedAt) + ' · ' + snap.count + ' Einträge.', 'ok');
+    } catch(e){ setServerButtonState('error','Speicherstand konnte nicht wiederhergestellt werden'); serverStatus('Speicherstand konnte nicht wiederhergestellt werden: ' + e.message, 'bad'); }
+  }
+
   async function serverUpload(opts={}){
     const cfg = saveServerConfig(); if(!cfg) return false;
     const session = await getActiveServerSession();
@@ -520,7 +666,6 @@
     if(serverAutosaveBusy) return false;
     serverAutosaveBusy = true;
     const snap = localStorageSnapshot();
-    const payload = {kind:'polypoint-server-store', version:'13.0.204-split', savedAt:new Date().toISOString(), origin:location.href, hash:snap.hash, count:snap.count, items:snap.items};
     try{
       const meta = loadServerMeta();
       let row = null;
@@ -531,16 +676,20 @@
         if(!confirm('Der Serverstand wurde seit deinem letzten Sync geändert. Lokalen Stand trotzdem auf den Server schreiben?')){ serverStatus('Speichern abgebrochen. Bitte zuerst Server laden oder Sicherung machen.', 'bad'); return false; }
       }
       if(!opts.auto) makeFullLocalBackup('before_server_upload', false);
+      const action = opts.auto ? 'Auto-Speicherung' : (opts.manual ? 'manuell gespeichert' : 'gespeichert');
+      const payload = buildServerPayload(snap, action, session, row?.data || null);
       await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data:payload, updated_at:new Date().toISOString()})});
-      saveServerMeta({store:cfg.store, lastHash:snap.hash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:new Date().toISOString(), count:snap.count, origin:location.href});
+      saveServerMeta({store:cfg.store, lastHash:snap.hash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:payload.savedAt, count:snap.count, origin:location.href, user:payload.savedBy});
       lastObservedServerHash = snap.hash;
       setServerButtonState('connected', opts.auto ? 'Server verbunden · automatisch gespeichert' : 'Server verbunden · zuletzt gespeichert');
-      serverStatus((opts.auto ? 'Automatisch auf Server gespeichert: ' : 'Auf Server gespeichert: ') + snap.count + ' Planungs-Einträge · Speicher-ID ' + cfg.store, 'ok');
+      serverStatus((opts.auto ? 'Automatisch auf Server gespeichert: ' : 'Auf Server gespeichert: ') + snap.count + ' Planungs-Einträge · Benutzer: ' + serverUserLabel(payload.savedBy) + ' · Speicherstände: ' + (1 + payload.history.length), 'ok');
+      renderServerHistory({data:payload, updated_at:payload.savedAt});
       refreshServerLocalInfo(); refreshServerSyncInfo();
       return true;
     } catch(e){ setServerButtonState('error','Server speichern nicht möglich'); serverStatus('Server speichern nicht möglich: ' + e.message, 'bad'); return false; }
     finally { serverAutosaveBusy = false; }
   }
+
   async function serverDownload(){
     const cfg = saveServerConfig(); if(!cfg) return;
     const session = await getActiveServerSession();
@@ -562,6 +711,7 @@
       lastObservedServerHash = newHash;
       refreshServerLocalInfo(); refreshServerSyncInfo();
       setServerButtonState('connected','Server verbunden · zuletzt geladen');
+      renderServerHistory(row);
       serverStatus('Server-Hauptspeicher geladen: ' + Object.keys(incoming).length + ' Einträge. Vorherige Arbeitskopie als Notfallkopie: ' + backupKey, 'ok');
     } catch(e){ setServerButtonState('error','Server laden nicht möglich'); serverStatus('Server laden nicht möglich: ' + e.message, 'bad'); }
   }
@@ -589,6 +739,7 @@
       let msg = 'Lokal: ' + snap.count + ' Einträge · ' + snap.hash + '\n';
       msg += 'Server: ' + (row ? ((row.data?.count || Object.keys(row.data?.items || {}).length) + ' Einträge · ' + serverHash + ' · ' + new Date(row.updated_at).toLocaleString('de-CH')) : 'noch leer') + '\n';
       msg += 'Letzter Sync-Merker: ' + (meta.lastSyncAt ? new Date(meta.lastSyncAt).toLocaleString('de-CH') : 'nie');
+      if(row && row.data){ msg += '\nBenutzer letzter Serverstand: ' + serverUserLabel(row.data.savedBy) + ' · Speicherstände: ' + (1 + serverHistoryFromData(row.data).length); }
       if(row && meta.lastHash && serverHash !== meta.lastHash){ setServerButtonState('error','Server wurde seit dem letzten Sync verändert'); serverStatus(msg + '\n\nAchtung: Server wurde seit dem letzten Sync verändert. Erst laden oder bewusst überschreiben.', 'bad'); }
       else if(meta.lastHash && snap.hash !== meta.lastHash){ setServerButtonState('dirty','Lokale Änderungen noch nicht gespeichert'); serverStatus(msg + '\n\nLokale Änderungen sind noch nicht auf Server gespeichert.', ''); }
       else { setServerButtonState('connected','Server und lokaler Stand passen zum Sync-Merker'); if(showStatus) serverStatus(msg + '\n\nAlles synchron.', 'ok'); }
@@ -641,6 +792,7 @@
       saveServerMeta({store:cfg.store, lastHash:serverHash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:row.updated_at, count:Object.keys(incoming).length, origin:row.data.origin || ''});
       lastObservedServerHash = localStorageSnapshot().hash;
       setServerButtonState('connected','Server-Hauptspeicher aktiv');
+      renderServerHistory(row);
       refreshServerLocalInfo(); refreshServerSyncInfo();
     } catch(e){
       setServerButtonState('error','Server-Hauptspeicher nicht erreichbar');
@@ -656,7 +808,7 @@
     const s = await getActiveServerSession();
     setServerButtonState(s ? 'connected' : 'ready', s ? 'Server verbunden' : 'Server bereit, bitte einloggen');
     serverStatus(s ? 'Server-Hauptspeicher verbunden.' : 'Server erreichbar. Bitte einloggen, damit der Serverstand geladen wird.', s ? 'ok' : '');
-    if(s) serverCheckStatus(false);
+    if(s){ serverCheckStatus(false); serverHistoryLoad(false); }
   }
   function closeServerSync(){ serverModal().classList.remove('show'); serverModal().setAttribute('aria-hidden','true'); }
   document.getElementById('serverSyncBtn')?.addEventListener('click', openServerSync);
@@ -671,6 +823,9 @@
   document.getElementById('serverDownloadBtn')?.addEventListener('click', serverDownload);
   document.getElementById('serverDownloadBackupBtn')?.addEventListener('click', serverBackupDownload);
   document.getElementById('serverCheckStatusBtn')?.addEventListener('click', () => serverCheckStatus(true));
+  document.getElementById('serverHistoryRefreshBtn')?.addEventListener('click', () => serverHistoryLoad(true));
+  document.getElementById('serverHistoryDownloadCurrentBtn')?.addEventListener('click', () => { if(serverHistoryCache[0]) downloadHistoryEntry(0); else serverHistoryLoad(true); });
+  document.getElementById('serverHistoryList')?.addEventListener('click', ev => { const btn = ev.target.closest('[data-history-action]'); if(!btn) return; const idx = btn.dataset.historyIndex; if(btn.dataset.historyAction === 'download') downloadHistoryEntry(idx); if(btn.dataset.historyAction === 'restore') restoreHistoryEntry(idx); });
   document.getElementById('serverLocalBackupBtn')?.addEventListener('click', () => { const k = makeFullLocalBackup('manual_local_download', true); serverStatus('Notfallkopie heruntergeladen und lokal abgelegt: ' + k, 'ok'); });
   document.getElementById('serverRestoreBackupBtn')?.addEventListener('click', restoreLatestLocalEmergencyBackup);
   document.getElementById('serverAutosaveToggle')?.addEventListener('change', ev => { setAutosaveEnabled(!!ev.target.checked); serverStatus(ev.target.checked ? 'Auto-Speichern aktiv.' : 'Auto-Speichern ausgeschaltet.', 'ok'); });
