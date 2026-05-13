@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.212 · Split · Wunschportal</title>
+<title>POLYPOINT Adapter · V13.0.213 · Split · Wunschportal</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -85,15 +85,50 @@
   @media(max-width:740px){.server-history-row{grid-template-columns:1fr}.server-history-actions{justify-content:flex-start}.server-history-list{max-height:260px}.compare-grid{grid-template-columns:1fr}}
   @media(max-width:740px){.server-grid{grid-template-columns:1fr}.server-btn{font-size:12px}.top-actions{flex-wrap:nowrap;overflow-x:auto}.emp-modal{padding:14px;border-radius:20px}.emp-modal h2{font-size:20px}}
 
+
+
+  .role-gate{position:fixed;inset:0;z-index:2500;background:rgba(15,23,42,.76);display:flex;align-items:center;justify-content:center;padding:14px}
+  .role-gate.hidden{display:none!important}
+  .role-card{width:min(760px,100%);background:#fff;border:1px solid var(--line);border-radius:26px;box-shadow:0 28px 90px rgba(15,23,42,.42);padding:18px;color:var(--text)}
+  .role-card h2{margin:0 0 4px;font-size:24px;letter-spacing:-.04em}
+  .role-card .notice{border:1px solid #c9dcff;background:#f7fbff;color:#175cd3;border-radius:14px;padding:10px;font-size:12px;font-weight:850;white-space:pre-wrap;margin-top:10px}
+  .role-card .notice.bad{border-color:#f2a3a3;background:#fffafa;color:#c73636}
+  .role-card .notice.ok{border-color:#b7e4ca;background:#e7f7ef;color:#0f8a5f}
+  .role-card .notice.warn{border-color:#f3d28f;background:#fffdf5;color:#9a6700}
+  .role-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .role-form input{width:100%;border:1px solid var(--line);border-radius:12px;background:#fff;padding:9px;font-weight:850;color:var(--text)}
+  .role-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .role-actions .primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .server-role-box{grid-column:1/-1}
+  @media(max-width:740px){.role-form{grid-template-columns:1fr}.role-card{padding:14px;border-radius:20px}.role-card h2{font-size:20px}}
+
 </style>
 </head>
 <body>
+
+<div id="adminRoleGate" class="role-gate" aria-hidden="false">
+  <div class="role-card" role="dialog" aria-modal="true" aria-labelledby="adminRoleGateTitle">
+    <h2 id="adminRoleGateTitle">Admin-Planer geschützt</h2>
+    <div class="mini">Der normale Dienstplaner ist nur für Admin/Planer gedacht. Mitarbeiter benutzen das Wunschportal.</div>
+    <div id="adminRoleGateStatus" class="notice">Rolle wird geprüft…</div>
+    <div class="role-form">
+      <label><span class="mini">E-Mail</span><input id="adminGateEmail" type="email" autocomplete="username" placeholder="name@example.ch"></label>
+      <label><span class="mini">Passwort</span><input id="adminGatePassword" type="password" autocomplete="current-password" placeholder="Passwort"></label>
+    </div>
+    <div class="role-actions">
+      <button type="button" class="primary" id="adminGateLoginBtn">Als Admin/Planer einloggen</button>
+      <button type="button" id="adminGatePortalBtn">Zum Wunschportal</button>
+      <button type="button" id="adminGateRetryBtn">Rolle erneut prüfen</button>
+    </div>
+  </div>
+</div>
+
 <div class="shell">
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.212</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen, Benutzeranzeige, Konflikt-Schutz und Speicherstand-Vergleich.</div>
+        <h1>POLYPOINT Adapter · V13.0.213</h1>
+        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal und Rollen-Sperre.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -150,6 +185,16 @@
           <button type="button" id="serverLogoutBtn">Abmelden</button>
         </div>
         <div class="server-small">Wenn der Benutzer im Supabase-Dashboard erstellt wurde, reicht „Einloggen“.</div>
+      </div>
+
+      <div class="emp-box server-role-box">
+        <h3>🔐 Rollen-Sperre</h3>
+        <div class="mini">Vorsichtig: Admin/Planer dürfen den normalen Planer öffnen. Mitarbeiter werden zum Wunschportal geschickt. Wenn noch keine Rollen eingerichtet sind, bleibt der Admin-Planer nach Login im Übergangsmodus offen.</div>
+        <div class="central-export-actions">
+          <button type="button" id="serverRoleCheckBtn">Rolle prüfen</button>
+          <button type="button" class="primary" id="serverRoleMarkAdminBtn">Mich als Admin speichern</button>
+        </div>
+        <div id="serverRoleInfo" class="server-status">Noch nicht geprüft.</div>
       </div>
       <div class="emp-box">
         <h3>Server-Hauptspeicher</h3>
@@ -255,11 +300,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211)/g,'V13.0.212'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211)/g,'V13.0.213'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211)/g,'V13.0.212'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211)/g,'V13.0.213'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -489,6 +534,7 @@
       storeServerSession(data, cfg);
       serverStatus('Eingeloggt als ' + (data.user?.email || cfg.email) + '. Die Sitzung wird automatisch weiterverwendet.', 'ok');
       await serverCheckStatus(false);
+      await evaluateAdminAccess(true);
     } catch(e){ setServerButtonState('error','Login nicht möglich'); serverStatus('Login nicht möglich: ' + e.message, 'bad'); }
   }
   async function serverSignup(){
@@ -499,14 +545,14 @@
       serverStatus(data?.user ? 'Registriert. Falls E-Mail-Bestätigung aktiv ist, bitte Mail bestätigen. Danach einloggen.' : 'Registrierung gesendet.', 'ok');
     } catch(e){ serverStatus('Registrierung nicht möglich: ' + e.message, 'bad'); }
   }
-  function serverLogout(){ localStorage.removeItem(SERVER_TOKEN_KEY); setServerButtonState('ready','Server bereit, bitte einloggen'); serverStatus('Abgemeldet.', 'ok'); refreshServerSyncInfo(); }
+  function serverLogout(){ localStorage.removeItem(SERVER_TOKEN_KEY); setServerButtonState('ready','Server bereit, bitte einloggen'); serverStatus('Abgemeldet.', 'ok'); refreshServerSyncInfo(); setAdminGate(true, 'Abgemeldet. Bitte als Admin/Planer einloggen.', 'warn'); }
   function countLocalEmergencyBackups(){
     let n = 0;
     for(let i=0;i<localStorage.length;i++){ if(/^polypoint_sicherung__/i.test(localStorage.key(i) || '')) n++; }
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.212-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.213-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -545,6 +591,121 @@
   async function fetchServerRow(cfg, session){
     const data = await supabaseRequest('/rest/v1/planer_store?id=eq.' + encodeURIComponent(cfg.store) + '&select=id,data,updated_at', {method:'GET', headers:{'Authorization':'Bearer ' + session.access_token}});
     return Array.isArray(data) ? data[0] : null;
+  }
+
+
+  const ROLE_ADMIN = 'admin';
+  const ROLE_PLANNER = 'planner';
+  const ROLE_EMPLOYEE = 'employee';
+  function normEmail(v){ return String(v || '').trim().toLowerCase(); }
+  function roleStore(data){
+    if(!data || typeof data !== 'object') return {};
+    const roles = data.accessRoles || data.roles || {};
+    return (roles && typeof roles === 'object') ? roles : {};
+  }
+  function normalizeRoleValue(v){
+    v = String(v || '').trim().toLowerCase();
+    if(['admin','administrator','leitung'].includes(v)) return ROLE_ADMIN;
+    if(['planner','planer','planung'].includes(v)) return ROLE_PLANNER;
+    if(['employee','mitarbeiter','ma'].includes(v)) return ROLE_EMPLOYEE;
+    return v || '';
+  }
+  function userRoleFromData(data, session){
+    const email = normEmail(session?.user?.email || storedServerEmail());
+    const roles = roleStore(data);
+    const entry = roles[email] || null;
+    const role = normalizeRoleValue(typeof entry === 'string' ? entry : entry?.role);
+    const configuredCount = Object.keys(roles).length;
+    return {email, entry, role, configuredCount, allowed: !configuredCount || role === ROLE_ADMIN || role === ROLE_PLANNER, employee: role === ROLE_EMPLOYEE};
+  }
+  function setAdminGate(show, msg='', kind=''){
+    const gate = document.getElementById('adminRoleGate');
+    const status = document.getElementById('adminRoleGateStatus');
+    if(!gate) return;
+    gate.classList.toggle('hidden', !show);
+    gate.setAttribute('aria-hidden', show ? 'false' : 'true');
+    if(status){ status.textContent = msg || ''; status.className = 'notice ' + kind; }
+  }
+  function setServerRoleInfo(msg, kind=''){
+    const el = document.getElementById('serverRoleInfo');
+    if(!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('ok', kind === 'ok');
+    el.classList.toggle('bad', kind === 'bad');
+  }
+  async function evaluateAdminAccess(showStatus=false){
+    loadServerConfig();
+    const cfg = getServerInputs();
+    const session = await getActiveServerSession();
+    if(!session){
+      const email = storedServerEmail();
+      const ge = document.getElementById('adminGateEmail'); if(ge && email) ge.value = email;
+      setAdminGate(true, 'Bitte als Admin/Planer einloggen. Mitarbeiter benutzen das Wunschportal.', 'warn');
+      if(showStatus) setServerRoleInfo('Nicht eingeloggt. Admin-Planer gesperrt.', 'bad');
+      return false;
+    }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      const info = userRoleFromData(row?.data || {}, session);
+      const label = info.email || serverUserLabel(serverUserFromSession(session));
+      if(info.employee){
+        setAdminGate(true, 'Diese Anmeldung ist als Mitarbeiter hinterlegt: ' + label + '\nDer Admin-Planer bleibt gesperrt. Bitte Wunschportal verwenden.', 'bad');
+        if(showStatus) setServerRoleInfo('Rolle: Mitarbeiter · Admin-Planer gesperrt · ' + label, 'bad');
+        return false;
+      }
+      if(info.configuredCount && !info.allowed){
+        setAdminGate(true, 'Für diese E-Mail ist keine Admin/Planer-Rolle hinterlegt: ' + label + '\nBitte mit einem Admin-Konto einloggen oder im Wunschportal arbeiten.', 'bad');
+        if(showStatus) setServerRoleInfo('Keine Admin/Planer-Rolle für ' + label, 'bad');
+        return false;
+      }
+      setAdminGate(false);
+      if(showStatus){
+        const roleText = info.role || 'Übergangsmodus: noch keine Rollenliste vorhanden';
+        setServerRoleInfo('Zugriff erlaubt · Benutzer: ' + label + ' · Rolle: ' + roleText + ' · Rollen im Server: ' + info.configuredCount, 'ok');
+      }
+      return true;
+    }catch(e){
+      setAdminGate(true, 'Rollenprüfung nicht möglich: ' + e.message + '\nBitte Verbindung/Login prüfen.', 'bad');
+      if(showStatus) setServerRoleInfo('Rollenprüfung nicht möglich: ' + e.message, 'bad');
+      return false;
+    }
+  }
+  async function adminGateLogin(){
+    const email = String(document.getElementById('adminGateEmail')?.value || '').trim();
+    const password = String(document.getElementById('adminGatePassword')?.value || '');
+    const emailInput = document.getElementById('serverEmailInput'); if(emailInput) emailInput.value = email;
+    const passInput = document.getElementById('serverPasswordInput'); if(passInput) passInput.value = password;
+    const cfg = saveServerConfig();
+    if(!email || !password){ setAdminGate(true, 'Bitte E-Mail und Passwort eintragen.', 'bad'); return; }
+    try{
+      const data = await supabaseRequest('/auth/v1/token?grant_type=password', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, password})});
+      storeServerSession(data, cfg);
+      setAdminGate(true, 'Login OK. Rolle wird geprüft…', 'ok');
+      await evaluateAdminAccess(true);
+      serverLoadPrimaryOnStart();
+    }catch(e){ setAdminGate(true, 'Login nicht möglich: ' + e.message, 'bad'); }
+  }
+  async function serverRoleMarkAdmin(){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      const data = row?.data && typeof row.data === 'object' ? row.data : {kind:'polypoint-server-store', version:'13.0.213-split', items:{}, history:[], activity:[]};
+      const user = serverUserFromSession(session);
+      const email = normEmail(user.email);
+      if(!email) throw new Error('Keine E-Mail im Login gefunden.');
+      const roles = Object.assign({}, roleStore(data));
+      roles[email] = {role:ROLE_ADMIN, email, name:user.name || email, updatedAt:new Date().toISOString(), updatedBy:user, source:'admin-planer'};
+      data.accessRoles = roles;
+      data.roleVersion = '13.0.213';
+      data.activity = buildActivityLog(data, makeActivityEntry('Admin-Rolle gespeichert', session, {area:'Rollen', count:Object.keys(roles).length, note:email}));
+      await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data, updated_at:new Date().toISOString()})});
+      setServerRoleInfo('Admin-Rolle gespeichert für ' + email + '. Rollen im Server: ' + Object.keys(roles).length, 'ok');
+      serverStatus('Admin-Rolle gespeichert: ' + email, 'ok');
+      renderServerActivity({data, updated_at:new Date().toISOString()});
+      await evaluateAdminAccess(false);
+    }catch(e){ setServerRoleInfo('Admin-Rolle konnte nicht gespeichert werden: ' + e.message, 'bad'); serverStatus('Admin-Rolle konnte nicht gespeichert werden: ' + e.message, 'bad'); }
   }
 
   function storedServerEmail(){
@@ -666,7 +827,7 @@
       hash,
       count: data.count != null ? data.count : Object.keys(items).length,
       origin: data.origin || location.href,
-      version: data.version || '13.0.212-split',
+      version: data.version || '13.0.213-split',
       restoredFrom: data.restoredFrom || null,
       items
     };
@@ -707,7 +868,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.212 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.213 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -734,7 +895,7 @@
   }
   function downloadServerActivity(){
     if(!serverActivityCache.length){ serverStatus('Keine Aktivität zum Herunterladen geladen.', 'bad'); return; }
-    const payload = {kind:'polypoint-activity-log', version:'13.0.212-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
+    const payload = {kind:'polypoint-activity-log', version:'13.0.213-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -765,7 +926,7 @@
     }
     return {
       kind:'polypoint-server-store',
-      version:'13.0.212-split',
+      version:'13.0.213-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -928,7 +1089,7 @@
       const restoreActivity = buildActivityLog(row?.data, makeActivityEntry('Speicherstand wiederhergestellt', session, {area:'Server', hash:snap.hash, count:snap.count, note:'wiederhergestellt: ' + formatHistoryDate(entry.savedAt)}));
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.212-split',
+        version:'13.0.213-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),
@@ -1151,10 +1312,15 @@
   document.getElementById('serverLocalBackupBtn')?.addEventListener('click', () => { const k = makeFullLocalBackup('manual_local_download', true); serverStatus('Notfallkopie heruntergeladen und lokal abgelegt: ' + k, 'ok'); });
   document.getElementById('serverRestoreBackupBtn')?.addEventListener('click', restoreLatestLocalEmergencyBackup);
   document.getElementById('serverAutosaveToggle')?.addEventListener('change', ev => { setAutosaveEnabled(!!ev.target.checked); serverStatus(ev.target.checked ? 'Auto-Speichern aktiv.' : 'Auto-Speichern ausgeschaltet.', 'ok'); });
+  document.getElementById('adminGateLoginBtn')?.addEventListener('click', adminGateLogin);
+  document.getElementById('adminGatePortalBtn')?.addEventListener('click', () => { location.href = 'wunschportal.html'; });
+  document.getElementById('adminGateRetryBtn')?.addEventListener('click', () => evaluateAdminAccess(true));
+  document.getElementById('serverRoleCheckBtn')?.addEventListener('click', () => evaluateAdminAccess(true));
+  document.getElementById('serverRoleMarkAdminBtn')?.addEventListener('click', serverRoleMarkAdmin);
   loadServerConfig();
   refreshServerButtonFromSession();
   startServerAutosaveWatcher();
-  getActiveServerSession().then(s => { refreshServerButtonFromSession(); if(s) serverLoadPrimaryOnStart(); }).catch(() => setServerButtonState('error','Server-Verbindung prüfen'));
+  evaluateAdminAccess(false).then(ok => { refreshServerButtonFromSession(); if(ok) serverLoadPrimaryOnStart(); }).catch(() => setServerButtonState('error','Server-Verbindung prüfen'));
 
 })();
 </script>

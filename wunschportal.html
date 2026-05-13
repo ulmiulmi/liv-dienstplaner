@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Wunschportal · V13.0.212</title>
+<title>POLYPOINT Wunschportal · V13.0.213</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -14,7 +14,7 @@
 <div class="app">
   <section class="hero">
     <div>
-      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.212</div>
+      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.213</div>
       <h1>Mitarbeiter-Wünsche</h1>
       <div class="mini">Hier werden nur Wünsche gespeichert. Es wird kein definitiver Dienstplan verändert.</div>
     </div>
@@ -45,7 +45,7 @@
         <span class="tag fr">Frei gewünscht</span>
         <span class="tag no">Nicht verfügbar</span>
       </div>
-      <div class="notice warn" style="margin-top:10px">V13.0.212 ist das getrennte Wunschportal. Mitarbeiter erhalten nur diesen Portal-Link. Eine harte Rollen-Sperre für den Admin-Planer kann danach separat ergänzt werden.</div>
+      <div class="notice warn" style="margin-top:10px">V13.0.213: Dieses Portal speichert nur Wünsche. Beim Speichern wird die eingeloggte E-Mail vorsichtig als Mitarbeiter-Rolle hinterlegt, damit der Admin-Planer geschützt bleibt.</div>
     </article>
   </div>
 
@@ -65,7 +65,7 @@
     <div id="employeeInfo" class="employee-list" style="margin-top:10px">Noch keine Mitarbeiterdaten geladen.</div>
     <div class="days" id="days"></div>
   </article>
-  <div class="footer">POLYPOINT Wunschportal · V13.0.212 · Wünsche werden getrennt im Serverdatenpaket gespeichert.</div>
+  <div class="footer">POLYPOINT Wunschportal · V13.0.213 · Wünsche werden getrennt im Serverdatenpaket gespeichert.</div>
 </div>
 
 <script>
@@ -93,8 +93,21 @@
   function groupFromKey(key,obj){ return obj?.planerGroupName || obj?.groupName || String(key||'').replace(/^polypoint_/,'').replace(/_/g,' '); }
   function extractEmployees(data){ const out=[]; const items=data?.items||{}; Object.entries(items).forEach(([key,val])=>{ const obj=parseJsonMaybe(val); if(!obj||!Array.isArray(obj.employees))return; const group=groupFromKey(key,obj); obj.employees.forEach(emp=>{ if(!emp||emp.active===false)return; const name=String(emp.name||'').trim(); if(!name)return; out.push({id:String(emp.id||name),name,role:String(emp.role||''),group}); }); }); const seen=new Set(), uniq=[]; out.forEach(e=>{ const k=(e.name+'|'+e.id).toLowerCase(); if(seen.has(k))return; seen.add(k); uniq.push(e); }); uniq.sort((a,b)=>a.name.localeCompare(b.name,'de')); return uniq; }
   function employeeKey(emp){ const email=String(session?.user?.email||'').trim().toLowerCase(); return email || (emp?.id||emp?.name||'unknown').toLowerCase().replace(/\s+/g,'_'); }
+  function normEmail(v){ return String(v || '').trim().toLowerCase(); }
+  function roleStore(data){ const roles=data?.accessRoles||data?.roles||{}; return (roles&&typeof roles==='object')?roles:{}; }
+  function portalRoleInfo(data){ const email=normEmail(session?.user?.email); const roles=roleStore(data); const entry=roles[email]||null; const role=String(typeof entry==='string'?entry:entry?.role||'').trim().toLowerCase(); return {email, roles, entry, role, restricted:role==='employee'}; }
+  function applyPortalRoleFilter(){
+    const info=portalRoleInfo(serverRow?.data||{});
+    if(info.restricted && info.entry){
+      const wantedName=String(info.entry.employeeName||info.entry.name||'').trim().toLowerCase();
+      const wantedId=String(info.entry.employeeId||'').trim().toLowerCase();
+      const filtered=employees.filter(e=>String(e.name||'').trim().toLowerCase()===wantedName || String(e.id||'').trim().toLowerCase()===wantedId);
+      if(filtered.length) employees=filtered;
+    }
+    if(info.role==='admin'||info.role==='planner'){ status('portalStatus','Admin/Planer im Wunschportal angemeldet. Du kannst Wünsche testweise erfassen, definitive Dienste werden nicht verändert.','warn'); }
+  }
   function monthKey(){ return q('year').value+'-'+String(q('month').value).padStart(2,'0'); }
-  function wishStore(data){ if(!data.wishes||typeof data.wishes!=='object')data.wishes={version:'13.0.212',people:{}}; if(!data.wishes.people||typeof data.wishes.people!=='object')data.wishes.people={}; return data.wishes; }
+  function wishStore(data){ if(!data.wishes||typeof data.wishes!=='object')data.wishes={version:'13.0.213',people:{}}; if(!data.wishes.people||typeof data.wishes.people!=='object')data.wishes.people={}; return data.wishes; }
   function selectedEmployee(){ const val=q('employeeSelect').value; return employees.find(e=>e.id+'|'+e.name===val)||null; }
   function loadExistingWishes(){ const emp=selectedEmployee(); currentWishes={}; if(!emp||!serverRow?.data)return; const ws=wishStore(serverRow.data); const byEmail=String(session?.user?.email||'').trim().toLowerCase(); const keys=[byEmail, (emp.id||emp.name||'').toLowerCase().replace(/\s+/g,'_')].filter(Boolean); for(const k of keys){ const days=ws.people?.[k]?.months?.[monthKey()]?.days; if(days){currentWishes=JSON.parse(JSON.stringify(days)); break;} } renderDays(); }
   function renderEmployeeSelect(){ const sel=q('employeeSelect'); sel.innerHTML=''; if(!employees.length){ sel.innerHTML='<option value="">Keine Mitarbeiter gefunden</option>'; return;} const email=session?.user?.email||''; employees.forEach(e=>{ const opt=document.createElement('option'); opt.value=e.id+'|'+e.name; opt.textContent=e.name+(e.role?' · '+e.role:'')+(e.group?' · '+e.group:''); sel.appendChild(opt); }); q('employeeInfo').innerHTML=employees.slice(0,60).map(e=>'<div class="employee-row">'+esc(e.name)+' <span class="mini">'+esc([e.role,e.group].filter(Boolean).join(' · '))+'</span></div>').join('') || 'Keine Mitarbeiterdaten gefunden.'; status('portalStatus','Serverdaten geladen. Mitarbeiter auswählen und Wünsche eintragen. Eingeloggt: '+email,'ok'); loadExistingWishes(); }
@@ -102,12 +115,12 @@
   function dateStr(y,m,d){return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0')}
   function renderDays(){ const y=Number(q('year').value)||new Date().getFullYear(); const m=Number(q('month').value)||1; const daysIn=new Date(y,m,0).getDate(); let html=''; ['Mo','Di','Mi','Do','Fr','Sa','So'].forEach(d=>html+='<div class="dow">'+d+'</div>'); let start=new Date(y,m-1,1).getDay(); start=start===0?7:start; for(let i=1;i<start;i++)html+='<div></div>'; for(let d=1;d<=daysIn;d++){ const date=dateStr(y,m,d); const w=currentWishes[date]||{}; const dow=new Date(y,m-1,d).getDay(); html+='<div class="day '+((dow===0||dow===6)?'weekend':'')+'" data-date="'+date+'"><div class="num">'+d+'</div><div class="date">'+date+'</div><select data-wish="'+date+'">'+wishOptions.map(o=>'<option value="'+o[0]+'" '+(w.type===o[0]?'selected':'')+'>'+o[1]+'</option>').join('')+'</select><textarea data-comment="'+date+'" placeholder="Kommentar">'+esc(w.comment||'')+'</textarea></div>'; } q('days').innerHTML=html; }
   function collectDays(){ const days={}; document.querySelectorAll('[data-wish]').forEach(sel=>{ const date=sel.dataset.wish; const type=sel.value; const comment=(document.querySelector('[data-comment="'+date+'"]')?.value||'').trim(); if(type||comment)days[date]={type,comment,updatedAt:new Date().toISOString()}; }); return days; }
-  async function loadServer(){ try{ serverRow=await fetchRow(); if(!serverRow?.data)throw new Error('Kein Serverstand gefunden.'); employees=extractEmployees(serverRow.data); renderEmployeeSelect(); status('loginStatus','Server verbunden.','ok'); }catch(e){status('portalStatus','Serverdaten konnten nicht geladen werden: '+e.message,'bad');} }
+  async function loadServer(){ try{ serverRow=await fetchRow(); if(!serverRow?.data)throw new Error('Kein Serverstand gefunden.'); employees=extractEmployees(serverRow.data); applyPortalRoleFilter(); renderEmployeeSelect(); status('loginStatus','Server verbunden.','ok'); }catch(e){status('portalStatus','Serverdaten konnten nicht geladen werden: '+e.message,'bad');} }
   function serverUser(){ const u=session?.user||{}; return {id:u.id||'',email:u.email||'',name:(u.user_metadata?.full_name||u.user_metadata?.name||u.email||u.id||'unbekannt')}; }
   function activityFromData(data){ return Array.isArray(data?.activity)?data.activity.slice(0,50):[]; }
   function makeActivity(action,count){ return {id:'act_'+new Date().toISOString().replace(/[:.]/g,'-')+'_'+Math.random().toString(36).slice(2,8),at:new Date().toISOString(),action,user:serverUser(),area:'Wunschportal',hash:dataHash(count),count,note:'Mitarbeiter-Wunschportal'}; }
   function dataHash(count){ return 'wishes-'+count+'-'+Date.now().toString(36); }
-  async function saveWishes(){ try{ const s=await refreshSession(); if(!s)throw new Error('Bitte zuerst einloggen.'); serverRow=await fetchRow(); if(!serverRow?.data)throw new Error('Kein Serverstand gefunden.'); const emp=selectedEmployee(); if(!emp)throw new Error('Bitte Mitarbeiter auswählen.'); const days=collectDays(); const data=serverRow.data; const ws=wishStore(data); const key=employeeKey(emp); if(!ws.people[key])ws.people[key]={employeeId:emp.id,employeeName:emp.name,email:session.user.email||'',months:{}}; ws.people[key].employeeId=emp.id; ws.people[key].employeeName=emp.name; ws.people[key].email=session.user.email||''; ws.people[key].updatedAt=new Date().toISOString(); ws.people[key].months[monthKey()]={year:Number(q('year').value),month:Number(q('month').value),days,updatedAt:new Date().toISOString(),savedBy:serverUser()}; ws.version='13.0.212'; ws.updatedAt=new Date().toISOString(); const count=Object.keys(days).length; data.activity=[makeActivity('Wünsche gespeichert',count)].concat(activityFromData(data)).slice(0,50); await supa('/rest/v1/planer_store',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:STORE_ID,data,updated_at:new Date().toISOString()})}); currentWishes=days; status('portalStatus','Wünsche gespeichert: '+count+' Tage · '+emp.name+' · '+monthKey(),'ok'); }catch(e){status('portalStatus','Wünsche konnten nicht gespeichert werden: '+e.message,'bad')} }
+  async function saveWishes(){ try{ const s=await refreshSession(); if(!s)throw new Error('Bitte zuerst einloggen.'); serverRow=await fetchRow(); if(!serverRow?.data)throw new Error('Kein Serverstand gefunden.'); const emp=selectedEmployee(); if(!emp)throw new Error('Bitte Mitarbeiter auswählen.'); const days=collectDays(); const data=serverRow.data; const ws=wishStore(data); const key=employeeKey(emp); if(!ws.people[key])ws.people[key]={employeeId:emp.id,employeeName:emp.name,email:session.user.email||'',months:{}}; ws.people[key].employeeId=emp.id; ws.people[key].employeeName=emp.name; ws.people[key].email=session.user.email||''; ws.people[key].updatedAt=new Date().toISOString(); ws.people[key].months[monthKey()]={year:Number(q('year').value),month:Number(q('month').value),days,updatedAt:new Date().toISOString(),savedBy:serverUser()}; ws.version='13.0.213'; ws.updatedAt=new Date().toISOString(); const email=normEmail(session.user.email||''); const roles=Object.assign({},roleStore(data)); if(email){ const oldRole=roles[email]; const oldRoleName=String(typeof oldRole==='string'?oldRole:oldRole?.role||'').toLowerCase(); if(oldRoleName!=='admin'&&oldRoleName!=='planner'){ roles[email]={role:'employee',email,employeeId:emp.id,employeeName:emp.name,name:emp.name,updatedAt:new Date().toISOString(),source:'wunschportal'}; data.accessRoles=roles; data.roleVersion='13.0.213'; }} const count=Object.keys(days).length; data.activity=[makeActivity('Wünsche gespeichert',count)].concat(activityFromData(data)).slice(0,50); await supa('/rest/v1/planer_store',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:STORE_ID,data,updated_at:new Date().toISOString()})}); currentWishes=days; status('portalStatus','Wünsche gespeichert: '+count+' Tage · '+emp.name+' · '+monthKey(),'ok'); }catch(e){status('portalStatus','Wünsche konnten nicht gespeichert werden: '+e.message,'bad')} }
   function clearMonth(){ if(!confirm('Wünsche für diesen Monat in der Ansicht leeren? Gespeichert wird erst nach Klick auf „Wünsche speichern“.'))return; currentWishes={}; renderDays(); }
   q('loginBtn').addEventListener('click',login); q('logoutBtn').addEventListener('click',logout); q('loadServerBtn').addEventListener('click',loadServer); q('saveWishBtn').addEventListener('click',saveWishes); q('clearMonthBtn').addEventListener('click',clearMonth); q('month').addEventListener('change',loadExistingWishes); q('year').addEventListener('change',loadExistingWishes); q('employeeSelect').addEventListener('change',loadExistingWishes);
   loadSession(); initControls(); if(isFresh())loadServer();
