@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Wunschportal · V13.0.226e</title>
+<title>POLYPOINT Wunschportal · V13.0.226f</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -14,7 +14,7 @@
 <div class="app">
   <section class="hero">
     <div>
-      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.226e</div>
+      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.226f</div>
       <h1>Mitarbeiter-Wünsche</h1>
       <div class="mini">Hier werden nur Wünsche gespeichert. Es wird kein definitiver Dienstplan verändert.</div>
     </div>
@@ -50,7 +50,7 @@
         <span class="tag no">Nicht verfügbar</span>
         <span class="tag">Kommentar</span>
       </div>
-      <div class="notice warn" style="margin-top:10px">V13.0.226e: Das Portal zeigt nur noch den Mitarbeiter-Zugang. Wünsche werden automatisch gespeichert, wenn du Mitarbeiter oder Monat wechselst. Jeder Mitarbeiter lädt seine eigenen Wünsche und sieht zusätzlich nur seinen persönlichen aktuellen Dienstplan.</div>
+      <div class="notice warn" style="margin-top:10px">V13.0.226f: Das Portal zeigt nur noch den Mitarbeiter-Zugang. Wünsche werden automatisch gespeichert, wenn du Mitarbeiter oder Monat wechselst. Jeder Mitarbeiter lädt seine eigenen Wünsche und sieht zusätzlich nur seinen persönlichen aktuellen Dienstplan.</div>
     </article>
   </div>
 
@@ -82,7 +82,7 @@
     </section>
     <div class="days" id="days"></div>
   </article>
-  <div class="footer">POLYPOINT Wunschportal · V13.0.226e · Wunsch-Code automatisch erzeugbar. Autospeichern beim Mitarbeiter-/Monatswechsel. Wunschfrist aus Admin-Einstellung.</div>
+  <div class="footer">POLYPOINT Wunschportal · V13.0.226f · Mitarbeiter-Code über geschützte Vercel-API. Autospeichern und persönlicher Plan. Wunschfrist aus Admin-Einstellung.</div>
 </div>
 
 <script>
@@ -90,6 +90,7 @@
   const SERVER_URL='https://ezjufsxacihfdwpyoibs.supabase.co';
   const SERVER_ANON='sb_publishable_3AsChws4K7YjRusOk4m6Mw_aA6iBmdg';
   const STORE_ID='default';
+  const WUNSCH_API_BASE='/api';
   const SESSION_KEY='polypoint_wunschportal_session_v1';
   const months=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
   let wishDeadlineWeeks=6;
@@ -161,6 +162,24 @@
   function loadSession(){ try{ const s=JSON.parse(localStorage.getItem(SESSION_KEY)||'{}'); if(s&&s.access_token){session=s;} }catch(_){} setLoginPill(); }
   function isFresh(){ return !!(session&&((session.mode==='code')||session.access_token)&&(!session.expires_at||session.expires_at>Date.now()+30000)); }
   async function supa(path,opt={}){ const headers=Object.assign({'apikey':SERVER_ANON},opt.headers||{}); const res=await fetch(SERVER_URL+path,Object.assign({},opt,{headers})); const txt=await res.text(); let data=null; try{data=txt?JSON.parse(txt):null}catch(_){data=txt} if(!res.ok){throw new Error((data&&data.message)||(data&&data.msg)||String(data||('HTTP '+res.status)))} return data; }
+  async function wishApi(path,payload={}){
+    const res=await fetch(WUNSCH_API_BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const txt=await res.text(); let data=null; try{data=txt?JSON.parse(txt):null}catch(_){data={message:txt}}
+    if(!res.ok || (data&&data.ok===false)) throw new Error((data&&data.message)||('HTTP '+res.status));
+    return data;
+  }
+  function applyApiPayload(payload){
+    if(!payload || !payload.employee) throw new Error('Ungültige API-Antwort.');
+    const emp=payload.employee;
+    employees=[emp];
+    const opts=Array.isArray(payload.wishOptions)&&payload.wishOptions.length?payload.wishOptions:baseWishOptions.concat([otherWishOption]);
+    wishOptions=opts; dutyOptionGroups={__all:opts};
+    currentWishes=JSON.parse(JSON.stringify(payload.wishes||{}));
+    serverRow={id:STORE_ID,updated_at:payload.updatedAt||new Date().toISOString(),data:{__api:true,__personalPlan:payload.personalPlan||null,__wishes:currentWishes,wishSettings:{deadlineWeeks:payload.wishDeadlineWeeks||6}}};
+    applyWishSettings(serverRow.data);
+    currentAssignment={mode:'code',employee:emp,email:normEmail(session?.user?.email||payload.identity||'')};
+    portalRoleMessage='Mit Wunsch-Code angemeldet: '+emp.name+' · '+emp.group+'. Du siehst nur dein eigenes Profil.';
+  }
   async function refreshSession(){ if(isFresh())return session; if(session?.mode==='code')return session; if(!session?.refresh_token)return null; try{ const data=await supa('/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token})}); saveSession(data); return session; }catch(e){ localStorage.removeItem(SESSION_KEY); session=null; setLoginPill(); return null; } }
   function employeeCodeMatches(e,identity,code){
     const idn=normText(identity); const em=normEmail(identity); const c=normCode(code);
@@ -175,14 +194,11 @@
     const identity=q('codeIdentity').value.trim(); const code=q('codePin').value.trim();
     if(!identity||!code){status('loginStatus','Bitte Name/E-Mail und Wunsch-Code eintragen.','bad');return;}
     try{
-      const data=await supa('/rest/v1/planer_store?id=eq.'+encodeURIComponent(STORE_ID)+'&select=id,data,updated_at',{method:'GET'});
-      serverRow=Array.isArray(data)?data[0]:null; if(!serverRow?.data)throw new Error('Kein Serverstand gefunden.');
-      applyWishSettings(serverRow.data);
-      dutyOptionGroups=buildDutyOptionGroups(serverRow.data);
-      const all=extractEmployees(serverRow.data); const matches=findEmployeeByCode(identity,code,all);
-      if(matches.length!==1)throw new Error(matches.length>1?'Mehrere Treffer gefunden. Bitte E-Mail statt Name verwenden.':'Kein Mitarbeiter mit diesem Namen/E-Mail und Wunsch-Code gefunden.');
-      const emp=matches[0]; saveCodeSession(emp,identity,code); employees=[emp]; currentAssignment={mode:'code',employee:emp,email:normEmail(identity)}; portalRoleMessage='Mit Wunsch-Code angemeldet: '+emp.name+' · '+emp.group+'. Du siehst nur dein eigenes Profil.';
-      renderEmployeeSelect(); status('loginStatus','Wunschportal geöffnet für '+emp.name+' · '+emp.group,'ok');
+      const payload=await wishApi('/wunsch-login',{identity,code,monthKey:monthKey()});
+      const emp=payload.employee; saveCodeSession(emp,identity,code); session.identity=identity; session.wishCode=code; localStorage.setItem(SESSION_KEY,JSON.stringify(session));
+      applyApiPayload(payload);
+      renderEmployeeSelect();
+      status('loginStatus','Wunschportal geöffnet für '+emp.name+' · '+emp.group,'ok');
     }catch(e){status('loginStatus','Code-Login nicht möglich: '+e.message,'bad');}
   }
   async function login(){ const email=q('email').value.trim(); const password=q('password').value; if(!email||!password){status('loginStatus','Bitte E-Mail und Passwort eintragen.','bad');return} try{ const data=await supa('/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})}); saveSession(data); status('loginStatus','Eingeloggt als '+(session.user.email||email),'ok'); await loadServer(); }catch(e){status('loginStatus','Login nicht möglich: '+e.message,'bad')} }
@@ -288,7 +304,7 @@
       const dutyByCode=new Map();
       duties.forEach(d=>{ const code=normalizedDutyCode(d?.code); if(code)dutyByCode.set(code,d); });
 
-      // V13.0.226e: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
+      // V13.0.226f: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
       const activeCodes=activeStandardCodesFromState(st);
       const codesForPortal=activeCodes.size ? [...activeCodes] : duties.filter(shouldShowDutyInPortal).map(d=>normalizedDutyCode(d.code));
       codesForPortal.forEach(code=>{
@@ -404,7 +420,7 @@
   function wishStore(data){ if(!data.wishes||typeof data.wishes!=='object')data.wishes={version:'13.0.226d',people:{}}; if(!data.wishes.people||typeof data.wishes.people!=='object')data.wishes.people={}; return data.wishes; }
   function monthKey(){ return q('year').value+'-'+String(q('month').value).padStart(2,'0'); }
   function rememberLoadedState(){ activeEmployeeValue=q('employeeSelect').value||''; activeMonthKey=monthKey(); lastLoadedDaysJson=JSON.stringify(currentWishes||{}); }
-  function loadExistingWishes(){ const emp=selectedEmployee(); updateWishOptionsForSelectedEmployee(); currentWishes={}; if(!emp||!serverRow?.data){renderDays();renderPersonalPlan();rememberLoadedState();return;} const ws=wishStore(serverRow.data); const keys=wishLookupKeys(emp); for(const k of keys){ const days=ws.people?.[k]?.months?.[monthKey()]?.days; if(days){currentWishes=JSON.parse(JSON.stringify(days)); break;} } renderDays(); renderPersonalPlan(); rememberLoadedState(); }
+  function loadExistingWishes(){ const emp=selectedEmployee(); updateWishOptionsForSelectedEmployee(); currentWishes={}; if(!emp||!serverRow?.data){renderDays();renderPersonalPlan();rememberLoadedState();return;} if(session?.mode==='code' && serverRow.data.__api){ currentWishes=JSON.parse(JSON.stringify(serverRow.data.__wishes||{})); renderDays(); renderPersonalPlan(); rememberLoadedState(); return; } const ws=wishStore(serverRow.data); const keys=wishLookupKeys(emp); for(const k of keys){ const days=ws.people?.[k]?.months?.[monthKey()]?.days; if(days){currentWishes=JSON.parse(JSON.stringify(days)); break;} } renderDays(); renderPersonalPlan(); rememberLoadedState(); }
   function renderEmployeeSelect(){
     const sel=q('employeeSelect'); sel.innerHTML='';
     const email=session?.user?.email||'';
@@ -472,6 +488,16 @@
     gridEl.innerHTML=''; listEl.innerHTML='';
     if(!emp){ infoEl.textContent='Bitte Mitarbeiter auswählen.'; infoEl.className='notice warn'; return; }
     if(!serverRow?.data){ infoEl.textContent='Noch keine Serverdaten geladen.'; infoEl.className='notice warn'; return; }
+    if(session?.mode==='code' && serverRow.data.__api){
+      const pp=serverRow.data.__personalPlan||{}; const days=Array.isArray(pp.days)?pp.days:[]; const rows=Array.isArray(pp.rows)?pp.rows:[];
+      if(!m || !days.length){ infoEl.textContent=pp.info||'Für diesen Monat wurde kein persönlicher Dienstplan gefunden.'; infoEl.className='notice warn'; return; }
+      let html=''; ['Mo','Di','Mi','Do','Fr','Sa','So'].forEach(d=>html+='<div class="plan-dow">'+d+'</div>');
+      let start=new Date(y,m-1,1).getDay(); start=start===0?7:start; for(let i=1;i<start;i++)html+='<div></div>';
+      days.forEach(day=>{ const wish=currentWishes[day.date]?.type ? shortWishLabel(currentWishes[day.date].type) : ''; html+='<div class="plan-cell '+(day.weekend?'weekend ':'')+(day.hasDuty?'has-duty':'empty')+'"><div class="plan-num">'+esc(day.day)+'</div><div class="plan-date">'+esc(day.date)+'</div><div class="plan-duty">'+esc(day.label||'frei / leer')+'</div>'+(wish?'<div class="plan-wish">Wunsch: '+esc(wish)+'</div>':'')+'</div>'; });
+      gridEl.innerHTML=html;
+      listEl.innerHTML=rows.length?rows.map(r=>'<div class="plan-row"><div><strong>'+esc(r.date)+'</strong><div class="muted">'+esc(r.dow||'')+'</div></div><div>'+esc(r.label||'')+(r.wish?'<div class="plan-wish">Wunsch: '+esc(r.wish)+'</div>':'')+'</div></div>').join(''):'<div class="plan-note">Für diesen Monat sind im Serverstand keine persönlichen Dienste eingetragen.</div>';
+      infoEl.textContent=pp.info||('Persönlicher Dienstplan: '+emp.name+' · '+emp.group); infoEl.className='notice ok'; return;
+    }
     const st=getGroupStateForEmployee(emp);
     if(!st){ infoEl.textContent='Für '+emp.name+' wurde kein Gruppenplan gefunden.'; infoEl.className='notice bad'; return; }
     const daysIn=new Date(y,m,0).getDate();
@@ -509,6 +535,15 @@
   function collectDays(){ const days={}; document.querySelectorAll('[data-wish]').forEach(sel=>{ const date=sel.dataset.wish; const type=sel.value; const comment=(document.querySelector('[data-comment="'+date+'"]')?.value||'').trim(); if(type||comment)days[date]={type,comment,updatedAt:new Date().toISOString()}; }); return days; }
   async function loadServer(){
     try{
+      if(session?.mode==='code'){
+        const identity=session.identity || session.user?.email || q('codeIdentity').value.trim(); const code=session.wishCode || q('codePin').value.trim();
+        const payload=await wishApi('/wunsch-login',{identity,code,employeeId:session.employeeId,monthKey:monthKey()});
+        applyApiPayload(payload);
+        renderEmployeeSelect();
+        const dutyCount=Math.max(0,(wishOptions.length-baseWishOptions.length-1));
+        status('loginStatus','Wunschportal verbunden. Wunschliste geladen: '+dutyCount,'ok');
+        return;
+      }
       serverRow=await fetchRow(); if(!serverRow?.data)throw new Error('Kein Serverstand gefunden.');
       applyWishSettings(serverRow.data);
       dutyOptionGroups=buildDutyOptionGroups(serverRow.data); wishOptions=dutyOptionGroups.__all || baseWishOptions.concat([otherWishOption]);
@@ -526,6 +561,19 @@
     try{
       if(wishAutosaveBusy && auto)return;
       wishAutosaveBusy=true;
+      if(session?.mode==='code'){
+        const emp=opts.empOverride || selectedEmployee(); if(!emp)throw new Error('Bitte Mitarbeiter auswählen.');
+        const saveMonthKey=opts.monthKeyOverride || monthKey();
+        const ym=String(saveMonthKey).split('-'); const y=Number(ym[0])||0, m=Number(ym[1])||0;
+        if(!isWishMonthOpen(y,m))throw new Error('Dieser Monat ist nicht mehr für Wünsche freigegeben. '+wishDeadlineText());
+        const days=opts.daysOverride || collectDays();
+        const payload=await wishApi('/wunsch-save',{identity:session.identity||session.user?.email||'',code:session.wishCode||'',employeeId:emp.id,monthKey:saveMonthKey,days,action:auto?(opts.action||'Wünsche automatisch gespeichert'):'Wünsche gespeichert'});
+        applyApiPayload(payload);
+        if(!opts.empOverride || (q('employeeSelect').value===activeEmployeeValue && saveMonthKey===monthKey())){ currentWishes=days; lastLoadedDaysJson=JSON.stringify(days); activeMonthKey=monthKey(); }
+        renderEmployeeSelect();
+        status('portalStatus',(auto?'Automatisch gespeichert: ':'Wünsche gespeichert: ')+Object.keys(days).length+' Tage · '+emp.name+' · '+emp.group+' · '+saveMonthKey,'ok');
+        return;
+      }
       const s=await refreshSession(); if(!s)throw new Error('Bitte zuerst einloggen oder mit Wunsch-Code öffnen.');
       serverRow=await fetchRow(); if(!serverRow?.data)throw new Error('Kein Serverstand gefunden.');
       applyWishSettings(serverRow.data);
@@ -566,7 +614,7 @@
     if(oldEmp && JSON.stringify(days)!==lastLoadedDaysJson){ await saveWishes({auto:true,empOverride:oldEmp,monthKeyOverride:oldMonth,daysOverride:days,action:reason||'Auto-Speicherung vor Wechsel'}); }
   }
   function clearMonth(){ if(!confirm('Wünsche für diesen Monat in der Ansicht leeren?'))return; currentWishes={}; renderDays(); scheduleWishAutosave('Monat geleert'); }
-  q('loginBtn').addEventListener('click',login); q('codeLoginBtn').addEventListener('click',codeLogin); q('logoutBtn').addEventListener('click',logout); q('loadServerBtn').addEventListener('click',loadServer); q('refreshPersonalPlanBtn').addEventListener('click',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Dienstplan-Aktualisierung'); await loadServer(); renderPersonalPlan(); }); q('saveWishBtn').addEventListener('click',()=>saveWishes()); q('clearMonthBtn').addEventListener('click',clearMonth); q('month').addEventListener('change',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Monatswechsel'); loadExistingWishes(); }); q('year').addEventListener('change',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Jahreswechsel'); updateMonthOptions(true); loadExistingWishes(); }); q('employeeSelect').addEventListener('change',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Mitarbeiterwechsel'); loadExistingWishes(); }); q('days').addEventListener('change',e=>{ if(e.target&&e.target.matches('[data-wish]'))scheduleWishAutosave('Wunsch geändert'); }); q('days').addEventListener('input',e=>{ if(e.target&&e.target.matches('[data-comment]'))scheduleWishAutosave('Kommentar geändert'); });
+  q('loginBtn').addEventListener('click',login); q('codeLoginBtn').addEventListener('click',codeLogin); q('logoutBtn').addEventListener('click',logout); q('loadServerBtn').addEventListener('click',loadServer); q('refreshPersonalPlanBtn').addEventListener('click',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Dienstplan-Aktualisierung'); await loadServer(); renderPersonalPlan(); }); q('saveWishBtn').addEventListener('click',()=>saveWishes()); q('clearMonthBtn').addEventListener('click',clearMonth); q('month').addEventListener('change',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Monatswechsel'); if(session?.mode==='code') await loadServer(); else loadExistingWishes(); }); q('year').addEventListener('change',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Jahreswechsel'); updateMonthOptions(true); if(session?.mode==='code') await loadServer(); else loadExistingWishes(); }); q('employeeSelect').addEventListener('change',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Mitarbeiterwechsel'); if(session?.mode==='code') await loadServer(); else loadExistingWishes(); }); q('days').addEventListener('change',e=>{ if(e.target&&e.target.matches('[data-wish]'))scheduleWishAutosave('Wunsch geändert'); }); q('days').addEventListener('input',e=>{ if(e.target&&e.target.matches('[data-comment]'))scheduleWishAutosave('Kommentar geändert'); });
   loadSession(); initControls(); applyInviteParams(); if(isFresh())loadServer();
 })();
 </script>
