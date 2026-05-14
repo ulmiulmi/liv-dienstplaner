@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.226a · Split · Wunschfrist</title>
+<title>POLYPOINT Adapter · V13.0.226b · Split · Wunschfrist</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -132,8 +132,8 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.226a</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, Wunsch-Anzeige, Wunsch-Erfüllung und Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist.</div>
+        <h1>POLYPOINT Adapter · V13.0.226b</h1>
+        <div class="mini">Split-Version mit stabiler Serverbasis, Dienst-setzen-Fix und automatischer Wunsch-Aktualisierung ohne Dienstplan-Überschreibung.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -263,7 +263,9 @@
           <input id="serverWishMonthInput" type="month" style="border:1px solid var(--line);border-radius:999px;padding:8px 10px;font-weight:900">
           <button type="button" id="serverWishReportBtn">Wünsche prüfen</button>
           <button type="button" id="serverWishReportDownloadBtn">Auswertung herunterladen</button>
+          <button type="button" id="serverWishCacheRefreshBtn">Wünsche jetzt aktualisieren</button>
         </div>
+        <div class="server-small" id="serverWishAutoSyncInfo">Wünsche werden im Hintergrund gelesen, ohne den Dienstplan zu überschreiben.</div>
         <div id="serverWishReportList" class="server-history-list">Noch nicht geladen.</div>
       </div>
       <div class="emp-box server-wish-settings-box">
@@ -336,11 +338,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226a'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226b'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226a'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226b'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -404,6 +406,9 @@
   let serverAutosaveTimer = null;
   let serverAutosaveBusy = false;
   let lastObservedServerHash = '';
+  let serverWishAutoTimer = null;
+  let serverWishAutoBusy = false;
+  let lastObservedWishHash = '';
   let serverHistoryCache = [];
   let serverActivityCache = [];
   let serverAccessOverviewCache = null;
@@ -445,15 +450,49 @@
     return true;
   }
 
-  // V13.0.226a: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
+  // V13.0.226b: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
   // damit die aufgeteilten Planseiten sie anzeigen können. Der Cache wird nicht als Planungsdaten hochgeladen.
-  function cacheServerWishesFromData(data){
+  function stableWishHash(wishes){
+    let raw = '';
+    try{ raw = JSON.stringify(wishes || {people:{}}); }catch(_){ raw = String(Date.now()); }
+    let h = 2166136261 >>> 0;
+    for(let i=0;i<raw.length;i++){ h ^= raw.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return raw.length + '-' + h.toString(16);
+  }
+  function countWishEntries(wishes){
+    let count = 0;
+    try{
+      const people = wishes && wishes.people ? wishes.people : {};
+      Object.values(people).forEach(p => Object.values(p.months || {}).forEach(m => { count += Object.keys(m.days || {}).length; }));
+    }catch(_){ }
+    return count;
+  }
+  function setWishAutoSyncInfo(text, kind=''){
+    const el = document.getElementById('serverWishAutoSyncInfo');
+    if(!el) return;
+    el.textContent = text || '';
+    el.style.color = kind === 'bad' ? '#c73636' : kind === 'ok' ? '#0f8a5f' : '';
+  }
+  function cacheServerWishesFromData(data, opts={}){
     try{
       const wishes = data && data.wishes && typeof data.wishes === 'object' ? data.wishes : {version:'13.0.221', people:{}, updatedAt:''};
+      const nextHash = stableWishHash(wishes);
+      const changed = nextHash !== lastObservedWishHash;
       localStorage.setItem(WISH_CACHE_KEY, JSON.stringify(wishes));
       window.__polypointEmployeeWishes = wishes;
+      lastObservedWishHash = nextHash;
       try{ frames && frames.forEach(frame => frame.contentWindow?.postMessage({type:'polypointWishesUpdated'}, '*')); }catch(_){ }
-    }catch(e){ console.warn('Wünsche konnten nicht lokal bereitgestellt werden', e); }
+      if(!opts.quiet || changed){
+        const n = countWishEntries(wishes);
+        const when = new Date().toLocaleTimeString('de-CH', {hour:'2-digit', minute:'2-digit'});
+        setWishAutoSyncInfo((changed ? 'Wünsche aktualisiert: ' : 'Wünsche geprüft: ') + n + ' Einträge · ' + when, changed ? 'ok' : '');
+      }
+      return {changed, count:countWishEntries(wishes), hash:nextHash};
+    }catch(e){
+      console.warn('Wünsche konnten nicht lokal bereitgestellt werden', e);
+      setWishAutoSyncInfo('Wünsche konnten nicht aktualisiert werden: ' + e.message, 'bad');
+      return {changed:false,count:0,hash:''};
+    }
   }
 
   function collectPolypointStorage(){
@@ -919,7 +958,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.226a werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.226b werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -1342,7 +1381,7 @@
   }
 
 
-  // V13.0.226a: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
+  // V13.0.226b: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
   let serverWishReportCache = null;
   function parseServerStateValue(val){
     if(!val) return null;
@@ -1515,7 +1554,50 @@
 
 
 
-  // V13.0.226a: Wunschfrist für das Wunschportal administrierbar machen.
+  // V13.0.226b: Wunsch-Sync liest nur Wunschdaten vom Server. Der Dienstplan wird dabei nicht geladen oder überschrieben.
+  async function refreshWishCacheFromServer(opts={}){
+    if(serverWishAutoBusy) return false;
+    const cfg = getServerInputs();
+    const showStatus = !!opts.showStatus;
+    if(!cfg.url || !cfg.anon){ if(showStatus) serverStatus('Server-Verbindung ist unvollständig.', 'bad'); return false; }
+    let session = null;
+    try{ session = await getActiveServerSession(); }catch(_){ session = null; }
+    if(!session){
+      if(showStatus) serverStatus('Bitte zuerst im ☁️ Server einloggen.', 'bad');
+      setWishAutoSyncInfo('Wunsch-Sync wartet auf Server-Login.', '');
+      return false;
+    }
+    serverWishAutoBusy = true;
+    try{
+      const row = await fetchServerRow(cfg, session);
+      if(!row || !row.data) throw new Error('Keine Serverdaten gefunden.');
+      const result = cacheServerWishesFromData(row.data, {quiet: !showStatus});
+      if(showStatus) serverStatus('Wünsche im Plan aktualisiert: ' + result.count + ' Wunsch-Einträge. Der Dienstplan wurde nicht überschrieben.', 'ok');
+      return true;
+    }catch(e){
+      if(showStatus) serverStatus('Wünsche konnten nicht aktualisiert werden: ' + e.message, 'bad');
+      setWishAutoSyncInfo('Wunsch-Sync Fehler: ' + e.message, 'bad');
+      return false;
+    }finally{ serverWishAutoBusy = false; }
+  }
+  function scheduleWishAutoRefresh(){
+    clearTimeout(serverWishAutoTimer);
+    serverWishAutoTimer = setTimeout(() => refreshWishCacheFromServer({showStatus:false}), 1500);
+  }
+  function startWishAutoSyncWatcher(){
+    setWishAutoSyncInfo('Wunsch-Sync bereit. Aktualisiert automatisch nach Login und alle 60 Sekunden.', '');
+    scheduleWishAutoRefresh();
+    setInterval(() => refreshWishCacheFromServer({showStatus:false}), 60000);
+    document.addEventListener('visibilitychange', () => { if(!document.hidden) scheduleWishAutoRefresh(); });
+    window.addEventListener('hashchange', () => scheduleWishAutoRefresh());
+  }
+  async function serverWishCacheRefresh(){
+    await refreshWishCacheFromServer({showStatus:true});
+  }
+
+
+
+  // V13.0.226b: Wunschfrist für das Wunschportal administrierbar machen.
   function wishSettingsFromData(data){
     const ws = data && typeof data.wishSettings === 'object' ? data.wishSettings : {};
     let weeks = Number(ws.deadlineWeeks);
@@ -1565,7 +1647,7 @@
     }catch(e){ serverStatus('Wunschfrist konnte nicht gespeichert werden: ' + e.message, 'bad'); }
   }
 
-  // V13.0.226a: Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist. Nur lesen, kein Server-Schreiben.
+  // V13.0.226b: Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist. Nur lesen, kein Server-Schreiben.
   function parseServerJsonMaybe(v){
     if(!v || typeof v !== 'string') return null;
     try{ return JSON.parse(v); }catch(_){ return null; }
@@ -1770,6 +1852,7 @@
   document.getElementById('serverActivityDownloadBtn')?.addEventListener('click', downloadServerActivity);
   document.getElementById('serverWishReportBtn')?.addEventListener('click', () => serverWishReportLoad(true));
   document.getElementById('serverWishReportDownloadBtn')?.addEventListener('click', downloadWishReport);
+  document.getElementById('serverWishCacheRefreshBtn')?.addEventListener('click', serverWishCacheRefresh);
   document.getElementById('serverWishSettingsLoadBtn')?.addEventListener('click', () => loadWishSettings(true));
   document.getElementById('serverWishSettingsSaveBtn')?.addEventListener('click', saveWishSettings);
   document.getElementById('serverAccessOverviewBtn')?.addEventListener('click', () => serverAccessOverviewLoad(true));
@@ -1788,7 +1871,8 @@
   setWishReportDefaultMonth();
   refreshServerButtonFromSession();
   startServerAutosaveWatcher();
-  evaluateAdminAccess(false).then(ok => { refreshServerButtonFromSession(); if(ok) serverLoadPrimaryOnStart(); }).catch(() => setServerButtonState('error','Server-Verbindung prüfen'));
+  startWishAutoSyncWatcher();
+  evaluateAdminAccess(false).then(ok => { refreshServerButtonFromSession(); if(ok){ serverLoadPrimaryOnStart(); scheduleWishAutoRefresh(); } }).catch(() => setServerButtonState('error','Server-Verbindung prüfen'));
 
 })();
 </script>
