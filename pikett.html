@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>POLYPOINT Haus-Pikett – V13.0.224</title>
+<title>POLYPOINT Haus-Pikett – V13.0.225</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--purple:#6f42c1;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -19,7 +19,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 .hp-hero{align-items:stretch}.hero-text{max-width:980px}.hero-text p{max-width:980px}.hero-actions{display:grid;gap:10px;min-width:min(440px,100%);align-self:stretch}.action-group{border:1px solid var(--line);border-radius:18px;background:#fbfcfe;padding:10px}.action-title{font-size:12px;color:var(--muted);font-weight:950;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}.toolbar.slim{margin:0;gap:7px}.toolbar.slim button{padding:8px 11px;font-size:12px}.pikett-control{padding:16px}.control-head,.section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}.control-head h2,.section-head h2{margin:0;font-size:20px;letter-spacing:-.03em}.control-head p,.section-head p{margin:4px 0 0;color:var(--muted);font-size:13px;font-weight:800;line-height:1.35}.status-row{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.control-grid{display:grid;grid-template-columns:170px 130px 1fr;gap:10px;align-items:end}.fieldbox label{margin-bottom:5px}.fieldbox select{width:100%}.plan-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.hp-details{border:1px solid var(--line);border-radius:18px;background:#fbfcfe;padding:0;margin-top:12px;overflow:hidden}.hp-details>summary{cursor:pointer;padding:12px 14px;font-weight:950;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px}.hp-details>summary::-webkit-details-marker{display:none}.hp-details>summary:after{content:'öffnen';font-size:11px;color:var(--muted);font-weight:950;background:#eef2f7;border-radius:999px;padding:4px 8px}.hp-details[open]>summary:after{content:'schliessen'}.hp-details .groupbox{margin:0;padding:0 12px 12px}.summary{border:1px solid var(--line);border-radius:18px;background:#fbfcfe;padding:8px}.sum{box-shadow:0 6px 16px rgba(16,24,40,.04)}.sum .mini{text-transform:uppercase;letter-spacing:.04em;font-size:10px}.table-wrap{max-height:none}.side .section-head{margin-bottom:10px}.side .section-head h2{font-size:18px}.side .issue:first-of-type{margin-top:0}@media(max-width:980px){.hero-actions{margin-top:12px}.control-head,.section-head{display:block}.status-row{justify-content:flex-start;margin-top:8px}.control-grid{grid-template-columns:1fr 1fr}.plan-actions{grid-column:1/-1;justify-content:flex-start}.summary{grid-template-columns:1fr 1fr}}@media(max-width:560px){.app{padding:10px}.control-grid{grid-template-columns:1fr}.plan-actions button,.toolbar.slim button{width:100%;justify-content:center}.hero-actions{display:block}.action-group+.action-group{margin-top:8px}.summary{grid-template-columns:1fr 1fr}.sum .v{font-size:20px}}
 
 
-/* V13.0.224 · Haus-Pikett Plan optisch ruhiger */
+/* V13.0.225 · Haus-Pikett Plan optisch ruhiger */
 .pikett-plan-card{padding:16px;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(251,252,254,.98))}
 .pikett-plan-card .section-head{padding-bottom:10px;border-bottom:1px solid #edf1f6;margin-bottom:10px}
 .pikett-table-wrap{border:0;background:transparent;overflow:visible}
@@ -48,7 +48,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 
 
 
-/* V13.0.224 · Haus-Pikett rechte Detailseite klarer */
+/* V13.0.225 · Haus-Pikett rechte Detailseite klarer */
 .tag-side{position:sticky;top:12px}
 .tag-side .section-head{padding-bottom:10px;border-bottom:1px solid #edf1f6;margin-bottom:10px}
 .detail-box{border:1px solid #dbe7ff;border-radius:18px;background:linear-gradient(180deg,#f7fbff,#fff);padding:12px;margin-bottom:10px;box-shadow:0 8px 20px rgba(37,99,235,.06)}
@@ -61,7 +61,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 
 
 
-/* V13.0.224 · Haus-Pikett Kontrolle */
+/* V13.0.225 · Haus-Pikett Kontrolle */
 .hp-check{padding:16px}
 .hp-check .section-head{padding-bottom:10px;border-bottom:1px solid #edf1f6;margin-bottom:12px}
 .check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -80,9 +80,9 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 @media(max-width:980px){.check-grid{grid-template-columns:1fr}.tag-side{position:static}}
 
 
-/* V13.0.224 · Haus-Pikett Entscheidungsanzeige */
-/* V13.0.224 · Jahresfairness aktiv: Monat zuerst, Jahr danach */
-/* V13.0.224 · Gruppen-P-Übernahme mit Bericht */
+/* V13.0.225 · Haus-Pikett Entscheidungsanzeige */
+/* V13.0.225 · Jahresfairness aktiv: Monat zuerst, Jahr danach */
+/* V13.0.225 · Gruppen-P-Übernahme mit Bericht */
 .decision-box{border:1px solid #c9dcff;background:#f7fbff;border-radius:18px;padding:12px;margin:10px 0;box-shadow:0 8px 18px rgba(16,24,40,.04)}
 .decision-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}
 .decision-head b{font-size:15px;letter-spacing:-.02em}.decision-head small{display:block;color:var(--muted);font-weight:850;margin-top:2px;line-height:1.25}
@@ -99,7 +99,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
   <section class="hero no-print hp-hero">
     <div class="hero-text">
       <div class="eyebrow">POLYPOINT · HAUS</div>
-      <h1>Haus-Pikett · V13.0.224</h1>
+      <h1>Haus-Pikett · V13.0.225</h1>
       <p>Zentrale Pikett-Planung für das ganze Haus. Pro Tag wird genau <b>1 Pikett</b> geführt. P-Einträge aus den aktiven Gruppen können übernommen werden; offene Tage werden danach fair vorgeschlagen.</p>
     </div>
     <div class="hero-actions">

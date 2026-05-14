@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.224 · Split · Wunschportal</title>
+<title>POLYPOINT Adapter · V13.0.225 · Split · Wunschportal</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -68,7 +68,12 @@
   .server-history-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
   .server-history-actions button{padding:6px 9px;font-size:11px}
   .server-history-current{background:#f7fbff}
-  .server-history-compare{border:1px solid #c9dcff;background:#f7fbff;border-radius:14px;margin-top:8px;padding:10px;display:none}
+  .server-access-badge{display:inline-flex;align-items:center;border-radius:999px;padding:2px 7px;font-size:11px;font-weight:950;border:1px solid #d9e2ef;background:#fbfcfe;color:#475467;margin-right:4px}
+  .server-access-badge.ok{background:#e7f7ef;color:#0f8a5f;border-color:#b7e4ca}
+  .server-access-badge.warn{background:#fff7e6;color:#9a6700;border-color:#f3d28f}
+  .server-access-badge.bad{background:#fffafa;color:#c73636;border-color:#f2a3a3}
+  .server-access-summary{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+    .server-history-compare{border:1px solid #c9dcff;background:#f7fbff;border-radius:14px;margin-top:8px;padding:10px;display:none}
   .server-history-compare.show{display:block}
   .compare-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
   .compare-title{font-weight:950;font-size:14px;color:var(--text)}
@@ -127,8 +132,8 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.224</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, bedarfsgerechten Vorschlägen, Wunsch-Anzeige im Plan und Wunsch-Erfüllungsauswertung.</div>
+        <h1>POLYPOINT Adapter · V13.0.225</h1>
+        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, Wunsch-Anzeige, Wunsch-Erfüllung und Admin-Übersicht für Wunschzugänge.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -261,6 +266,15 @@
         </div>
         <div id="serverWishReportList" class="server-history-list">Noch nicht geladen.</div>
       </div>
+      <div class="emp-box server-access-overview-box">
+        <h3>👥 Wunschzugänge</h3>
+        <div class="mini">Admin-Übersicht: zeigt Mitarbeiter, Gruppe, Login-E-Mail, Wunsch-Code, ob ein Zugang bereit ist und wann zuletzt Wünsche gespeichert wurden. Es wird nichts geschrieben.</div>
+        <div class="central-export-actions">
+          <button type="button" id="serverAccessOverviewBtn">Wunschzugänge prüfen</button>
+          <button type="button" id="serverAccessOverviewDownloadBtn">Übersicht herunterladen</button>
+        </div>
+        <div id="serverAccessOverviewList" class="server-history-list">Noch nicht geladen.</div>
+      </div>
     </div>
     <div id="serverSyncStatus" class="server-status">Nicht verbunden.</div>
     <div class="emp-modal-actions">
@@ -310,11 +324,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.224'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.225'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.224'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.225'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -380,6 +394,7 @@
   let lastObservedServerHash = '';
   let serverHistoryCache = [];
   let serverActivityCache = [];
+  let serverAccessOverviewCache = null;
 
   function serverModal(){ return document.getElementById('serverSyncModal'); }
   function serverStatus(text, kind=''){
@@ -418,7 +433,7 @@
     return true;
   }
 
-  // V13.0.224: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
+  // V13.0.225: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
   // damit die aufgeteilten Planseiten sie anzeigen können. Der Cache wird nicht als Planungsdaten hochgeladen.
   function cacheServerWishesFromData(data){
     try{
@@ -892,7 +907,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.224 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.225 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -1313,7 +1328,7 @@
   }
 
 
-  // V13.0.224: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
+  // V13.0.225: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
   let serverWishReportCache = null;
   function parseServerStateValue(val){
     if(!val) return null;
@@ -1483,6 +1498,182 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
     serverStatus('Wunsch-Erfüllung heruntergeladen.', 'ok');
   }
+
+
+  // V13.0.225: Admin-Übersicht für Wunschzugänge. Nur lesen, kein Server-Schreiben.
+  function parseServerJsonMaybe(v){
+    if(!v || typeof v !== 'string') return null;
+    try{ return JSON.parse(v); }catch(_){ return null; }
+  }
+  function accessGroupFromKey(key){
+    key = String(key || '').toLowerCase();
+    const map = [['azoren','Azoren'],['bali','Bali'],['capri','Capri'],['delos','Delos'],['nachtwache','Nachtwache'],['pikett','Haus-Pikett'],['hausdienstplan','Haus-Dienstplan']];
+    for(const [needle,label] of map){ if(key.includes(needle)) return label; }
+    return '';
+  }
+  function accessEmployeeKey(name, group, id){
+    return [String(group||'').trim().toLowerCase(), String(id||'').trim().toLowerCase(), String(name||'').trim().toLowerCase()].join('|');
+  }
+  function extractAccessEmployeesFromData(data){
+    const out = [];
+    const seen = new Set();
+    const items = data?.items || {};
+    Object.entries(items).forEach(([key, value]) => {
+      const obj = parseServerJsonMaybe(value);
+      if(!obj || !Array.isArray(obj.employees)) return;
+      const group = String(obj.planerGroupName || obj.groupName || accessGroupFromKey(key) || obj.planerGroupId || '').trim();
+      const groupKey = String(obj.planerGroupId || group || accessGroupFromKey(key) || '').trim().toLowerCase();
+      obj.employees.forEach(emp => {
+        const name = String(emp?.name || '').trim();
+        if(!name) return;
+        const id = String(emp?.id || name).trim();
+        const unique = accessEmployeeKey(name, group, id);
+        if(seen.has(unique)) return;
+        seen.add(unique);
+        out.push({
+          id,
+          name,
+          group,
+          groupKey,
+          role: String(emp?.role || '').trim(),
+          pct: emp?.pct ?? '',
+          active: emp?.active !== false,
+          loginEmail: String(emp?.loginEmail || emp?.email || emp?.mail || '').trim(),
+          wishCode: String(emp?.wishCode || emp?.portalCode || emp?.wunschCode || '').trim(),
+          sourceKey: key
+        });
+      });
+    });
+    return out.sort((a,b) => (a.group + a.name).localeCompare(b.group + b.name, 'de'));
+  }
+  function accessPersonMatchesEmployee(person, emp){
+    if(!person || !emp) return false;
+    const peid = String(person.employeeId || '').trim();
+    const eid = String(emp.id || '').trim();
+    if(peid && eid && peid === eid) return true;
+    const pEmail = normEmail(person.email || '');
+    const eEmail = normEmail(emp.loginEmail || '');
+    if(pEmail && eEmail && pEmail === eEmail) return true;
+    const pn = String(person.employeeName || person.name || '').trim().toLowerCase();
+    const en = String(emp.name || '').trim().toLowerCase();
+    const pg = String(person.group || '').trim().toLowerCase();
+    const eg = String(emp.group || '').trim().toLowerCase();
+    return !!(pn && en && pn === en && (!pg || !eg || pg === eg));
+  }
+  function latestWishInfoForEmployee(data, emp){
+    const people = data?.wishes?.people || {};
+    let best = null;
+    Object.entries(people).forEach(([key, person]) => {
+      if(!accessPersonMatchesEmployee(person, emp)) return;
+      Object.entries(person.months || {}).forEach(([monthKey, month]) => {
+        const days = month?.days || {};
+        const count = Object.keys(days).filter(d => {
+          const w = days[d] || {};
+          return String(w.type || '').trim() || String(w.comment || '').trim();
+        }).length;
+        const at = String(month?.updatedAt || person?.updatedAt || '').trim();
+        const candidate = {key, month:monthKey, count, updatedAt:at, person};
+        if(!best || String(candidate.updatedAt || candidate.month).localeCompare(String(best.updatedAt || best.month)) > 0) best = candidate;
+      });
+    });
+    return best;
+  }
+  function roleForEmployee(data, emp){
+    const roles = roleStore(data || {});
+    const email = normEmail(emp.loginEmail || '');
+    const entry = email ? roles[email] : null;
+    if(entry){
+      const role = typeof entry === 'string' ? entry : (entry.role || '');
+      return String(role || '').trim() || 'gesetzt';
+    }
+    const byEmp = Object.values(roles).find(r => {
+      if(!r || typeof r === 'string') return false;
+      return accessPersonMatchesEmployee({employeeId:r.employeeId, employeeName:r.employeeName || r.name, email:r.email, group:r.group}, emp);
+    });
+    if(byEmp) return String(byEmp.role || 'gesetzt').trim() || 'gesetzt';
+    return '';
+  }
+  function buildAccessOverview(data){
+    const employees = extractAccessEmployeesFromData(data || {});
+    const rows = employees.map(emp => {
+      const wish = latestWishInfoForEmployee(data || {}, emp);
+      const hasCode = !!String(emp.wishCode || '').trim();
+      const hasEmail = !!normEmail(emp.loginEmail || '');
+      const ready = hasCode && (!!emp.name || hasEmail);
+      const role = roleForEmployee(data || {}, emp);
+      const status = !emp.active ? 'inaktiv' : (ready ? 'bereit' : 'Code fehlt');
+      return Object.assign({}, emp, {
+        hasCode,
+        hasEmail,
+        ready,
+        accessStatus: status,
+        portalRole: role,
+        lastWishMonth: wish?.month || '',
+        lastWishCount: wish?.count || 0,
+        lastWishAt: wish?.updatedAt || '',
+        lastWishKey: wish?.key || ''
+      });
+    });
+    const totals = {
+      all: rows.length,
+      active: rows.filter(r => r.active).length,
+      ready: rows.filter(r => r.ready && r.active).length,
+      missingCode: rows.filter(r => !r.hasCode && r.active).length,
+      missingEmail: rows.filter(r => !r.hasEmail && r.active).length,
+      withWishes: rows.filter(r => r.lastWishMonth).length,
+      groups: [...new Set(rows.map(r => r.group).filter(Boolean))].sort()
+    };
+    return {createdAt:new Date().toISOString(), totals, rows};
+  }
+  function renderAccessOverview(report){
+    const el = document.getElementById('serverAccessOverviewList');
+    if(!el) return;
+    serverAccessOverviewCache = report;
+    const t = report.totals || {};
+    const summary = '<div class="server-history-row server-history-current"><div><div class="server-history-title">Wunschzugänge · ' + (t.all||0) + ' Mitarbeiter</div><div class="server-history-meta">aktiv: ' + (t.active||0) + ' · bereit: ' + (t.ready||0) + ' · Code fehlt: ' + (t.missingCode||0) + ' · E-Mail fehlt: ' + (t.missingEmail||0) + ' · mit Wünschen: ' + (t.withWishes||0) + '</div></div></div>';
+    if(!report.rows.length){
+      el.innerHTML = summary + '<div class="server-history-row"><div><div class="server-history-title">Keine Mitarbeiter gefunden.</div><div class="server-history-meta">Bitte zuerst Serverstand laden/speichern.</div></div></div>';
+      return;
+    }
+    const rows = report.rows.map(r => {
+      const badgeCls = !r.active ? 'warn' : (r.ready ? 'ok' : 'bad');
+      const wishText = r.lastWishMonth ? (r.lastWishMonth + ' · ' + r.lastWishCount + ' Tage' + (r.lastWishAt ? ' · ' + new Date(r.lastWishAt).toLocaleString('de-CH') : '')) : 'noch keine Wünsche';
+      const meta = [
+        'Gruppe: ' + (r.group || '—'),
+        'Rolle: ' + (r.role || '—'),
+        'E-Mail: ' + (r.loginEmail || '—'),
+        'Wunsch-Code: ' + (r.hasCode ? 'vorhanden' : 'fehlt'),
+        'Portal-Rolle: ' + (r.portalRole || '—'),
+        'Wünsche: ' + wishText
+      ].join(' · ');
+      return '<div class="server-history-row"><div><div class="server-history-title"><span class="server-access-badge ' + badgeCls + '">' + escapeHtml(r.accessStatus) + '</span>' + escapeHtml(r.name || 'ohne Name') + '</div><div class="server-history-meta">' + escapeHtml(meta) + '</div></div></div>';
+    }).join('');
+    el.innerHTML = summary + rows;
+  }
+  async function serverAccessOverviewLoad(showStatus=true){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      if(!row || !row.data) throw new Error('Kein Serverstand gefunden.');
+      const report = buildAccessOverview(row.data);
+      renderAccessOverview(report);
+      if(showStatus) serverStatus('Wunschzugänge geprüft: ' + report.totals.ready + ' bereit · ' + report.totals.missingCode + ' ohne Code · ' + report.totals.withWishes + ' mit Wünschen.', report.totals.missingCode ? '' : 'ok');
+    }catch(e){ serverStatus('Wunschzugänge konnten nicht geprüft werden: ' + e.message, 'bad'); }
+  }
+  function downloadAccessOverview(){
+    if(!serverAccessOverviewCache){ serverAccessOverviewLoad(true); return; }
+    const payload = {kind:'polypoint-wunschzugaenge', version:'13.0.225', exportedAt:new Date().toISOString(), report:serverAccessOverviewCache};
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'polypoint_wunschzugaenge_' + new Date().toISOString().replace(/[:.]/g,'-').slice(0,19) + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    serverStatus('Wunschzugänge-Übersicht heruntergeladen.', 'ok');
+  }
+
   async function openServerSync(){
     loadServerConfig(); refreshServerLocalInfo(); refreshServerSyncInfo();
     serverStatus('Verbindung wird geprüft…', '');
@@ -1492,7 +1683,7 @@
     const s = await getActiveServerSession();
     setServerButtonState(s ? 'connected' : 'ready', s ? 'Server verbunden' : 'Server bereit, bitte einloggen');
     serverStatus(s ? 'Server-Hauptspeicher verbunden.' : 'Server erreichbar. Bitte einloggen, damit der Serverstand geladen wird.', s ? 'ok' : '');
-    if(s){ serverCheckStatus(false); serverHistoryLoad(false); serverActivityLoad(false); serverConflictCheck(false); serverWishReportLoad(false); }
+    if(s){ serverCheckStatus(false); serverHistoryLoad(false); serverActivityLoad(false); serverConflictCheck(false); serverWishReportLoad(false); serverAccessOverviewLoad(false); }
   }
   function closeServerSync(){ serverModal().classList.remove('show'); serverModal().setAttribute('aria-hidden','true'); }
   document.getElementById('serverSyncBtn')?.addEventListener('click', openServerSync);
@@ -1514,6 +1705,8 @@
   document.getElementById('serverActivityDownloadBtn')?.addEventListener('click', downloadServerActivity);
   document.getElementById('serverWishReportBtn')?.addEventListener('click', () => serverWishReportLoad(true));
   document.getElementById('serverWishReportDownloadBtn')?.addEventListener('click', downloadWishReport);
+  document.getElementById('serverAccessOverviewBtn')?.addEventListener('click', () => serverAccessOverviewLoad(true));
+  document.getElementById('serverAccessOverviewDownloadBtn')?.addEventListener('click', downloadAccessOverview);
   document.getElementById('serverHistoryDownloadCurrentBtn')?.addEventListener('click', () => { if(serverHistoryCache[0]) downloadHistoryEntry(0); else serverHistoryLoad(true); });
   document.getElementById('serverHistoryList')?.addEventListener('click', ev => { const btn = ev.target.closest('[data-history-action]'); if(!btn) return; const idx = btn.dataset.historyIndex; if(btn.dataset.historyAction === 'download') downloadHistoryEntry(idx); if(btn.dataset.historyAction === 'compare') renderHistoryCompare(idx); if(btn.dataset.historyAction === 'restore') restoreHistoryEntry(idx); });
   document.getElementById('serverLocalBackupBtn')?.addEventListener('click', () => { const k = makeFullLocalBackup('manual_local_download', true); serverStatus('Notfallkopie heruntergeladen und lokal abgelegt: ' + k, 'ok'); });

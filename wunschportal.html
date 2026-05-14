@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Wunschportal · V13.0.224</title>
+<title>POLYPOINT Wunschportal · V13.0.225</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -14,7 +14,7 @@
 <div class="app">
   <section class="hero">
     <div>
-      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.224</div>
+      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.225</div>
       <h1>Mitarbeiter-Wünsche</h1>
       <div class="mini">Hier werden nur Wünsche gespeichert. Es wird kein definitiver Dienstplan verändert.</div>
     </div>
@@ -52,7 +52,7 @@
         <span class="tag no">Nicht verfügbar</span>
         <span class="tag">Kommentar</span>
       </div>
-      <div class="notice warn" style="margin-top:10px">V13.0.224: Wunsch-Codes können im Planer automatisch erzeugt und als Zugang kopiert werden. Mitarbeiter brauchen keinen Supabase-Benutzer. Vergangene Monate und Monate ohne mindestens 6 Wochen Vorlauf werden ausgeblendet.</div>
+      <div class="notice warn" style="margin-top:10px">V13.0.225: Wunsch-Codes können im Planer automatisch erzeugt und als Zugang kopiert werden. Mitarbeiter brauchen keinen Supabase-Benutzer. Vergangene Monate und Monate ohne mindestens 6 Wochen Vorlauf werden ausgeblendet.</div>
     </article>
   </div>
 
@@ -72,7 +72,7 @@
     <div id="employeeInfo" class="employee-list" style="margin-top:10px">Noch keine Mitarbeiterdaten geladen.</div>
     <div class="days" id="days"></div>
   </article>
-  <div class="footer">POLYPOINT Wunschportal · V13.0.224 · Wunsch-Code automatisch erzeugbar. Mitarbeiter sehen nur ihr eigenes Profil. Dienstliste aus Standardwoche + Mitarbeiter-Abwesenheiten.</div>
+  <div class="footer">POLYPOINT Wunschportal · V13.0.225 · Wunsch-Code automatisch erzeugbar. Mitarbeiter sehen nur ihr eigenes Profil. Dienstliste aus Standardwoche + Mitarbeiter-Abwesenheiten.</div>
 </div>
 
 <script>
@@ -266,7 +266,7 @@
       const dutyByCode=new Map();
       duties.forEach(d=>{ const code=normalizedDutyCode(d?.code); if(code)dutyByCode.set(code,d); });
 
-      // V13.0.224: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
+      // V13.0.225: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
       const activeCodes=activeStandardCodesFromState(st);
       const codesForPortal=activeCodes.size ? [...activeCodes] : duties.filter(shouldShowDutyInPortal).map(d=>normalizedDutyCode(d.code));
       codesForPortal.forEach(code=>{
