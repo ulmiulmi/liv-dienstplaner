@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.225 · Split · Wunschportal</title>
+<title>POLYPOINT Adapter · V13.0.226 · Split · Wunschfrist</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -132,8 +132,8 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.225</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, Wunsch-Anzeige, Wunsch-Erfüllung und Admin-Übersicht für Wunschzugänge.</div>
+        <h1>POLYPOINT Adapter · V13.0.226</h1>
+        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, Wunsch-Anzeige, Wunsch-Erfüllung und Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -266,6 +266,18 @@
         </div>
         <div id="serverWishReportList" class="server-history-list">Noch nicht geladen.</div>
       </div>
+      <div class="emp-box server-wish-settings-box">
+        <h3>⚙️ Wunschfrist</h3>
+        <div class="mini">Legt fest, wie früh Wünsche vor Monatsbeginn geschlossen werden. Standard: 6 Wochen.</div>
+        <div class="central-export-actions">
+          <label style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:900">Wochen vor Monatsbeginn
+            <input id="serverWishDeadlineWeeksInput" type="number" min="0" max="26" step="1" value="6" style="width:90px;border:1px solid var(--line);border-radius:999px;padding:8px 10px;font-weight:900">
+          </label>
+          <button type="button" id="serverWishSettingsLoadBtn">Wunschfrist laden</button>
+          <button type="button" id="serverWishSettingsSaveBtn">Wunschfrist speichern</button>
+        </div>
+        <div id="serverWishSettingsInfo" class="server-history-list"><div class="server-history-row"><div><div class="server-history-title">Noch nicht geladen.</div><div class="server-history-meta">Diese Einstellung gilt für das Wunschportal.</div></div></div></div>
+      </div>
       <div class="emp-box server-access-overview-box">
         <h3>👥 Wunschzugänge</h3>
         <div class="mini">Admin-Übersicht: zeigt Mitarbeiter, Gruppe, Login-E-Mail, Wunsch-Code, ob ein Zugang bereit ist und wann zuletzt Wünsche gespeichert wurden. Es wird nichts geschrieben.</div>
@@ -324,11 +336,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.225'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.225'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -433,7 +445,7 @@
     return true;
   }
 
-  // V13.0.225: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
+  // V13.0.226: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
   // damit die aufgeteilten Planseiten sie anzeigen können. Der Cache wird nicht als Planungsdaten hochgeladen.
   function cacheServerWishesFromData(data){
     try{
@@ -590,7 +602,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.219-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.226-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -729,7 +741,7 @@
     if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
     try{
       const row = await fetchServerRow(cfg, session);
-      const data = row?.data && typeof row.data === 'object' ? row.data : {kind:'polypoint-server-store', version:'13.0.219-split', items:{}, history:[], activity:[]};
+      const data = row?.data && typeof row.data === 'object' ? row.data : {kind:'polypoint-server-store', version:'13.0.226-split', items:{}, history:[], activity:[]};
       const user = serverUserFromSession(session);
       const email = normEmail(user.email);
       if(!email) throw new Error('Keine E-Mail im Login gefunden.');
@@ -907,7 +919,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.225 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.226 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -934,7 +946,7 @@
   }
   function downloadServerActivity(){
     if(!serverActivityCache.length){ serverStatus('Keine Aktivität zum Herunterladen geladen.', 'bad'); return; }
-    const payload = {kind:'polypoint-activity-log', version:'13.0.219-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
+    const payload = {kind:'polypoint-activity-log', version:'13.0.226-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -965,7 +977,7 @@
     }
     const payload = {
       kind:'polypoint-server-store',
-      version:'13.0.219-split',
+      version:'13.0.226-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -979,6 +991,7 @@
     };
     if(previousData && typeof previousData === 'object'){
       if(previousData.wishes) payload.wishes = previousData.wishes;
+      if(previousData.wishSettings) payload.wishSettings = previousData.wishSettings;
       if(previousData.accessRoles) payload.accessRoles = previousData.accessRoles;
       if(previousData.roleVersion) payload.roleVersion = previousData.roleVersion;
     }
@@ -1134,7 +1147,7 @@
       const restoreActivity = buildActivityLog(row?.data, makeActivityEntry('Speicherstand wiederhergestellt', session, {area:'Server', hash:snap.hash, count:snap.count, note:'wiederhergestellt: ' + formatHistoryDate(entry.savedAt)}));
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.219-split',
+        version:'13.0.226-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),
@@ -1143,6 +1156,7 @@
         count:snap.count,
         items:snap.items,
         restoredFrom:{id:entry.id, savedAt:entry.savedAt, hash:entry.hash, user:entry.user, action:entry.action},
+        wishSettings: row?.data?.wishSettings || null,
         history:(currentEntry ? [currentEntry] : []).concat(existingHistory).slice(0,20),
         activity:restoreActivity
       };
@@ -1328,7 +1342,7 @@
   }
 
 
-  // V13.0.225: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
+  // V13.0.226: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
   let serverWishReportCache = null;
   function parseServerStateValue(val){
     if(!val) return null;
@@ -1500,7 +1514,58 @@
   }
 
 
-  // V13.0.225: Admin-Übersicht für Wunschzugänge. Nur lesen, kein Server-Schreiben.
+
+  // V13.0.226: Wunschfrist für das Wunschportal administrierbar machen.
+  function wishSettingsFromData(data){
+    const ws = data && typeof data.wishSettings === 'object' ? data.wishSettings : {};
+    let weeks = Number(ws.deadlineWeeks);
+    if(!Number.isFinite(weeks)) weeks = Number(ws.weeks);
+    if(!Number.isFinite(weeks)) weeks = 6;
+    weeks = Math.max(0, Math.min(26, Math.round(weeks)));
+    return {deadlineWeeks:weeks, deadlineDays:weeks*7, updatedAt:ws.updatedAt||'', updatedBy:ws.updatedBy||null};
+  }
+  function renderWishSettings(row){
+    const info = document.getElementById('serverWishSettingsInfo');
+    const input = document.getElementById('serverWishDeadlineWeeksInput');
+    if(!info) return;
+    const settings = wishSettingsFromData(row?.data || {});
+    if(input) input.value = settings.deadlineWeeks;
+    const minText = settings.deadlineWeeks === 1 ? '1 Woche' : settings.deadlineWeeks + ' Wochen';
+    const updated = settings.updatedAt ? formatHistoryDate(settings.updatedAt) : 'noch nicht separat gespeichert';
+    const by = settings.updatedBy ? serverUserLabel(settings.updatedBy) : 'Standardwert';
+    info.innerHTML = '<div class="server-history-row server-history-current"><div><div class="server-history-title">Aktuelle Wunschfrist: ' + escapeHtml(minText) + ' vor Monatsbeginn</div><div class="server-history-meta">Entspricht ' + settings.deadlineDays + ' Tagen · geändert: ' + escapeHtml(updated) + ' · ' + escapeHtml(by) + '</div></div></div>';
+  }
+  async function loadWishSettings(showStatus=true){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    try{
+      const row = await fetchServerRow(cfg, session);
+      renderWishSettings(row);
+      if(showStatus) serverStatus('Wunschfrist geladen.', 'ok');
+    }catch(e){ serverStatus('Wunschfrist konnte nicht geladen werden: ' + e.message, 'bad'); }
+  }
+  async function saveWishSettings(){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    const input = document.getElementById('serverWishDeadlineWeeksInput');
+    let weeks = Number(input?.value);
+    if(!Number.isFinite(weeks)) weeks = 6;
+    weeks = Math.max(0, Math.min(26, Math.round(weeks)));
+    try{
+      const row = await fetchServerRow(cfg, session);
+      const data = Object.assign({}, row?.data || {});
+      data.wishSettings = {deadlineWeeks:weeks, deadlineDays:weeks*7, updatedAt:new Date().toISOString(), updatedBy:serverUserFromSession(session), version:'13.0.226'};
+      data.activity = buildActivityLog(data, makeActivityEntry('Wunschfrist geändert', session, {area:'Wunschportal', count:weeks, note:weeks + ' Wochen vor Monatsbeginn'}));
+      await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data, updated_at:new Date().toISOString()})});
+      renderWishSettings({data, updated_at:new Date().toISOString()});
+      renderServerActivity({data, updated_at:new Date().toISOString()});
+      serverStatus('Wunschfrist gespeichert: ' + weeks + ' Wochen vor Monatsbeginn.', 'ok');
+    }catch(e){ serverStatus('Wunschfrist konnte nicht gespeichert werden: ' + e.message, 'bad'); }
+  }
+
+  // V13.0.226: Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist. Nur lesen, kein Server-Schreiben.
   function parseServerJsonMaybe(v){
     if(!v || typeof v !== 'string') return null;
     try{ return JSON.parse(v); }catch(_){ return null; }
@@ -1683,7 +1748,7 @@
     const s = await getActiveServerSession();
     setServerButtonState(s ? 'connected' : 'ready', s ? 'Server verbunden' : 'Server bereit, bitte einloggen');
     serverStatus(s ? 'Server-Hauptspeicher verbunden.' : 'Server erreichbar. Bitte einloggen, damit der Serverstand geladen wird.', s ? 'ok' : '');
-    if(s){ serverCheckStatus(false); serverHistoryLoad(false); serverActivityLoad(false); serverConflictCheck(false); serverWishReportLoad(false); serverAccessOverviewLoad(false); }
+    if(s){ serverCheckStatus(false); serverHistoryLoad(false); serverActivityLoad(false); serverConflictCheck(false); serverWishReportLoad(false); loadWishSettings(false); serverAccessOverviewLoad(false); }
   }
   function closeServerSync(){ serverModal().classList.remove('show'); serverModal().setAttribute('aria-hidden','true'); }
   document.getElementById('serverSyncBtn')?.addEventListener('click', openServerSync);
@@ -1705,6 +1770,8 @@
   document.getElementById('serverActivityDownloadBtn')?.addEventListener('click', downloadServerActivity);
   document.getElementById('serverWishReportBtn')?.addEventListener('click', () => serverWishReportLoad(true));
   document.getElementById('serverWishReportDownloadBtn')?.addEventListener('click', downloadWishReport);
+  document.getElementById('serverWishSettingsLoadBtn')?.addEventListener('click', () => loadWishSettings(true));
+  document.getElementById('serverWishSettingsSaveBtn')?.addEventListener('click', saveWishSettings);
   document.getElementById('serverAccessOverviewBtn')?.addEventListener('click', () => serverAccessOverviewLoad(true));
   document.getElementById('serverAccessOverviewDownloadBtn')?.addEventListener('click', downloadAccessOverview);
   document.getElementById('serverHistoryDownloadCurrentBtn')?.addEventListener('click', () => { if(serverHistoryCache[0]) downloadHistoryEntry(0); else serverHistoryLoad(true); });
