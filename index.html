@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.216 · Split · Wunschportal</title>
+<title>POLYPOINT Adapter · V13.0.218 · Split · Wunschportal</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -127,7 +127,7 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.216</h1>
+        <h1>POLYPOINT Adapter · V13.0.218</h1>
         <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, bedarfsgerechten Vorschlägen, Wunsch-Anzeige im Plan und Wunsch-Erfüllungsauswertung.</div>
       </div>
       <div class="top-actions">
@@ -310,11 +310,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213)/g,'V13.0.216'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213)/g,'V13.0.218'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213)/g,'V13.0.216'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213)/g,'V13.0.218'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -418,11 +418,11 @@
     return true;
   }
 
-  // V13.0.216: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
+  // V13.0.218: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
   // damit die aufgeteilten Planseiten sie anzeigen können. Der Cache wird nicht als Planungsdaten hochgeladen.
   function cacheServerWishesFromData(data){
     try{
-      const wishes = data && data.wishes && typeof data.wishes === 'object' ? data.wishes : {version:'13.0.216', people:{}, updatedAt:''};
+      const wishes = data && data.wishes && typeof data.wishes === 'object' ? data.wishes : {version:'13.0.218', people:{}, updatedAt:''};
       localStorage.setItem(WISH_CACHE_KEY, JSON.stringify(wishes));
       window.__polypointEmployeeWishes = wishes;
       try{ frames && frames.forEach(frame => frame.contentWindow?.postMessage({type:'polypointWishesUpdated'}, '*')); }catch(_){ }
@@ -575,7 +575,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.216-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.218-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -714,14 +714,14 @@
     if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
     try{
       const row = await fetchServerRow(cfg, session);
-      const data = row?.data && typeof row.data === 'object' ? row.data : {kind:'polypoint-server-store', version:'13.0.216-split', items:{}, history:[], activity:[]};
+      const data = row?.data && typeof row.data === 'object' ? row.data : {kind:'polypoint-server-store', version:'13.0.218-split', items:{}, history:[], activity:[]};
       const user = serverUserFromSession(session);
       const email = normEmail(user.email);
       if(!email) throw new Error('Keine E-Mail im Login gefunden.');
       const roles = Object.assign({}, roleStore(data));
       roles[email] = {role:ROLE_ADMIN, email, name:user.name || email, updatedAt:new Date().toISOString(), updatedBy:user, source:'admin-planer'};
       data.accessRoles = roles;
-      data.roleVersion = '13.0.216';
+      data.roleVersion = '13.0.218';
       data.activity = buildActivityLog(data, makeActivityEntry('Admin-Rolle gespeichert', session, {area:'Rollen', count:Object.keys(roles).length, note:email}));
       await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data, updated_at:new Date().toISOString()})});
       setServerRoleInfo('Admin-Rolle gespeichert für ' + email + '. Rollen im Server: ' + Object.keys(roles).length, 'ok');
@@ -892,7 +892,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.216 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.218 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -919,7 +919,7 @@
   }
   function downloadServerActivity(){
     if(!serverActivityCache.length){ serverStatus('Keine Aktivität zum Herunterladen geladen.', 'bad'); return; }
-    const payload = {kind:'polypoint-activity-log', version:'13.0.216-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
+    const payload = {kind:'polypoint-activity-log', version:'13.0.218-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -950,7 +950,7 @@
     }
     const payload = {
       kind:'polypoint-server-store',
-      version:'13.0.216-split',
+      version:'13.0.218-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -1119,7 +1119,7 @@
       const restoreActivity = buildActivityLog(row?.data, makeActivityEntry('Speicherstand wiederhergestellt', session, {area:'Server', hash:snap.hash, count:snap.count, note:'wiederhergestellt: ' + formatHistoryDate(entry.savedAt)}));
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.216-split',
+        version:'13.0.218-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),
@@ -1313,7 +1313,7 @@
   }
 
 
-  // V13.0.216: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
+  // V13.0.218: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
   let serverWishReportCache = null;
   function parseServerStateValue(val){
     if(!val) return null;
@@ -1329,7 +1329,9 @@
     if(input && !input.value) input.value = wishReportMonthDefault();
   }
   function wishReportTypeText(type){
-    return ({F:'Frühdienst gewünscht',M:'Mitteldienst gewünscht',S:'Spätdienst gewünscht',N:'Nachtwache gewünscht',FR:'frei gewünscht',NO:'nicht verfügbar',P:'Pikett möglich',OTHER:'anderer Wunsch'})[String(type||'')] || 'Wunsch';
+    type=String(type||'');
+    const fixed={F:'Frühdienst gewünscht',M:'Mitteldienst gewünscht',S:'Spätdienst gewünscht',N:'Nachtwache gewünscht',FR:'frei gewünscht',NO:'nicht verfügbar',P:'Pikett möglich',OTHER:'anderer Wunsch','AREA:NACHTWACHE':'Nachtwache / Nachtdienst gewünscht'};
+    return fixed[type] || (type ? ('Dienst '+type+' gewünscht') : 'Wunsch');
   }
   function wishReportDutyFamily(code){
     const c = String(code || '').toUpperCase();
@@ -1340,10 +1342,12 @@
     if(c === 'P') return 'P';
     return '';
   }
-  function wishReportCodeMatches(type, code, comment){
+  function wishReportCodeMatches(type, code, comment, group=''){
     const c = String(code || '').toUpperCase();
-    type = String(type || '');
-    if(type === 'F' || type === 'M' || type === 'S' || type === 'N' || type === 'P') return wishReportDutyFamily(c) === type;
+    type = String(type || '').toUpperCase();
+    if(type && type === c) return true;
+    if(type === 'AREA:NACHTWACHE') return /nacht/i.test(String(group||'')) && !!c && !['FR','WF','KGL','KF','FER','RAUS'].includes(c);
+    if(type === 'F' || type === 'M' || type === 'S' || type === 'N' || type === 'P') return wishReportDutyFamily(c) === type || (type==='N' && /nacht/i.test(String(group||'')));
     if(type === 'FR') return !c || ['FR','WF','KGL','KF','FER','RAUS'].includes(c);
     if(type === 'NO') return !c || ['FR','WF','KGL','KF','FER','RAUS'].includes(c);
     if(type === 'OTHER'){
@@ -1418,8 +1422,8 @@
         const codes = entries.map(e => e.code).filter(Boolean);
         let status = 'offen';
         if(type){
-          if(type === 'NO') status = entries.some(e => !wishReportCodeMatches(type, e.code, comment)) ? 'verletzt' : 'erfüllt';
-          else status = entries.some(e => wishReportCodeMatches(type, e.code, comment)) ? 'erfüllt' : 'offen';
+          if(type === 'NO') status = entries.some(e => !wishReportCodeMatches(type, e.code, comment, e.group)) ? 'verletzt' : 'erfüllt';
+          else status = entries.some(e => wishReportCodeMatches(type, e.code, comment, e.group)) ? 'erfüllt' : 'offen';
         }
         rows.push({
           date,
@@ -1470,7 +1474,7 @@
   }
   function downloadWishReport(){
     if(!serverWishReportCache){ serverWishReportLoad(true); return; }
-    const payload = {kind:'polypoint-wunsch-erfuellung', version:'13.0.216', createdAt:new Date().toISOString(), report:serverWishReportCache};
+    const payload = {kind:'polypoint-wunsch-erfuellung', version:'13.0.218', createdAt:new Date().toISOString(), report:serverWishReportCache};
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
