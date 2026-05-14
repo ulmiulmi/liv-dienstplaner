@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Wunschportal · V13.0.226d</title>
+<title>POLYPOINT Wunschportal · V13.0.226e</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -14,7 +14,7 @@
 <div class="app">
   <section class="hero">
     <div>
-      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.226d</div>
+      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.226e</div>
       <h1>Mitarbeiter-Wünsche</h1>
       <div class="mini">Hier werden nur Wünsche gespeichert. Es wird kein definitiver Dienstplan verändert.</div>
     </div>
@@ -26,21 +26,19 @@
 
   <div class="grid">
     <article class="card" id="loginCard">
-      <h2>Login</h2>
-      <div class="notice">Admin/Planer kann sich mit Supabase einloggen. Mitarbeiter können ohne Supabase-Benutzer über persönlichen Wunsch-Code Wünsche eintragen. Definitive Dienste werden nicht verändert.</div>
-      <div class="formgrid" style="margin-top:10px">
-        <label><span class="mini">E-Mail</span><input id="email" type="email" autocomplete="username" placeholder="name@example.ch"></label>
-        <label><span class="mini">Passwort</span><input id="password" type="password" autocomplete="current-password" placeholder="Passwort"></label>
+      <h2>Mitarbeiter-Login</h2>
+      <div class="notice">Für Mitarbeitende: Name oder E-Mail und persönlicher Wunsch-Code. Kein Supabase-Benutzer nötig. Definitive Dienste werden nicht verändert.</div>
+      <div style="display:none" aria-hidden="true">
+        <input id="email" type="email" autocomplete="username" tabindex="-1">
+        <input id="password" type="password" autocomplete="current-password" tabindex="-1">
+        <button type="button" id="loginBtn" tabindex="-1">Admin einloggen</button>
       </div>
-      <div class="toolbar" style="margin-top:10px"><button class="primary" id="loginBtn">Admin einloggen</button><button id="logoutBtn">Abmelden</button></div>
-      <h3 style="margin-top:14px">Mitarbeiter-Code</h3>
-      <div class="notice" style="margin-top:6px">Für Mitarbeiter: Name oder E-Mail und persönlicher Wunsch-Code. Kein Supabase-Benutzer nötig.</div>
       <div class="formgrid" style="margin-top:10px">
         <label><span class="mini">Name oder E-Mail</span><input id="codeIdentity" type="text" autocomplete="username" placeholder="Name oder E-Mail"></label>
         <label><span class="mini">Wunsch-Code</span><input id="codePin" type="password" autocomplete="one-time-code" placeholder="Code"></label>
       </div>
-      <div class="toolbar" style="margin-top:10px"><button class="ok" id="codeLoginBtn">Mit Code öffnen</button></div>
-      <div id="loginStatus" class="notice" style="margin-top:10px">Nicht verbunden.</div>
+      <div class="toolbar" style="margin-top:10px"><button class="ok" id="codeLoginBtn">Mit Code öffnen</button><button id="logoutBtn">Abmelden</button></div>
+      <div id="loginStatus" class="notice" style="margin-top:10px">Bitte mit Wunsch-Code öffnen.</div>
     </article>
 
     <article class="card">
@@ -52,7 +50,7 @@
         <span class="tag no">Nicht verfügbar</span>
         <span class="tag">Kommentar</span>
       </div>
-      <div class="notice warn" style="margin-top:10px">V13.0.226d: Wünsche werden automatisch gespeichert, wenn du Mitarbeiter oder Monat wechselst. Jeder Mitarbeiter lädt seine eigenen Wünsche und sieht zusätzlich nur seinen persönlichen aktuellen Dienstplan.</div>
+      <div class="notice warn" style="margin-top:10px">V13.0.226e: Das Portal zeigt nur noch den Mitarbeiter-Zugang. Wünsche werden automatisch gespeichert, wenn du Mitarbeiter oder Monat wechselst. Jeder Mitarbeiter lädt seine eigenen Wünsche und sieht zusätzlich nur seinen persönlichen aktuellen Dienstplan.</div>
     </article>
   </div>
 
@@ -84,7 +82,7 @@
     </section>
     <div class="days" id="days"></div>
   </article>
-  <div class="footer">POLYPOINT Wunschportal · V13.0.226d · Wunsch-Code automatisch erzeugbar. Autospeichern beim Mitarbeiter-/Monatswechsel. Wunschfrist aus Admin-Einstellung.</div>
+  <div class="footer">POLYPOINT Wunschportal · V13.0.226e · Wunsch-Code automatisch erzeugbar. Autospeichern beim Mitarbeiter-/Monatswechsel. Wunschfrist aus Admin-Einstellung.</div>
 </div>
 
 <script>
@@ -290,7 +288,7 @@
       const dutyByCode=new Map();
       duties.forEach(d=>{ const code=normalizedDutyCode(d?.code); if(code)dutyByCode.set(code,d); });
 
-      // V13.0.226d: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
+      // V13.0.226e: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
       const activeCodes=activeStandardCodesFromState(st);
       const codesForPortal=activeCodes.size ? [...activeCodes] : duties.filter(shouldShowDutyInPortal).map(d=>normalizedDutyCode(d.code));
       codesForPortal.forEach(code=>{
