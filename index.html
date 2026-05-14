@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.228 · Split · Auto-Wunsch-Sync</title>
+<title>POLYPOINT Adapter · V13.0.229 · Split · Admin-Freigabe robust</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -121,9 +121,10 @@
       <label><span class="mini">Passwort</span><input id="adminGatePassword" type="password" autocomplete="current-password" placeholder="Passwort"></label>
     </div>
     <div class="role-actions">
-      <button type="button" class="primary" id="adminGateLoginBtn">Als Admin/Planer einloggen</button>
-      <button type="button" id="adminGatePortalBtn">Zum Wunschportal</button>
-      <button type="button" id="adminGateRetryBtn">Rolle erneut prüfen</button>
+      <button type="button" class="primary" id="adminGateLoginBtn" onclick="event.preventDefault(); window.polypointAdminGateLogin && window.polypointAdminGateLogin();">Als Admin/Planer einloggen</button>
+      <button type="button" id="adminGatePortalBtn" onclick="event.preventDefault(); location.href='wunschportal.html';">Zum Wunschportal</button>
+      <button type="button" id="adminGateRetryBtn" onclick="event.preventDefault(); window.polypointAdminGateRetry && window.polypointAdminGateRetry();">Rolle erneut prüfen</button>
+      <button type="button" id="adminGateEmergencyBtn" onclick="event.preventDefault(); window.polypointAdminGateEmergency && window.polypointAdminGateEmergency();">Admin-Notfall öffnen</button>
     </div>
   </div>
 </div>
@@ -132,8 +133,8 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.228</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, Wunsch-Anzeige, Wunsch-Erfüllung, Wunschzugängen, Wunschfrist und automatischem Wunsch-Sync.</div>
+        <h1>POLYPOINT Adapter · V13.0.229</h1>
+        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, Wunsch-Anzeige, Wunsch-Erfüllung, Wunschzugängen, Wunschfrist, automatischem Wunsch-Sync und robuster Admin-Freigabe.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -338,11 +339,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.228'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.229'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.228'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.229'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -451,7 +452,7 @@
     return true;
   }
 
-  // V13.0.228: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
+  // V13.0.229: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
   // damit die aufgeteilten Planseiten sie anzeigen können. Der Cache wird nicht als Planungsdaten hochgeladen.
   function stableWishHash(wishes){
     try{ return stableHashFromItems({wishes: JSON.stringify(wishes || {people:{}})}); }catch(_){ return '0'; }
@@ -591,12 +592,24 @@
     const cfg = getServerInputs();
     if(!cfg.url || !cfg.anon) throw new Error('Project URL oder anon key fehlt.');
     const headers = Object.assign({'apikey':cfg.anon}, options.headers || {});
-    const res = await fetch(cfg.url + path, Object.assign({}, options, {headers}));
-    const txt = await res.text();
-    let data = null;
-    try { data = txt ? JSON.parse(txt) : null; } catch(_) { data = txt; }
-    if(!res.ok){ const msg = (data && data.msg) || (data && data.message) || (typeof data === 'string' ? data : ('HTTP ' + res.status)); throw new Error(msg); }
-    return data;
+    const timeoutMs = Number(options.timeoutMs || 15000);
+    const controller = new AbortController();
+    const timer = setTimeout(() => { try{ controller.abort(); }catch(_){} }, timeoutMs);
+    const fetchOptions = Object.assign({}, options, {headers, signal: options.signal || controller.signal});
+    delete fetchOptions.timeoutMs;
+    try{
+      const res = await fetch(cfg.url + path, fetchOptions);
+      const txt = await res.text();
+      let data = null;
+      try { data = txt ? JSON.parse(txt) : null; } catch(_) { data = txt; }
+      if(!res.ok){ const msg = (data && data.msg) || (data && data.message) || (typeof data === 'string' ? data : ('HTTP ' + res.status)); throw new Error(msg); }
+      return data;
+    }catch(e){
+      if(e && e.name === 'AbortError') throw new Error('Server-Anfrage hat zu lange gedauert. Bitte erneut versuchen.');
+      throw e;
+    }finally{
+      clearTimeout(timer);
+    }
   }
   async function refreshServerSession(){
     const cfg = getServerInputs(); const old = loadServerSession();
@@ -682,6 +695,9 @@
   const ROLE_ADMIN = 'admin';
   const ROLE_PLANNER = 'planner';
   const ROLE_EMPLOYEE = 'employee';
+  // V13.0.229: Notfall-Freigabe nur nach gültigem Supabase-Login mit bekannter Admin-E-Mail.
+  const EMERGENCY_ADMIN_EMAILS = ['ulmannandreas@gmail.com'];
+  function isEmergencyAdminEmail(email){ return EMERGENCY_ADMIN_EMAILS.includes(normEmail(email)); }
   function normEmail(v){ return String(v || '').trim().toLowerCase(); }
   function roleStore(data){
     if(!data || typeof data !== 'object') return {};
@@ -719,6 +735,7 @@
     el.classList.toggle('bad', kind === 'bad');
   }
   async function evaluateAdminAccess(showStatus=false){
+    setAdminGate(true, 'Rolle wird geprüft…', 'warn');
     loadServerConfig();
     const cfg = getServerInputs();
     const session = await getActiveServerSession();
@@ -750,6 +767,12 @@
       }
       return true;
     }catch(e){
+      const email = normEmail(session?.user?.email || storedServerEmail());
+      if(isEmergencyAdminEmail(email)){
+        setAdminGate(true, 'Rollenprüfung nicht möglich: ' + e.message + '\nDu bist als bekannte Admin-E-Mail eingeloggt. Nutze „Admin-Notfall öffnen“, falls die Prüfung hängt.', 'warn');
+        if(showStatus) setServerRoleInfo('Rollenprüfung hängt, Notfallöffnung für ' + email + ' möglich.', 'bad');
+        return false;
+      }
       setAdminGate(true, 'Rollenprüfung nicht möglich: ' + e.message + '\nBitte Verbindung/Login prüfen.', 'bad');
       if(showStatus) setServerRoleInfo('Rollenprüfung nicht möglich: ' + e.message, 'bad');
       return false;
@@ -762,14 +785,43 @@
     const passInput = document.getElementById('serverPasswordInput'); if(passInput) passInput.value = password;
     const cfg = saveServerConfig();
     if(!email || !password){ setAdminGate(true, 'Bitte E-Mail und Passwort eintragen.', 'bad'); return; }
+    setAdminGate(true, 'Login wird gesendet…', 'warn');
     try{
-      const data = await supabaseRequest('/auth/v1/token?grant_type=password', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, password})});
-      storeServerSession(data, cfg);
+      const data = await supabaseRequest('/auth/v1/token?grant_type=password', {method:'POST', timeoutMs:15000, headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, password})});
+      const session = storeServerSession(data, cfg);
+      const loggedEmail = normEmail(data?.user?.email || email);
       setAdminGate(true, 'Login OK. Rolle wird geprüft…', 'ok');
-      await evaluateAdminAccess(true);
-      serverLoadPrimaryOnStart();
-    }catch(e){ setAdminGate(true, 'Login nicht möglich: ' + e.message, 'bad'); }
+      const allowed = await evaluateAdminAccess(true);
+      if(allowed){
+        serverLoadPrimaryOnStart();
+        return;
+      }
+      if(isEmergencyAdminEmail(loggedEmail)){
+        setAdminGate(true, 'Login OK, aber Rollenprüfung hat nicht freigegeben.\nDu bist als bekannte Admin-E-Mail eingeloggt. Nutze „Admin-Notfall öffnen“, falls die Prüfung hängt.', 'warn');
+      }
+    }catch(e){
+      setAdminGate(true, 'Login nicht möglich: ' + e.message, 'bad');
+    }
   }
+  function adminGateEmergencyUnlock(){
+    const session = loadServerSession();
+    const email = normEmail(session?.user?.email || storedServerEmail());
+    if(!isServerSessionFresh(session)){
+      setAdminGate(true, 'Notfallöffnung erst nach erfolgreichem Admin-Login möglich. Bitte zuerst den blauen Login-Button nutzen.', 'bad');
+      return false;
+    }
+    if(!isEmergencyAdminEmail(email)){
+      setAdminGate(true, 'Notfallöffnung ist für diese E-Mail nicht freigegeben: ' + (email || 'unbekannt'), 'bad');
+      return false;
+    }
+    setAdminGate(false);
+    setServerRoleInfo('Admin-Notfallmodus geöffnet für ' + email + '. Server-Rolle später im ☁️ Server-Fenster erneut prüfen/speichern.', 'ok');
+    serverStatus('Admin-Notfallmodus geöffnet für ' + email + '.', 'ok');
+    setServerButtonState('connected','Server verbunden · Admin-Notfallmodus');
+    try{ serverLoadPrimaryOnStart(); scheduleWishAutoRefresh('admin_emergency'); }catch(e){ console.warn(e); }
+    return true;
+  }
+
   async function serverRoleMarkAdmin(){
     const cfg = saveServerConfig(); if(!cfg) return;
     const session = await getActiveServerSession();
@@ -954,7 +1006,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.228 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.229 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -1377,7 +1429,7 @@
   }
 
 
-  // V13.0.228: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
+  // V13.0.229: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
   let serverWishReportCache = null;
   function parseServerStateValue(val){
     if(!val) return null;
@@ -1585,7 +1637,7 @@
   }
 
 
-  // V13.0.228: Wunschfrist für das Wunschportal administrierbar machen.
+  // V13.0.229: Wunschfrist für das Wunschportal administrierbar machen.
   function wishSettingsFromData(data){
     const ws = data && typeof data.wishSettings === 'object' ? data.wishSettings : {};
     let weeks = Number(ws.deadlineWeeks);
@@ -1635,7 +1687,7 @@
     }catch(e){ serverStatus('Wunschfrist konnte nicht gespeichert werden: ' + e.message, 'bad'); }
   }
 
-  // V13.0.228: Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist. Nur lesen, kein Server-Schreiben.
+  // V13.0.229: Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist. Nur lesen, kein Server-Schreiben.
   function parseServerJsonMaybe(v){
     if(!v || typeof v !== 'string') return null;
     try{ return JSON.parse(v); }catch(_){ return null; }
@@ -1849,9 +1901,9 @@
   document.getElementById('serverLocalBackupBtn')?.addEventListener('click', () => { const k = makeFullLocalBackup('manual_local_download', true); serverStatus('Notfallkopie heruntergeladen und lokal abgelegt: ' + k, 'ok'); });
   document.getElementById('serverRestoreBackupBtn')?.addEventListener('click', restoreLatestLocalEmergencyBackup);
   document.getElementById('serverAutosaveToggle')?.addEventListener('change', ev => { setAutosaveEnabled(!!ev.target.checked); serverStatus(ev.target.checked ? 'Auto-Speichern aktiv.' : 'Auto-Speichern ausgeschaltet.', 'ok'); });
-  document.getElementById('adminGateLoginBtn')?.addEventListener('click', adminGateLogin);
-  document.getElementById('adminGatePortalBtn')?.addEventListener('click', () => { location.href = 'wunschportal.html'; });
-  document.getElementById('adminGateRetryBtn')?.addEventListener('click', () => evaluateAdminAccess(true));
+  window.polypointAdminGateLogin = adminGateLogin;
+  window.polypointAdminGateRetry = () => evaluateAdminAccess(true);
+  window.polypointAdminGateEmergency = adminGateEmergencyUnlock;
   document.getElementById('serverRoleCheckBtn')?.addEventListener('click', () => evaluateAdminAccess(true));
   document.getElementById('serverRoleMarkAdminBtn')?.addEventListener('click', serverRoleMarkAdmin);
   loadServerConfig();
