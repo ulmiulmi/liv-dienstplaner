@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Wunschportal · V13.0.226</title>
+<title>POLYPOINT Wunschportal · V13.0.227</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -14,7 +14,7 @@
 <div class="app">
   <section class="hero">
     <div>
-      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.226</div>
+      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.227</div>
       <h1>Mitarbeiter-Wünsche</h1>
       <div class="mini">Hier werden nur Wünsche gespeichert. Es wird kein definitiver Dienstplan verändert.</div>
     </div>
@@ -52,7 +52,7 @@
         <span class="tag no">Nicht verfügbar</span>
         <span class="tag">Kommentar</span>
       </div>
-      <div class="notice warn" style="margin-top:10px">V13.0.226: Wunsch-Codes können im Planer automatisch erzeugt und als Zugang kopiert werden. Mitarbeiter brauchen keinen Supabase-Benutzer. Vergangene Monate und Monate ohne die im Admin festgelegte Wunschfrist werden ausgeblendet.</div>
+      <div class="notice warn" style="margin-top:10px">V13.0.227: Wunsch-Codes können im Planer automatisch erzeugt und als Zugang kopiert werden. Mitarbeiter brauchen keinen Supabase-Benutzer. Vergangene Monate und Monate ohne die im Admin festgelegte Wunschfrist werden ausgeblendet.</div>
     </article>
   </div>
 
@@ -72,7 +72,7 @@
     <div id="employeeInfo" class="employee-list" style="margin-top:10px">Noch keine Mitarbeiterdaten geladen.</div>
     <div class="days" id="days"></div>
   </article>
-  <div class="footer">POLYPOINT Wunschportal · V13.0.226 · Wunsch-Code automatisch erzeugbar. Mitarbeiter sehen nur ihr eigenes Profil. Wunschfrist aus Admin-Einstellung.</div>
+  <div class="footer">POLYPOINT Wunschportal · V13.0.227 · Wunsch-Code automatisch erzeugbar. Mitarbeiter sehen nur ihr eigenes Profil. Wunschfrist aus Admin-Einstellung.</div>
 </div>
 
 <script>
@@ -277,7 +277,7 @@
       const dutyByCode=new Map();
       duties.forEach(d=>{ const code=normalizedDutyCode(d?.code); if(code)dutyByCode.set(code,d); });
 
-      // V13.0.226: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
+      // V13.0.227: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
       const activeCodes=activeStandardCodesFromState(st);
       const codesForPortal=activeCodes.size ? [...activeCodes] : duties.filter(shouldShowDutyInPortal).map(d=>normalizedDutyCode(d.code));
       codesForPortal.forEach(code=>{
@@ -458,9 +458,9 @@
       if(!ws.people[key])ws.people[key]={employeeId:emp.id,employeeName:emp.name,email:session.user.email||'',group:emp.group,months:{}};
       ws.people[key].employeeId=emp.id; ws.people[key].employeeName=emp.name; ws.people[key].email=session.user.email||''; ws.people[key].group=emp.group; ws.people[key].groupKey=emp.groupKey; ws.people[key].updatedAt=new Date().toISOString();
       ws.people[key].months[monthKey()]={year:Number(q('year').value),month:Number(q('month').value),days,group:emp.group,updatedAt:new Date().toISOString(),savedBy:serverUser()};
-      ws.version='13.0.226'; ws.updatedAt=new Date().toISOString();
+      ws.version='13.0.227'; ws.updatedAt=new Date().toISOString();
       const email=normEmail(session.user.email||''); const roles=Object.assign({},roleStore(data));
-      if(email && session.mode!=='code'){ const oldRole=roles[email]; const oldRoleName=String(typeof oldRole==='string'?oldRole:oldRole?.role||'').toLowerCase(); if(oldRoleName!=='admin'&&oldRoleName!=='planner'){ roles[email]={role:'employee',email,employeeId:emp.id,employeeName:emp.name,name:emp.name,group:emp.group,groupKey:emp.groupKey,updatedAt:new Date().toISOString(),source:'wunschportal-auto-gruppe'}; data.accessRoles=roles; data.roleVersion='13.0.226'; }}
+      if(email && session.mode!=='code'){ const oldRole=roles[email]; const oldRoleName=String(typeof oldRole==='string'?oldRole:oldRole?.role||'').toLowerCase(); if(oldRoleName!=='admin'&&oldRoleName!=='planner'){ roles[email]={role:'employee',email,employeeId:emp.id,employeeName:emp.name,name:emp.name,group:emp.group,groupKey:emp.groupKey,updatedAt:new Date().toISOString(),source:'wunschportal-auto-gruppe'}; data.accessRoles=roles; data.roleVersion='13.0.227'; }}
       const count=Object.keys(days).length; data.activity=[makeActivity('Wünsche gespeichert',count,emp)].concat(activityFromData(data)).slice(0,50);
       const postHeaders={'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}; if(s.access_token)postHeaders.Authorization='Bearer '+s.access_token;
       await supa('/rest/v1/planer_store',{method:'POST',headers:postHeaders,body:JSON.stringify({id:STORE_ID,data,updated_at:new Date().toISOString()})});

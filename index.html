@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.226 · Split · Wunschfrist</title>
+<title>POLYPOINT Adapter · V13.0.227 · Split · Auto-Wunsch-Sync</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -132,8 +132,8 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.226</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, Wunsch-Anzeige, Wunsch-Erfüllung und Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist.</div>
+        <h1>POLYPOINT Adapter · V13.0.227</h1>
+        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, Wunsch-Anzeige, Wunsch-Erfüllung, Wunschzugängen, Wunschfrist und automatischem Wunsch-Sync.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -263,7 +263,9 @@
           <input id="serverWishMonthInput" type="month" style="border:1px solid var(--line);border-radius:999px;padding:8px 10px;font-weight:900">
           <button type="button" id="serverWishReportBtn">Wünsche prüfen</button>
           <button type="button" id="serverWishReportDownloadBtn">Auswertung herunterladen</button>
+          <button type="button" id="serverWishCacheRefreshBtn">Wünsche jetzt aktualisieren</button>
         </div>
+        <div class="server-small" id="serverWishAutoSyncInfo">Wünsche werden automatisch im Hintergrund aktualisiert, ohne den Dienstplan zu überschreiben.</div>
         <div id="serverWishReportList" class="server-history-list">Noch nicht geladen.</div>
       </div>
       <div class="emp-box server-wish-settings-box">
@@ -336,11 +338,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.227'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.227'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -375,6 +377,7 @@
     frame.classList.add('active');
     setActiveButton(id);
     activeLabel.textContent = 'geladen: ' + labels[id];
+    if(typeof scheduleWishAutoRefresh === 'function') scheduleWishAutoRefresh('planner_switch');
     if(pushHash && location.hash.replace('#','') !== id) history.replaceState(null, '', '#' + id);
     setTimeout(() => { if(activeId === id) loader.style.display = 'none'; }, 900);
   }
@@ -404,6 +407,9 @@
   let serverAutosaveTimer = null;
   let serverAutosaveBusy = false;
   let lastObservedServerHash = '';
+  let serverWishAutoTimer = null;
+  let serverWishAutoBusy = false;
+  let lastObservedWishHash = '';
   let serverHistoryCache = [];
   let serverActivityCache = [];
   let serverAccessOverviewCache = null;
@@ -445,15 +451,44 @@
     return true;
   }
 
-  // V13.0.226: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
+  // V13.0.227: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
   // damit die aufgeteilten Planseiten sie anzeigen können. Der Cache wird nicht als Planungsdaten hochgeladen.
-  function cacheServerWishesFromData(data){
+  function stableWishHash(wishes){
+    try{ return stableHashFromItems({wishes: JSON.stringify(wishes || {people:{}})}); }catch(_){ return '0'; }
+  }
+  function countWishEntries(wishes){
+    let count = 0;
+    try{
+      const people = wishes && wishes.people ? wishes.people : {};
+      Object.values(people).forEach(p => Object.values(p.months || {}).forEach(m => { count += Object.keys(m.days || {}).length; }));
+    }catch(_){ }
+    return count;
+  }
+  function setWishAutoSyncInfo(text, kind=''){
+    const el = document.getElementById('serverWishAutoSyncInfo');
+    if(!el) return;
+    el.textContent = text || '';
+    el.style.color = kind === 'bad' ? '#c73636' : kind === 'ok' ? '#0f8a5f' : '';
+  }
+  function cacheServerWishesFromData(data, opts={}){
     try{
       const wishes = data && data.wishes && typeof data.wishes === 'object' ? data.wishes : {version:'13.0.221', people:{}, updatedAt:''};
+      const nextHash = stableWishHash(wishes);
+      const prevRaw = localStorage.getItem(WISH_CACHE_KEY);
+      let prevHash = lastObservedWishHash;
+      if(!prevHash && prevRaw){ try{ prevHash = stableWishHash(JSON.parse(prevRaw)); }catch(_){ } }
+      const changed = nextHash !== prevHash;
       localStorage.setItem(WISH_CACHE_KEY, JSON.stringify(wishes));
       window.__polypointEmployeeWishes = wishes;
+      lastObservedWishHash = nextHash;
       try{ frames && frames.forEach(frame => frame.contentWindow?.postMessage({type:'polypointWishesUpdated'}, '*')); }catch(_){ }
-    }catch(e){ console.warn('Wünsche konnten nicht lokal bereitgestellt werden', e); }
+      if(!opts.quiet || changed){
+        const n = countWishEntries(wishes);
+        const when = new Date().toLocaleTimeString('de-CH', {hour:'2-digit', minute:'2-digit'});
+        setWishAutoSyncInfo((changed ? 'Wünsche automatisch aktualisiert: ' : 'Wünsche geprüft: ') + n + ' Einträge · ' + when, changed ? 'ok' : '');
+      }
+      return {changed, count: countWishEntries(wishes), hash: nextHash};
+    }catch(e){ console.warn('Wünsche konnten nicht lokal bereitgestellt werden', e); setWishAutoSyncInfo('Wünsche konnten nicht aktualisiert werden: ' + e.message, 'bad'); return {changed:false,count:0,hash:''}; }
   }
 
   function collectPolypointStorage(){
@@ -919,7 +954,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.226 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.227 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -1342,7 +1377,7 @@
   }
 
 
-  // V13.0.226: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
+  // V13.0.227: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
   let serverWishReportCache = null;
   function parseServerStateValue(val){
     if(!val) return null;
@@ -1515,7 +1550,42 @@
 
 
 
-  // V13.0.226: Wunschfrist für das Wunschportal administrierbar machen.
+  async function refreshWishCacheFromServer(opts={}){
+    const cfg = saveServerConfig(); if(!cfg) return false;
+    const session = await getActiveServerSession();
+    if(!session){ if(opts.showStatus) serverStatus('Bitte zuerst einloggen.', 'bad'); setWishAutoSyncInfo('Wunsch-Sync wartet auf Login.', ''); return false; }
+    if(serverWishAutoBusy) return false;
+    serverWishAutoBusy = true;
+    try{
+      const row = await fetchServerRow(cfg, session);
+      if(!row || !row.data) throw new Error('Keine Serverdaten gefunden.');
+      const result = cacheServerWishesFromData(row.data, {quiet: !opts.showStatus});
+      if(opts.showStatus){
+        serverStatus('Wünsche im Plan aktualisiert: ' + result.count + ' Wunsch-Einträge. Die offenen Gruppen aktualisieren sich automatisch.', 'ok');
+      }
+      return true;
+    }catch(e){
+      if(opts.showStatus) serverStatus('Wünsche konnten nicht in den Plan geladen werden: ' + e.message, 'bad');
+      setWishAutoSyncInfo('Wunsch-Sync Fehler: ' + e.message, 'bad');
+      return false;
+    }finally{ serverWishAutoBusy = false; }
+  }
+  async function serverWishCacheRefresh(){
+    await refreshWishCacheFromServer({showStatus:true});
+  }
+  function scheduleWishAutoRefresh(reason='') {
+    clearTimeout(serverWishAutoTimer);
+    serverWishAutoTimer = setTimeout(() => refreshWishCacheFromServer({showStatus:false}), 1200);
+  }
+  function startWishAutoSyncWatcher(){
+    scheduleWishAutoRefresh('start');
+    setInterval(() => refreshWishCacheFromServer({showStatus:false}), 45000);
+    document.addEventListener('visibilitychange', () => { if(!document.hidden) scheduleWishAutoRefresh('visible'); });
+    window.addEventListener('hashchange', () => scheduleWishAutoRefresh('bereich'));
+  }
+
+
+  // V13.0.227: Wunschfrist für das Wunschportal administrierbar machen.
   function wishSettingsFromData(data){
     const ws = data && typeof data.wishSettings === 'object' ? data.wishSettings : {};
     let weeks = Number(ws.deadlineWeeks);
@@ -1556,7 +1626,7 @@
     try{
       const row = await fetchServerRow(cfg, session);
       const data = Object.assign({}, row?.data || {});
-      data.wishSettings = {deadlineWeeks:weeks, deadlineDays:weeks*7, updatedAt:new Date().toISOString(), updatedBy:serverUserFromSession(session), version:'13.0.226'};
+      data.wishSettings = {deadlineWeeks:weeks, deadlineDays:weeks*7, updatedAt:new Date().toISOString(), updatedBy:serverUserFromSession(session), version:'13.0.227'};
       data.activity = buildActivityLog(data, makeActivityEntry('Wunschfrist geändert', session, {area:'Wunschportal', count:weeks, note:weeks + ' Wochen vor Monatsbeginn'}));
       await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data, updated_at:new Date().toISOString()})});
       renderWishSettings({data, updated_at:new Date().toISOString()});
@@ -1565,7 +1635,7 @@
     }catch(e){ serverStatus('Wunschfrist konnte nicht gespeichert werden: ' + e.message, 'bad'); }
   }
 
-  // V13.0.226: Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist. Nur lesen, kein Server-Schreiben.
+  // V13.0.227: Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist. Nur lesen, kein Server-Schreiben.
   function parseServerJsonMaybe(v){
     if(!v || typeof v !== 'string') return null;
     try{ return JSON.parse(v); }catch(_){ return null; }
@@ -1788,7 +1858,8 @@
   setWishReportDefaultMonth();
   refreshServerButtonFromSession();
   startServerAutosaveWatcher();
-  evaluateAdminAccess(false).then(ok => { refreshServerButtonFromSession(); if(ok) serverLoadPrimaryOnStart(); }).catch(() => setServerButtonState('error','Server-Verbindung prüfen'));
+  startWishAutoSyncWatcher();
+  evaluateAdminAccess(false).then(ok => { refreshServerButtonFromSession(); if(ok){ serverLoadPrimaryOnStart(); scheduleWishAutoRefresh('login_ok'); } }).catch(() => setServerButtonState('error','Server-Verbindung prüfen'));
 
 })();
 </script>
