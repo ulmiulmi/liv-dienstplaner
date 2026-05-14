@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.215 · Split · Wunschportal</title>
+<title>POLYPOINT Adapter · V13.0.216 · Split · Wunschportal</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -127,8 +127,8 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.215</h1>
-        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, bedarfsgerechten Vorschlägen und Wunsch-Anzeige im Plan.</div>
+        <h1>POLYPOINT Adapter · V13.0.216</h1>
+        <div class="mini">Split-Version mit Server-Speicherständen, Konflikt-Schutz, Wunschportal, Rollen-Sperre, bedarfsgerechten Vorschlägen, Wunsch-Anzeige im Plan und Wunsch-Erfüllungsauswertung.</div>
       </div>
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
@@ -251,6 +251,16 @@
         </div>
         <div id="serverActivityList" class="server-history-list">Noch nicht geladen.</div>
       </div>
+      <div class="emp-box server-wish-report-box">
+        <h3>✅ Wunsch-Erfüllung</h3>
+        <div class="mini">Prüft Mitarbeiter-Wünsche aus dem Wunschportal gegen den aktuellen Server-Dienstplan. Es wird nichts geschrieben, nur ausgewertet.</div>
+        <div class="central-export-actions">
+          <input id="serverWishMonthInput" type="month" style="border:1px solid var(--line);border-radius:999px;padding:8px 10px;font-weight:900">
+          <button type="button" id="serverWishReportBtn">Wünsche prüfen</button>
+          <button type="button" id="serverWishReportDownloadBtn">Auswertung herunterladen</button>
+        </div>
+        <div id="serverWishReportList" class="server-history-list">Noch nicht geladen.</div>
+      </div>
     </div>
     <div id="serverSyncStatus" class="server-status">Nicht verbunden.</div>
     <div class="emp-modal-actions">
@@ -300,11 +310,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213)/g,'V13.0.215'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213)/g,'V13.0.216'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213)/g,'V13.0.215'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213)/g,'V13.0.216'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -408,11 +418,11 @@
     return true;
   }
 
-  // V13.0.215: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
+  // V13.0.216: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
   // damit die aufgeteilten Planseiten sie anzeigen können. Der Cache wird nicht als Planungsdaten hochgeladen.
   function cacheServerWishesFromData(data){
     try{
-      const wishes = data && data.wishes && typeof data.wishes === 'object' ? data.wishes : {version:'13.0.215', people:{}, updatedAt:''};
+      const wishes = data && data.wishes && typeof data.wishes === 'object' ? data.wishes : {version:'13.0.216', people:{}, updatedAt:''};
       localStorage.setItem(WISH_CACHE_KEY, JSON.stringify(wishes));
       window.__polypointEmployeeWishes = wishes;
       try{ frames && frames.forEach(frame => frame.contentWindow?.postMessage({type:'polypointWishesUpdated'}, '*')); }catch(_){ }
@@ -565,7 +575,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.215-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.216-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -704,14 +714,14 @@
     if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
     try{
       const row = await fetchServerRow(cfg, session);
-      const data = row?.data && typeof row.data === 'object' ? row.data : {kind:'polypoint-server-store', version:'13.0.215-split', items:{}, history:[], activity:[]};
+      const data = row?.data && typeof row.data === 'object' ? row.data : {kind:'polypoint-server-store', version:'13.0.216-split', items:{}, history:[], activity:[]};
       const user = serverUserFromSession(session);
       const email = normEmail(user.email);
       if(!email) throw new Error('Keine E-Mail im Login gefunden.');
       const roles = Object.assign({}, roleStore(data));
       roles[email] = {role:ROLE_ADMIN, email, name:user.name || email, updatedAt:new Date().toISOString(), updatedBy:user, source:'admin-planer'};
       data.accessRoles = roles;
-      data.roleVersion = '13.0.215';
+      data.roleVersion = '13.0.216';
       data.activity = buildActivityLog(data, makeActivityEntry('Admin-Rolle gespeichert', session, {area:'Rollen', count:Object.keys(roles).length, note:email}));
       await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data, updated_at:new Date().toISOString()})});
       setServerRoleInfo('Admin-Rolle gespeichert für ' + email + '. Rollen im Server: ' + Object.keys(roles).length, 'ok');
@@ -882,7 +892,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.215 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.216 werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -909,7 +919,7 @@
   }
   function downloadServerActivity(){
     if(!serverActivityCache.length){ serverStatus('Keine Aktivität zum Herunterladen geladen.', 'bad'); return; }
-    const payload = {kind:'polypoint-activity-log', version:'13.0.215-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
+    const payload = {kind:'polypoint-activity-log', version:'13.0.216-split', exportedAt:new Date().toISOString(), activity:serverActivityCache};
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -940,7 +950,7 @@
     }
     const payload = {
       kind:'polypoint-server-store',
-      version:'13.0.215-split',
+      version:'13.0.216-split',
       savedAt:now,
       action: action || 'manuell gespeichert',
       savedBy:user,
@@ -1109,7 +1119,7 @@
       const restoreActivity = buildActivityLog(row?.data, makeActivityEntry('Speicherstand wiederhergestellt', session, {area:'Server', hash:snap.hash, count:snap.count, note:'wiederhergestellt: ' + formatHistoryDate(entry.savedAt)}));
       const payload = {
         kind:'polypoint-server-store',
-        version:'13.0.215-split',
+        version:'13.0.216-split',
         savedAt:new Date().toISOString(),
         action:'Speicherstand wiederhergestellt',
         savedBy:serverUserFromSession(session),
@@ -1301,6 +1311,174 @@
       serverStatus('Server-Hauptspeicher nicht erreichbar. Lokale Arbeitskopie bleibt sichtbar: ' + e.message, 'bad');
     }
   }
+
+
+  // V13.0.216: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
+  let serverWishReportCache = null;
+  function parseServerStateValue(val){
+    if(!val) return null;
+    if(typeof val === 'object') return val;
+    try{ return JSON.parse(String(val)); }catch(_){ return null; }
+  }
+  function wishReportMonthDefault(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  }
+  function setWishReportDefaultMonth(){
+    const input = document.getElementById('serverWishMonthInput');
+    if(input && !input.value) input.value = wishReportMonthDefault();
+  }
+  function wishReportTypeText(type){
+    return ({F:'Frühdienst gewünscht',M:'Mitteldienst gewünscht',S:'Spätdienst gewünscht',N:'Nachtwache gewünscht',FR:'frei gewünscht',NO:'nicht verfügbar',P:'Pikett möglich',OTHER:'anderer Wunsch'})[String(type||'')] || 'Wunsch';
+  }
+  function wishReportDutyFamily(code){
+    const c = String(code || '').toUpperCase();
+    if(/^F/.test(c)) return 'F';
+    if(/^M/.test(c)) return 'M';
+    if(/^S/.test(c)) return 'S';
+    if(/^N/.test(c) || c === 'NW') return 'N';
+    if(c === 'P') return 'P';
+    return '';
+  }
+  function wishReportCodeMatches(type, code, comment){
+    const c = String(code || '').toUpperCase();
+    type = String(type || '');
+    if(type === 'F' || type === 'M' || type === 'S' || type === 'N' || type === 'P') return wishReportDutyFamily(c) === type;
+    if(type === 'FR') return !c || ['FR','WF','KGL','KF','FER','RAUS'].includes(c);
+    if(type === 'NO') return !c || ['FR','WF','KGL','KF','FER','RAUS'].includes(c);
+    if(type === 'OTHER'){
+      const txt = String(comment || '').toUpperCase();
+      return !!(c && txt.includes(c));
+    }
+    return false;
+  }
+  function wishReportBuildPlanIndex(data){
+    const index = {byEmployeeDate:{}, groups:[]};
+    const items = data?.items || {};
+    Object.entries(items).forEach(([key,val]) => {
+      const st = parseServerStateValue(val);
+      if(!st || !st.plan || !Array.isArray(st.employees)) return;
+      const group = String(st.planerGroupName || st.groupName || key || '').replace(/^polypoint_/,'').replace(/_/g,' ');
+      index.groups.push(group);
+      const empById = {};
+      st.employees.forEach(emp => {
+        if(!emp) return;
+        const id = String(emp.id || '').trim();
+        if(id) empById[id] = emp;
+      });
+      Object.entries(st.plan || {}).forEach(([planKey,entry]) => {
+        if(!entry || entry.removed) return;
+        let date='', empId='';
+        const m = String(planKey).match(/^(\d{4}-\d{2}-\d{2})__(.+)$/);
+        if(m){ date=m[1]; empId=m[2]; }
+        else {
+          const parts = String(planKey).split('__');
+          date = parts.find(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)) || '';
+          empId = parts.find(x=>x!==date) || '';
+        }
+        if(!date) return;
+        const emp = empById[empId] || {};
+        const code = String(entry.code || '').trim();
+        const names = [empId, emp.id, emp.name].map(x=>String(x||'').trim().toLowerCase()).filter(Boolean);
+        names.forEach(nameKey => {
+          const k = nameKey + '|' + date;
+          if(!index.byEmployeeDate[k]) index.byEmployeeDate[k] = [];
+          index.byEmployeeDate[k].push({code, group, empName:emp.name||empId, date});
+        });
+      });
+    });
+    return index;
+  }
+  function wishReportFindPlanEntries(planIndex, person, date){
+    const keys = [person.employeeId, person.id, person.employeeName, person.name].map(x=>String(x||'').trim().toLowerCase()).filter(Boolean);
+    const out = [];
+    const seen = new Set();
+    keys.forEach(k => {
+      (planIndex.byEmployeeDate[k + '|' + date] || []).forEach(e => {
+        const sig = e.group + '|' + e.code + '|' + e.date;
+        if(!seen.has(sig)){ seen.add(sig); out.push(e); }
+      });
+    });
+    return out;
+  }
+  function buildWishFulfillmentReport(data, monthKey){
+    const wishes = data?.wishes || {people:{}};
+    const people = wishes.people || {};
+    const planIndex = wishReportBuildPlanIndex(data || {});
+    const rows = [];
+    Object.entries(people).forEach(([personKey,person]) => {
+      const months = person?.months || {};
+      const month = months[monthKey];
+      if(!month || !month.days) return;
+      Object.entries(month.days || {}).forEach(([date,wish]) => {
+        const type = String(wish?.type || '');
+        const comment = String(wish?.comment || '');
+        if(!type && !comment) return;
+        const entries = wishReportFindPlanEntries(planIndex, person || {}, date);
+        const codes = entries.map(e => e.code).filter(Boolean);
+        let status = 'offen';
+        if(type){
+          if(type === 'NO') status = entries.some(e => !wishReportCodeMatches(type, e.code, comment)) ? 'verletzt' : 'erfüllt';
+          else status = entries.some(e => wishReportCodeMatches(type, e.code, comment)) ? 'erfüllt' : 'offen';
+        }
+        rows.push({
+          date,
+          employee: person?.employeeName || person?.name || personKey,
+          email: person?.email || personKey,
+          wish: wishReportTypeText(type) + (comment ? ' · ' + comment : ''),
+          code: codes.length ? codes.join(', ') : 'frei/leer',
+          groups: entries.map(e=>e.group).filter(Boolean).join(', '),
+          status,
+          type,
+          comment
+        });
+      });
+    });
+    rows.sort((a,b) => (a.date+a.employee).localeCompare(b.date+b.employee,'de'));
+    const totals = {all:rows.length, fulfilled:rows.filter(r=>r.status==='erfüllt').length, open:rows.filter(r=>r.status==='offen').length, violated:rows.filter(r=>r.status==='verletzt').length};
+    return {month:monthKey, rows, totals, groups:[...new Set(planIndex.groups)].filter(Boolean)};
+  }
+  function renderWishFulfillmentReport(report){
+    const el = document.getElementById('serverWishReportList');
+    if(!el) return;
+    serverWishReportCache = report;
+    const t = report.totals;
+    if(!report.rows.length){
+      el.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Keine Wünsche gefunden</div><div class="server-history-meta">Monat ' + escapeHtml(report.month) + '</div></div></div>';
+      return;
+    }
+    const head = '<div class="server-history-row server-history-current"><div><div class="server-history-title">Monat ' + escapeHtml(report.month) + ' · ' + t.all + ' Wünsche</div><div class="server-history-meta">erfüllt: ' + t.fulfilled + ' · offen: ' + t.open + ' · verletzt: ' + t.violated + '</div></div><div class="server-history-actions"></div></div>';
+    const rows = report.rows.map(r => {
+      const badge = r.status === 'erfüllt' ? '✅ erfüllt' : (r.status === 'verletzt' ? '⛔ verletzt' : '🟡 offen');
+      return '<div class="server-history-row"><div><div class="server-history-title">' + escapeHtml(r.date) + ' · ' + escapeHtml(r.employee) + ' · ' + badge + '</div><div class="server-history-meta">Wunsch: ' + escapeHtml(r.wish) + ' · Plan: ' + escapeHtml(r.code) + (r.groups ? ' · Bereich: ' + escapeHtml(r.groups) : '') + (r.email ? ' · ' + escapeHtml(r.email) : '') + '</div></div></div>';
+    }).join('');
+    el.innerHTML = head + rows;
+  }
+  async function serverWishReportLoad(showStatus=true){
+    const cfg = saveServerConfig(); if(!cfg) return;
+    const session = await getActiveServerSession();
+    if(!session){ serverStatus('Bitte zuerst einloggen.', 'bad'); return; }
+    try{
+      setWishReportDefaultMonth();
+      const monthKey = document.getElementById('serverWishMonthInput')?.value || wishReportMonthDefault();
+      const row = await fetchServerRow(cfg, session);
+      if(!row || !row.data) throw new Error('Kein Serverstand gefunden.');
+      const report = buildWishFulfillmentReport(row.data, monthKey);
+      renderWishFulfillmentReport(report);
+      if(showStatus) serverStatus('Wunsch-Erfüllung geprüft: ' + report.totals.all + ' Wünsche · erfüllt ' + report.totals.fulfilled + ' · offen ' + report.totals.open + ' · verletzt ' + report.totals.violated, report.totals.violated ? 'bad' : 'ok');
+    }catch(e){ serverStatus('Wunsch-Erfüllung konnte nicht geprüft werden: ' + e.message, 'bad'); }
+  }
+  function downloadWishReport(){
+    if(!serverWishReportCache){ serverWishReportLoad(true); return; }
+    const payload = {kind:'polypoint-wunsch-erfuellung', version:'13.0.216', createdAt:new Date().toISOString(), report:serverWishReportCache};
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'polypoint_wunsch_erfuellung_' + String(serverWishReportCache.month || 'monat') + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    serverStatus('Wunsch-Erfüllung heruntergeladen.', 'ok');
+  }
   async function openServerSync(){
     loadServerConfig(); refreshServerLocalInfo(); refreshServerSyncInfo();
     serverStatus('Verbindung wird geprüft…', '');
@@ -1310,7 +1488,7 @@
     const s = await getActiveServerSession();
     setServerButtonState(s ? 'connected' : 'ready', s ? 'Server verbunden' : 'Server bereit, bitte einloggen');
     serverStatus(s ? 'Server-Hauptspeicher verbunden.' : 'Server erreichbar. Bitte einloggen, damit der Serverstand geladen wird.', s ? 'ok' : '');
-    if(s){ serverCheckStatus(false); serverHistoryLoad(false); serverActivityLoad(false); serverConflictCheck(false); }
+    if(s){ serverCheckStatus(false); serverHistoryLoad(false); serverActivityLoad(false); serverConflictCheck(false); serverWishReportLoad(false); }
   }
   function closeServerSync(){ serverModal().classList.remove('show'); serverModal().setAttribute('aria-hidden','true'); }
   document.getElementById('serverSyncBtn')?.addEventListener('click', openServerSync);
@@ -1330,6 +1508,8 @@
   document.getElementById('serverHistoryRefreshBtn')?.addEventListener('click', () => serverHistoryLoad(true));
   document.getElementById('serverActivityRefreshBtn')?.addEventListener('click', () => serverActivityLoad(true));
   document.getElementById('serverActivityDownloadBtn')?.addEventListener('click', downloadServerActivity);
+  document.getElementById('serverWishReportBtn')?.addEventListener('click', () => serverWishReportLoad(true));
+  document.getElementById('serverWishReportDownloadBtn')?.addEventListener('click', downloadWishReport);
   document.getElementById('serverHistoryDownloadCurrentBtn')?.addEventListener('click', () => { if(serverHistoryCache[0]) downloadHistoryEntry(0); else serverHistoryLoad(true); });
   document.getElementById('serverHistoryList')?.addEventListener('click', ev => { const btn = ev.target.closest('[data-history-action]'); if(!btn) return; const idx = btn.dataset.historyIndex; if(btn.dataset.historyAction === 'download') downloadHistoryEntry(idx); if(btn.dataset.historyAction === 'compare') renderHistoryCompare(idx); if(btn.dataset.historyAction === 'restore') restoreHistoryEntry(idx); });
   document.getElementById('serverLocalBackupBtn')?.addEventListener('click', () => { const k = makeFullLocalBackup('manual_local_download', true); serverStatus('Notfallkopie heruntergeladen und lokal abgelegt: ' + k, 'ok'); });
@@ -1341,6 +1521,7 @@
   document.getElementById('serverRoleCheckBtn')?.addEventListener('click', () => evaluateAdminAccess(true));
   document.getElementById('serverRoleMarkAdminBtn')?.addEventListener('click', serverRoleMarkAdmin);
   loadServerConfig();
+  setWishReportDefaultMonth();
   refreshServerButtonFromSession();
   startServerAutosaveWatcher();
   evaluateAdminAccess(false).then(ok => { refreshServerButtonFromSession(); if(ok) serverLoadPrimaryOnStart(); }).catch(() => setServerButtonState('error','Server-Verbindung prüfen'));
