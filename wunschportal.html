@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Wunschportal · V13.0.221</title>
+<title>POLYPOINT Wunschportal · V13.0.222</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -14,7 +14,7 @@
 <div class="app">
   <section class="hero">
     <div>
-      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.221</div>
+      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.222</div>
       <h1>Mitarbeiter-Wünsche</h1>
       <div class="mini">Hier werden nur Wünsche gespeichert. Es wird kein definitiver Dienstplan verändert.</div>
     </div>
@@ -27,12 +27,19 @@
   <div class="grid">
     <article class="card" id="loginCard">
       <h2>Login</h2>
-      <div class="notice">Nur eingeloggte Benutzer können Wünsche speichern. Mitarbeiter sehen hier keine Server-Speicherstände und können keine definitiven Dienste setzen.</div>
+      <div class="notice">Admin/Planer kann sich mit Supabase einloggen. Mitarbeiter können ohne Supabase-Benutzer über persönlichen Wunsch-Code Wünsche eintragen. Definitive Dienste werden nicht verändert.</div>
       <div class="formgrid" style="margin-top:10px">
         <label><span class="mini">E-Mail</span><input id="email" type="email" autocomplete="username" placeholder="name@example.ch"></label>
         <label><span class="mini">Passwort</span><input id="password" type="password" autocomplete="current-password" placeholder="Passwort"></label>
       </div>
-      <div class="toolbar" style="margin-top:10px"><button class="primary" id="loginBtn">Einloggen</button><button id="logoutBtn">Abmelden</button></div>
+      <div class="toolbar" style="margin-top:10px"><button class="primary" id="loginBtn">Admin einloggen</button><button id="logoutBtn">Abmelden</button></div>
+      <h3 style="margin-top:14px">Mitarbeiter-Code</h3>
+      <div class="notice" style="margin-top:6px">Für Mitarbeiter: Name oder E-Mail und persönlicher Wunsch-Code. Kein Supabase-Benutzer nötig.</div>
+      <div class="formgrid" style="margin-top:10px">
+        <label><span class="mini">Name oder E-Mail</span><input id="codeIdentity" type="text" autocomplete="username" placeholder="Name oder E-Mail"></label>
+        <label><span class="mini">Wunsch-Code</span><input id="codePin" type="password" autocomplete="one-time-code" placeholder="Code"></label>
+      </div>
+      <div class="toolbar" style="margin-top:10px"><button class="ok" id="codeLoginBtn">Mit Code öffnen</button></div>
       <div id="loginStatus" class="notice" style="margin-top:10px">Nicht verbunden.</div>
     </article>
 
@@ -45,7 +52,7 @@
         <span class="tag no">Nicht verfügbar</span>
         <span class="tag">Kommentar</span>
       </div>
-      <div class="notice warn" style="margin-top:10px">V13.0.221: Admin sieht alle Mitarbeiter. Mitarbeiter sehen nur sich selbst; unbekannte Benutzer werden nicht freigeschaltet. Vergangene Monate und Monate ohne mindestens 6 Wochen Vorlauf werden ausgeblendet.</div>
+      <div class="notice warn" style="margin-top:10px">V13.0.222: Mitarbeiter brauchen keinen Supabase-Benutzer mehr. Admin nutzt Supabase, Mitarbeiter nutzen Name/E-Mail + Wunsch-Code. Vergangene Monate und Monate ohne mindestens 6 Wochen Vorlauf werden ausgeblendet.</div>
     </article>
   </div>
 
@@ -65,7 +72,7 @@
     <div id="employeeInfo" class="employee-list" style="margin-top:10px">Noch keine Mitarbeiterdaten geladen.</div>
     <div class="days" id="days"></div>
   </article>
-  <div class="footer">POLYPOINT Wunschportal · V13.0.221 · Datenschutz: Mitarbeiter sehen nur ihr eigenes Profil. Dienstliste aus Standardwoche + Mitarbeiter-Abwesenheiten.</div>
+  <div class="footer">POLYPOINT Wunschportal · V13.0.222 · Wunsch-Code: Mitarbeiter sehen nur ihr eigenes Profil. Dienstliste aus Standardwoche + Mitarbeiter-Abwesenheiten.</div>
 </div>
 
 <script>
@@ -87,7 +94,9 @@
   function status(id,msg,kind=''){const el=q(id); if(!el)return; el.textContent=msg; el.className='notice '+kind;}
   function normEmail(v){ return String(v || '').trim().toLowerCase(); }
   function normText(v){ return String(v || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss'); }
-  function setLoginPill(){ const el=q('loginPill'); if(!el)return; el.textContent=session?.user?.email ? session.user.email : 'nicht eingeloggt'; el.className='pill '+(session?.user?.email?'green':'red'); }
+  function setLoginPill(){ const el=q('loginPill'); if(!el)return; const label=session?.mode==='code' ? ('Code: '+(session?.user?.name||session?.employeeName||'Mitarbeiter')) : (session?.user?.email||'nicht eingeloggt'); el.textContent=label; el.className='pill '+(session?.user?.email||session?.mode==='code'?'green':'red'); }
+  function isCodeMode(){ return session?.mode==='code'; }
+  function normCode(v){ return String(v||'').trim(); }
   function todayStart(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
   function minWishMonthDate(){
     const d=todayStart(); d.setDate(d.getDate()+WISH_DEADLINE_DAYS);
@@ -121,12 +130,34 @@
   }
   function saveSession(data){ session={access_token:data.access_token,refresh_token:data.refresh_token,user:data.user,expires_at:Date.now()+Math.max(60,(data.expires_in||3600))*1000}; localStorage.setItem(SESSION_KEY,JSON.stringify(session)); setLoginPill(); }
   function loadSession(){ try{ const s=JSON.parse(localStorage.getItem(SESSION_KEY)||'{}'); if(s&&s.access_token){session=s;} }catch(_){} setLoginPill(); }
-  function isFresh(){ return !!(session&&session.access_token&&(!session.expires_at||session.expires_at>Date.now()+30000)); }
+  function isFresh(){ return !!(session&&((session.mode==='code')||session.access_token)&&(!session.expires_at||session.expires_at>Date.now()+30000)); }
   async function supa(path,opt={}){ const headers=Object.assign({'apikey':SERVER_ANON},opt.headers||{}); const res=await fetch(SERVER_URL+path,Object.assign({},opt,{headers})); const txt=await res.text(); let data=null; try{data=txt?JSON.parse(txt):null}catch(_){data=txt} if(!res.ok){throw new Error((data&&data.message)||(data&&data.msg)||String(data||('HTTP '+res.status)))} return data; }
-  async function refreshSession(){ if(isFresh())return session; if(!session?.refresh_token)return null; try{ const data=await supa('/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token})}); saveSession(data); return session; }catch(e){ localStorage.removeItem(SESSION_KEY); session=null; setLoginPill(); return null; } }
+  async function refreshSession(){ if(isFresh())return session; if(session?.mode==='code')return session; if(!session?.refresh_token)return null; try{ const data=await supa('/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:session.refresh_token})}); saveSession(data); return session; }catch(e){ localStorage.removeItem(SESSION_KEY); session=null; setLoginPill(); return null; } }
+  function employeeCodeMatches(e,identity,code){
+    const idn=normText(identity); const em=normEmail(identity); const c=normCode(code);
+    if(!c || normCode(e.wishCode)!==c)return false;
+    const byEmail=em && (e.emails||[]).includes(em);
+    const byName=idn && (normText(e.name)===idn || normText(e.name).includes(idn) || idn.includes(normText(e.name)));
+    return !!(byEmail || byName);
+  }
+  function findEmployeeByCode(identity,code,list){ return (list||[]).filter(e=>employeeCodeMatches(e,identity,code)); }
+  function saveCodeSession(emp,identity,code){ session={mode:'code',access_token:'',refresh_token:'',user:{id:'code:'+emp.id,email:normEmail(identity),name:emp.name},employeeId:emp.id,employeeName:emp.name,group:emp.group,wishCode:code,expires_at:Date.now()+1000*60*60*12}; localStorage.setItem(SESSION_KEY,JSON.stringify(session)); setLoginPill(); }
+  async function codeLogin(){
+    const identity=q('codeIdentity').value.trim(); const code=q('codePin').value.trim();
+    if(!identity||!code){status('loginStatus','Bitte Name/E-Mail und Wunsch-Code eintragen.','bad');return;}
+    try{
+      const data=await supa('/rest/v1/planer_store?id=eq.'+encodeURIComponent(STORE_ID)+'&select=id,data,updated_at',{method:'GET'});
+      serverRow=Array.isArray(data)?data[0]:null; if(!serverRow?.data)throw new Error('Kein Serverstand gefunden.');
+      dutyOptionGroups=buildDutyOptionGroups(serverRow.data);
+      const all=extractEmployees(serverRow.data); const matches=findEmployeeByCode(identity,code,all);
+      if(matches.length!==1)throw new Error(matches.length>1?'Mehrere Treffer gefunden. Bitte E-Mail statt Name verwenden.':'Kein Mitarbeiter mit diesem Namen/E-Mail und Wunsch-Code gefunden.');
+      const emp=matches[0]; saveCodeSession(emp,identity,code); employees=[emp]; currentAssignment={mode:'code',employee:emp,email:normEmail(identity)}; portalRoleMessage='Mit Wunsch-Code angemeldet: '+emp.name+' · '+emp.group+'. Du siehst nur dein eigenes Profil.';
+      renderEmployeeSelect(); status('loginStatus','Wunschportal geöffnet für '+emp.name+' · '+emp.group,'ok');
+    }catch(e){status('loginStatus','Code-Login nicht möglich: '+e.message,'bad');}
+  }
   async function login(){ const email=q('email').value.trim(); const password=q('password').value; if(!email||!password){status('loginStatus','Bitte E-Mail und Passwort eintragen.','bad');return} try{ const data=await supa('/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})}); saveSession(data); status('loginStatus','Eingeloggt als '+(session.user.email||email),'ok'); await loadServer(); }catch(e){status('loginStatus','Login nicht möglich: '+e.message,'bad')} }
-  function logout(){ localStorage.removeItem(SESSION_KEY); session=null; setLoginPill(); employees=[]; currentWishes={}; renderEmployeeSelect(); status('loginStatus','Abgemeldet.','ok'); }
-  async function fetchRow(){ const s=await refreshSession(); if(!s)throw new Error('Bitte zuerst einloggen.'); const data=await supa('/rest/v1/planer_store?id=eq.'+encodeURIComponent(STORE_ID)+'&select=id,data,updated_at',{method:'GET',headers:{'Authorization':'Bearer '+s.access_token}}); return Array.isArray(data)?data[0]:null; }
+  function logout(){ localStorage.removeItem(SESSION_KEY); session=null; serverRow=null; setLoginPill(); employees=[]; currentWishes={}; renderEmployeeSelect(); status('loginStatus','Abgemeldet.','ok'); }
+  async function fetchRow(){ const s=await refreshSession(); if(!s)throw new Error('Bitte zuerst einloggen oder mit Wunsch-Code öffnen.'); const headers={}; if(s.access_token)headers.Authorization='Bearer '+s.access_token; const data=await supa('/rest/v1/planer_store?id=eq.'+encodeURIComponent(STORE_ID)+'&select=id,data,updated_at',{method:'GET',headers}); return Array.isArray(data)?data[0]:null; }
   function parseJsonMaybe(v){ if(!v||typeof v!=='string')return null; try{return JSON.parse(v)}catch(_){return null} }
 
   function groupFromKey(key,obj){
@@ -227,7 +258,7 @@
       const dutyByCode=new Map();
       duties.forEach(d=>{ const code=normalizedDutyCode(d?.code); if(code)dutyByCode.set(code,d); });
 
-      // V13.0.221: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
+      // V13.0.222: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
       const activeCodes=activeStandardCodesFromState(st);
       const codesForPortal=activeCodes.size ? [...activeCodes] : duties.filter(shouldShowDutyInPortal).map(d=>normalizedDutyCode(d.code));
       codesForPortal.forEach(code=>{
@@ -271,7 +302,7 @@
         if(!emp||emp.active===false)return;
         const name=String(emp.name||'').trim(); if(!name)return;
         const emails=extractEmployeeEmails(emp);
-        out.push({id:String(emp.id||name),name,role:String(emp.role||''),group,groupKey:groupKey(group),emails,sourceKey:key});
+        out.push({id:String(emp.id||name),name,role:String(emp.role||''),group,groupKey:groupKey(group),emails,wishCode:String(emp.wishCode||emp.portalCode||emp.wunschCode||''),sourceKey:key});
       });
     });
     const seen=new Set(), uniq=[];
@@ -296,6 +327,13 @@
   function findEmployeeByRoleEntry(entry){ return employees.filter(e=>employeeMatchesEntry(e,entry)); }
   function findEmployeeByEmail(email){ email=normEmail(email); if(!email)return []; return employees.filter(e=>(e.emails||[]).includes(email)); }
   function applyPortalRoleFilter(){
+    if(session?.mode==='code'){
+      const all=employees.slice();
+      let matches=all.filter(e=>String(e.id)===String(session.employeeId)&&normCode(e.wishCode)===normCode(session.wishCode));
+      if(!matches.length)matches=findEmployeeByCode(session.user?.email||session.employeeName||'',session.wishCode,all);
+      if(matches.length){ const chosen=matches[0]; employees=[chosen]; currentAssignment={mode:'code',employee:chosen,email:session.user?.email||''}; portalRoleMessage='Mit Wunsch-Code angemeldet: '+chosen.name+' · '+chosen.group+'. Du siehst nur dein eigenes Profil.'; return; }
+      employees=[]; currentAssignment={mode:'blocked',employee:null,email:session.user?.email||''}; portalRoleMessage='Dieser Wunsch-Code passt nicht mehr. Bitte beim Planer/Admin melden.'; return;
+    }
     const info=portalRoleInfo(serverRow?.data||{});
     currentAssignment=null;
     portalRoleMessage='';
@@ -380,13 +418,13 @@
       const dutyCount=Math.max(0,(wishOptions.length-baseWishOptions.length-1)); status('loginStatus','Server verbunden. Wunschliste aus Standardwoche geladen: '+dutyCount,'ok');
     }catch(e){status('portalStatus','Serverdaten konnten nicht geladen werden: '+e.message,'bad');}
   }
-  function serverUser(){ const u=session?.user||{}; return {id:u.id||'',email:u.email||'',name:(u.user_metadata?.full_name||u.user_metadata?.name||u.email||u.id||'unbekannt')}; }
+  function serverUser(){ const u=session?.user||{}; if(session?.mode==='code')return {id:u.id||'',email:u.email||'',name:session.employeeName||u.name||'Wunsch-Code'}; return {id:u.id||'',email:u.email||'',name:(u.user_metadata?.full_name||u.user_metadata?.name||u.email||u.id||'unbekannt')}; }
   function activityFromData(data){ return Array.isArray(data?.activity)?data.activity.slice(0,50):[]; }
   function makeActivity(action,count,emp){ return {id:'act_'+new Date().toISOString().replace(/[:.]/g,'-')+'_'+Math.random().toString(36).slice(2,8),at:new Date().toISOString(),action,user:serverUser(),area:'Wunschportal',group:emp?.group||'',employeeName:emp?.name||'',hash:dataHash(count),count,note:'Mitarbeiter-Wunschportal'}; }
   function dataHash(count){ return 'wishes-'+count+'-'+Date.now().toString(36); }
   async function saveWishes(){
     try{
-      const s=await refreshSession(); if(!s)throw new Error('Bitte zuerst einloggen.');
+      const s=await refreshSession(); if(!s)throw new Error('Bitte zuerst einloggen oder mit Wunsch-Code öffnen.');
       serverRow=await fetchRow(); if(!serverRow?.data)throw new Error('Kein Serverstand gefunden.');
       const roleInfoNow=portalRoleInfo(serverRow?.data||{});
       if(currentAssignment?.mode==='blocked' && !roleInfoNow.isAdmin)throw new Error('Dieser Login ist noch nicht freigeschaltet. Bitte Admin/Planer kontaktieren.');
@@ -399,18 +437,19 @@
       if(!ws.people[key])ws.people[key]={employeeId:emp.id,employeeName:emp.name,email:session.user.email||'',group:emp.group,months:{}};
       ws.people[key].employeeId=emp.id; ws.people[key].employeeName=emp.name; ws.people[key].email=session.user.email||''; ws.people[key].group=emp.group; ws.people[key].groupKey=emp.groupKey; ws.people[key].updatedAt=new Date().toISOString();
       ws.people[key].months[monthKey()]={year:Number(q('year').value),month:Number(q('month').value),days,group:emp.group,updatedAt:new Date().toISOString(),savedBy:serverUser()};
-      ws.version='13.0.221'; ws.updatedAt=new Date().toISOString();
+      ws.version='13.0.222'; ws.updatedAt=new Date().toISOString();
       const email=normEmail(session.user.email||''); const roles=Object.assign({},roleStore(data));
-      if(email){ const oldRole=roles[email]; const oldRoleName=String(typeof oldRole==='string'?oldRole:oldRole?.role||'').toLowerCase(); if(oldRoleName!=='admin'&&oldRoleName!=='planner'){ roles[email]={role:'employee',email,employeeId:emp.id,employeeName:emp.name,name:emp.name,group:emp.group,groupKey:emp.groupKey,updatedAt:new Date().toISOString(),source:'wunschportal-auto-gruppe'}; data.accessRoles=roles; data.roleVersion='13.0.221'; }}
+      if(email && session.mode!=='code'){ const oldRole=roles[email]; const oldRoleName=String(typeof oldRole==='string'?oldRole:oldRole?.role||'').toLowerCase(); if(oldRoleName!=='admin'&&oldRoleName!=='planner'){ roles[email]={role:'employee',email,employeeId:emp.id,employeeName:emp.name,name:emp.name,group:emp.group,groupKey:emp.groupKey,updatedAt:new Date().toISOString(),source:'wunschportal-auto-gruppe'}; data.accessRoles=roles; data.roleVersion='13.0.222'; }}
       const count=Object.keys(days).length; data.activity=[makeActivity('Wünsche gespeichert',count,emp)].concat(activityFromData(data)).slice(0,50);
-      await supa('/rest/v1/planer_store',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:STORE_ID,data,updated_at:new Date().toISOString()})});
+      const postHeaders={'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}; if(s.access_token)postHeaders.Authorization='Bearer '+s.access_token;
+      await supa('/rest/v1/planer_store',{method:'POST',headers:postHeaders,body:JSON.stringify({id:STORE_ID,data,updated_at:new Date().toISOString()})});
       currentWishes=days; serverRow={id:STORE_ID,data,updated_at:new Date().toISOString()};
       currentAssignment={mode:'role',employee:emp,email}; portalRoleMessage='Gruppe gespeichert: '+emp.name+' · '+emp.group+'. Ab jetzt wird dieser Login automatisch dieser Gruppe zugeordnet.';
       status('portalStatus','Wünsche gespeichert: '+count+' Tage · '+emp.name+' · '+emp.group+' · '+monthKey(),'ok');
     }catch(e){status('portalStatus','Wünsche konnten nicht gespeichert werden: '+e.message,'bad')}
   }
   function clearMonth(){ if(!confirm('Wünsche für diesen Monat in der Ansicht leeren? Gespeichert wird erst nach Klick auf „Wünsche speichern“.'))return; currentWishes={}; renderDays(); }
-  q('loginBtn').addEventListener('click',login); q('logoutBtn').addEventListener('click',logout); q('loadServerBtn').addEventListener('click',loadServer); q('saveWishBtn').addEventListener('click',saveWishes); q('clearMonthBtn').addEventListener('click',clearMonth); q('month').addEventListener('change',loadExistingWishes); q('year').addEventListener('change',()=>{ updateMonthOptions(true); loadExistingWishes(); }); q('employeeSelect').addEventListener('change',loadExistingWishes);
+  q('loginBtn').addEventListener('click',login); q('codeLoginBtn').addEventListener('click',codeLogin); q('logoutBtn').addEventListener('click',logout); q('loadServerBtn').addEventListener('click',loadServer); q('saveWishBtn').addEventListener('click',saveWishes); q('clearMonthBtn').addEventListener('click',clearMonth); q('month').addEventListener('change',loadExistingWishes); q('year').addEventListener('change',()=>{ updateMonthOptions(true); loadExistingWishes(); }); q('employeeSelect').addEventListener('change',loadExistingWishes);
   loadSession(); initControls(); if(isFresh())loadServer();
 })();
 </script>
