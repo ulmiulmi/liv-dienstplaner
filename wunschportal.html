@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Wunschportal · V13.0.226b</title>
+<title>POLYPOINT Wunschportal · V13.0.226c</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -14,7 +14,7 @@
 <div class="app">
   <section class="hero">
     <div>
-      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.226b</div>
+      <div class="eyebrow">POLYPOINT Wunschportal · V13.0.226c</div>
       <h1>Mitarbeiter-Wünsche</h1>
       <div class="mini">Hier werden nur Wünsche gespeichert. Es wird kein definitiver Dienstplan verändert.</div>
     </div>
@@ -52,7 +52,7 @@
         <span class="tag no">Nicht verfügbar</span>
         <span class="tag">Kommentar</span>
       </div>
-      <div class="notice warn" style="margin-top:10px">V13.0.226b: Wunsch-Codes können im Planer automatisch erzeugt und als Zugang kopiert werden. Mitarbeiter brauchen keinen Supabase-Benutzer. Vergangene Monate und Monate ohne die im Admin festgelegte Wunschfrist werden ausgeblendet.</div>
+      <div class="notice warn" style="margin-top:10px">V13.0.226c: Wünsche werden automatisch gespeichert, wenn du Mitarbeiter oder Monat wechselst. Jeder Mitarbeiter lädt seine eigenen Wünsche; fremde Wünsche bleiben nicht in der Ansicht stehen.</div>
     </article>
   </div>
 
@@ -72,7 +72,7 @@
     <div id="employeeInfo" class="employee-list" style="margin-top:10px">Noch keine Mitarbeiterdaten geladen.</div>
     <div class="days" id="days"></div>
   </article>
-  <div class="footer">POLYPOINT Wunschportal · V13.0.226b · Wunsch-Code automatisch erzeugbar. Mitarbeiter sehen nur ihr eigenes Profil. Wunschfrist aus Admin-Einstellung.</div>
+  <div class="footer">POLYPOINT Wunschportal · V13.0.226c · Wunsch-Code automatisch erzeugbar. Autospeichern beim Mitarbeiter-/Monatswechsel. Wunschfrist aus Admin-Einstellung.</div>
 </div>
 
 <script>
@@ -89,6 +89,7 @@
   let dutyOptionGroups={__all:baseWishOptions.concat([otherWishOption])};
   let wishOptions=baseWishOptions.concat([otherWishOption]);
   let session=null, serverRow=null, employees=[], currentWishes={}, portalRoleMessage='', currentAssignment=null;
+  let activeEmployeeValue='', activeMonthKey='', lastLoadedDaysJson='{}', wishAutosaveTimer=null, wishAutosaveBusy=false;
 
   function q(id){return document.getElementById(id)}
   function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -277,7 +278,7 @@
       const dutyByCode=new Map();
       duties.forEach(d=>{ const code=normalizedDutyCode(d?.code); if(code)dutyByCode.set(code,d); });
 
-      // V13.0.226b: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
+      // V13.0.226c: Im Wunschportal erscheinen nur Dienste, die in der Standardwoche der Gruppe wirklich angehakt sind.
       const activeCodes=activeStandardCodesFromState(st);
       const codesForPortal=activeCodes.size ? [...activeCodes] : duties.filter(shouldShowDutyInPortal).map(d=>normalizedDutyCode(d.code));
       codesForPortal.forEach(code=>{
@@ -379,12 +380,21 @@
     const byGroup=emp?.groupKey && dutyOptionGroups[emp.groupKey] ? dutyOptionGroups[emp.groupKey] : null;
     return byGroup || dutyOptionGroups.__all || baseWishOptions.concat([otherWishOption]);
   }
-  function selectedEmployee(){ const val=q('employeeSelect').value; return employees.find(e=>e.id+'|'+e.name+'|'+e.group===val)||null; }
+  function selectedEmployee(value){ const val=value==null?q('employeeSelect').value:value; return employees.find(e=>e.id+'|'+e.name+'|'+e.group===val)||null; }
   function updateWishOptionsForSelectedEmployee(){ wishOptions=optionsForEmployee(selectedEmployee()); }
-  function employeeKey(emp){ const email=normEmail(session?.user?.email||''); return email || (emp?.id||emp?.name||'unknown').toLowerCase().replace(/\s+/g,'_'); }
-  function wishStore(data){ if(!data.wishes||typeof data.wishes!=='object')data.wishes={version:'13.0.221',people:{}}; if(!data.wishes.people||typeof data.wishes.people!=='object')data.wishes.people={}; return data.wishes; }
+  function safeKeyPart(v){ return String(v||'').trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,''); }
+  function employeeKey(emp){ const base=[emp?.groupKey||emp?.group||'', emp?.id||'', emp?.name||''].filter(Boolean).map(safeKeyPart).filter(Boolean).join('__'); return 'emp_'+(base || safeKeyPart(emp?.name||'unknown')); }
+  function legacyEmployeeKey(emp){ return (emp?.id||emp?.name||'').toLowerCase().replace(/\s+/g,'_'); }
+  function wishLookupKeys(emp){
+    const keys=[employeeKey(emp), legacyEmployeeKey(emp)].filter(Boolean);
+    const info=portalRoleInfo(serverRow?.data||{}); const byEmail=normEmail(session?.user?.email||'');
+    if(byEmail && !info.isAdmin) keys.push(byEmail);
+    return [...new Set(keys)];
+  }
+  function wishStore(data){ if(!data.wishes||typeof data.wishes!=='object')data.wishes={version:'13.0.226c',people:{}}; if(!data.wishes.people||typeof data.wishes.people!=='object')data.wishes.people={}; return data.wishes; }
   function monthKey(){ return q('year').value+'-'+String(q('month').value).padStart(2,'0'); }
-  function loadExistingWishes(){ const emp=selectedEmployee(); updateWishOptionsForSelectedEmployee(); currentWishes={}; if(!emp||!serverRow?.data){renderDays();return;} const ws=wishStore(serverRow.data); const byEmail=normEmail(session?.user?.email||''); const keys=[byEmail, (emp.id||emp.name||'').toLowerCase().replace(/\s+/g,'_')].filter(Boolean); for(const k of keys){ const days=ws.people?.[k]?.months?.[monthKey()]?.days; if(days){currentWishes=JSON.parse(JSON.stringify(days)); break;} } renderDays(); }
+  function rememberLoadedState(){ activeEmployeeValue=q('employeeSelect').value||''; activeMonthKey=monthKey(); lastLoadedDaysJson=JSON.stringify(currentWishes||{}); }
+  function loadExistingWishes(){ const emp=selectedEmployee(); updateWishOptionsForSelectedEmployee(); currentWishes={}; if(!emp||!serverRow?.data){renderDays();rememberLoadedState();return;} const ws=wishStore(serverRow.data); const keys=wishLookupKeys(emp); for(const k of keys){ const days=ws.people?.[k]?.months?.[monthKey()]?.days; if(days){currentWishes=JSON.parse(JSON.stringify(days)); break;} } renderDays(); rememberLoadedState(); }
   function renderEmployeeSelect(){
     const sel=q('employeeSelect'); sel.innerHTML='';
     const email=session?.user?.email||'';
@@ -442,35 +452,53 @@
   function activityFromData(data){ return Array.isArray(data?.activity)?data.activity.slice(0,50):[]; }
   function makeActivity(action,count,emp){ return {id:'act_'+new Date().toISOString().replace(/[:.]/g,'-')+'_'+Math.random().toString(36).slice(2,8),at:new Date().toISOString(),action,user:serverUser(),area:'Wunschportal',group:emp?.group||'',employeeName:emp?.name||'',hash:dataHash(count),count,note:'Mitarbeiter-Wunschportal'}; }
   function dataHash(count){ return 'wishes-'+count+'-'+Date.now().toString(36); }
-  async function saveWishes(){
+  function hasDirtyVisibleWishes(){ return JSON.stringify(collectDays()) !== lastLoadedDaysJson; }
+  async function saveWishes(opts={}){
+    const auto=!!opts.auto;
     try{
+      if(wishAutosaveBusy && auto)return;
+      wishAutosaveBusy=true;
       const s=await refreshSession(); if(!s)throw new Error('Bitte zuerst einloggen oder mit Wunsch-Code öffnen.');
       serverRow=await fetchRow(); if(!serverRow?.data)throw new Error('Kein Serverstand gefunden.');
       applyWishSettings(serverRow.data);
       const roleInfoNow=portalRoleInfo(serverRow?.data||{});
       if(currentAssignment?.mode==='blocked' && !roleInfoNow.isAdmin)throw new Error('Dieser Login ist noch nicht freigeschaltet. Bitte Admin/Planer kontaktieren.');
-      const emp=selectedEmployee(); if(!emp)throw new Error('Bitte Mitarbeiter auswählen.');
-      const y=Number(q('year').value)||0, m=Number(q('month').value)||0;
+      const emp=opts.empOverride || selectedEmployee(); if(!emp)throw new Error('Bitte Mitarbeiter auswählen.');
+      const saveMonthKey=opts.monthKeyOverride || monthKey();
+      const ym=String(saveMonthKey).split('-'); const y=Number(ym[0])||0, m=Number(ym[1])||0;
       if(!isWishMonthOpen(y,m))throw new Error('Dieser Monat ist nicht mehr für Wünsche freigegeben. '+wishDeadlineText());
       const roleInfoBefore=portalRoleInfo(serverRow.data);
       if(roleInfoBefore.restricted && roleInfoBefore.entry){ const allowed=findEmployeeByRoleEntry(roleInfoBefore.entry); const ok=allowed.some(e=>e.id===emp.id&&e.name===emp.name&&e.group===emp.group); if(!ok)throw new Error('Dieser Login ist bereits einem anderen Mitarbeiter zugeordnet.'); }
-      const days=collectDays(); const data=serverRow.data; const ws=wishStore(data); const key=employeeKey(emp);
+      const days=opts.daysOverride || collectDays(); const data=serverRow.data; const ws=wishStore(data); const key=employeeKey(emp);
       if(!ws.people[key])ws.people[key]={employeeId:emp.id,employeeName:emp.name,email:session.user.email||'',group:emp.group,months:{}};
-      ws.people[key].employeeId=emp.id; ws.people[key].employeeName=emp.name; ws.people[key].email=session.user.email||''; ws.people[key].group=emp.group; ws.people[key].groupKey=emp.groupKey; ws.people[key].updatedAt=new Date().toISOString();
-      ws.people[key].months[monthKey()]={year:Number(q('year').value),month:Number(q('month').value),days,group:emp.group,updatedAt:new Date().toISOString(),savedBy:serverUser()};
-      ws.version='13.0.226'; ws.updatedAt=new Date().toISOString();
+      ws.people[key].employeeId=emp.id; ws.people[key].employeeName=emp.name; ws.people[key].email=session.user.email||''; ws.people[key].group=emp.group; ws.people[key].groupKey=emp.groupKey; ws.people[key].updatedAt=new Date().toISOString(); ws.people[key].keyMode='employee';
+      ws.people[key].months[saveMonthKey]={year:y,month:m,days,group:emp.group,updatedAt:new Date().toISOString(),savedBy:serverUser()};
+      ws.version='13.0.226c'; ws.updatedAt=new Date().toISOString();
       const email=normEmail(session.user.email||''); const roles=Object.assign({},roleStore(data));
-      if(email && session.mode!=='code'){ const oldRole=roles[email]; const oldRoleName=String(typeof oldRole==='string'?oldRole:oldRole?.role||'').toLowerCase(); if(oldRoleName!=='admin'&&oldRoleName!=='planner'){ roles[email]={role:'employee',email,employeeId:emp.id,employeeName:emp.name,name:emp.name,group:emp.group,groupKey:emp.groupKey,updatedAt:new Date().toISOString(),source:'wunschportal-auto-gruppe'}; data.accessRoles=roles; data.roleVersion='13.0.226'; }}
-      const count=Object.keys(days).length; data.activity=[makeActivity('Wünsche gespeichert',count,emp)].concat(activityFromData(data)).slice(0,50);
+      if(email && session.mode!=='code'){ const oldRole=roles[email]; const oldRoleName=String(typeof oldRole==='string'?oldRole:oldRole?.role||'').toLowerCase(); if(oldRoleName!=='admin'&&oldRoleName!=='planner'){ roles[email]={role:'employee',email,employeeId:emp.id,employeeName:emp.name,name:emp.name,group:emp.group,groupKey:emp.groupKey,updatedAt:new Date().toISOString(),source:'wunschportal-auto-gruppe'}; data.accessRoles=roles; data.roleVersion='13.0.226c'; }}
+      const count=Object.keys(days).length; data.activity=[makeActivity(auto?(opts.action||'Wünsche automatisch gespeichert'):'Wünsche gespeichert',count,emp)].concat(activityFromData(data)).slice(0,50);
       const postHeaders={'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}; if(s.access_token)postHeaders.Authorization='Bearer '+s.access_token;
       await supa('/rest/v1/planer_store',{method:'POST',headers:postHeaders,body:JSON.stringify({id:STORE_ID,data,updated_at:new Date().toISOString()})});
-      currentWishes=days; serverRow={id:STORE_ID,data,updated_at:new Date().toISOString()};
-      currentAssignment={mode:'role',employee:emp,email}; portalRoleMessage='Gruppe gespeichert: '+emp.name+' · '+emp.group+'. Ab jetzt wird dieser Login automatisch dieser Gruppe zugeordnet.';
-      status('portalStatus','Wünsche gespeichert: '+count+' Tage · '+emp.name+' · '+emp.group+' · '+monthKey(),'ok');
-    }catch(e){status('portalStatus','Wünsche konnten nicht gespeichert werden: '+e.message,'bad')}
+      if(!opts.empOverride || (q('employeeSelect').value===activeEmployeeValue && saveMonthKey===monthKey())){ currentWishes=days; lastLoadedDaysJson=JSON.stringify(days); activeMonthKey=monthKey(); }
+      serverRow={id:STORE_ID,data,updated_at:new Date().toISOString()};
+      currentAssignment=currentAssignment?.mode==='admin'?currentAssignment:{mode:'role',employee:emp,email};
+      if(!auto) portalRoleMessage='Gruppe gespeichert: '+emp.name+' · '+emp.group+'. Ab jetzt wird dieser Login automatisch dieser Gruppe zugeordnet.';
+      status('portalStatus',(auto?'Automatisch gespeichert: ':'Wünsche gespeichert: ')+count+' Tage · '+emp.name+' · '+emp.group+' · '+saveMonthKey,'ok');
+    }catch(e){status('portalStatus',(auto?'Automatisches Speichern fehlgeschlagen: ':'Wünsche konnten nicht gespeichert werden: ')+e.message,'bad')}
+    finally{ wishAutosaveBusy=false; }
   }
-  function clearMonth(){ if(!confirm('Wünsche für diesen Monat in der Ansicht leeren? Gespeichert wird erst nach Klick auf „Wünsche speichern“.'))return; currentWishes={}; renderDays(); }
-  q('loginBtn').addEventListener('click',login); q('codeLoginBtn').addEventListener('click',codeLogin); q('logoutBtn').addEventListener('click',logout); q('loadServerBtn').addEventListener('click',loadServer); q('saveWishBtn').addEventListener('click',saveWishes); q('clearMonthBtn').addEventListener('click',clearMonth); q('month').addEventListener('change',loadExistingWishes); q('year').addEventListener('change',()=>{ updateMonthOptions(true); loadExistingWishes(); }); q('employeeSelect').addEventListener('change',loadExistingWishes);
+  function scheduleWishAutosave(reason){
+    if(wishAutosaveTimer)clearTimeout(wishAutosaveTimer);
+    status('portalStatus',(reason||'Änderung')+' · Auto-Speichern vorbereitet…','warn');
+    wishAutosaveTimer=setTimeout(()=>saveWishes({auto:true,action:'Auto-Speicherung Wunschportal'}),900);
+  }
+  async function saveCurrentIfDirty(reason){
+    if(wishAutosaveTimer){clearTimeout(wishAutosaveTimer); wishAutosaveTimer=null;}
+    const oldEmp=selectedEmployee(activeEmployeeValue); const oldMonth=activeMonthKey||monthKey(); const days=collectDays();
+    if(oldEmp && JSON.stringify(days)!==lastLoadedDaysJson){ await saveWishes({auto:true,empOverride:oldEmp,monthKeyOverride:oldMonth,daysOverride:days,action:reason||'Auto-Speicherung vor Wechsel'}); }
+  }
+  function clearMonth(){ if(!confirm('Wünsche für diesen Monat in der Ansicht leeren?'))return; currentWishes={}; renderDays(); scheduleWishAutosave('Monat geleert'); }
+  q('loginBtn').addEventListener('click',login); q('codeLoginBtn').addEventListener('click',codeLogin); q('logoutBtn').addEventListener('click',logout); q('loadServerBtn').addEventListener('click',loadServer); q('saveWishBtn').addEventListener('click',()=>saveWishes()); q('clearMonthBtn').addEventListener('click',clearMonth); q('month').addEventListener('change',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Monatswechsel'); loadExistingWishes(); }); q('year').addEventListener('change',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Jahreswechsel'); updateMonthOptions(true); loadExistingWishes(); }); q('employeeSelect').addEventListener('change',async()=>{ await saveCurrentIfDirty('Auto-Speicherung vor Mitarbeiterwechsel'); loadExistingWishes(); }); q('days').addEventListener('change',e=>{ if(e.target&&e.target.matches('[data-wish]'))scheduleWishAutosave('Wunsch geändert'); }); q('days').addEventListener('input',e=>{ if(e.target&&e.target.matches('[data-comment]'))scheduleWishAutosave('Kommentar geändert'); });
   loadSession(); initControls(); applyInviteParams(); if(isFresh())loadServer();
 })();
 </script>
