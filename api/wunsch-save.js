@@ -11,6 +11,6 @@ module.exports=async function handler(req,res){
     const days=(body.days&&typeof body.days==='object')?body.days:{};
     setWishes(row.data,emp,monthKey,days,identity,body.action||'Wünsche gespeichert');
     const saved=await saveStore(row.data);
-    return send(res,200,publicPayload(saved,emp,identity,monthKey));
+    return send(res,200,publicPayload(saved,emp,identity,monthKey,body.todayDate));
   }catch(e){return send(res,500,{ok:false,message:e.message||String(e)});}
 };

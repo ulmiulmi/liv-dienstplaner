@@ -124,14 +124,14 @@ function wishOptionsForEmployee(data,emp){
   return baseWishOptions.concat([...map.values()].sort((a,b)=>dutyOrder(a).localeCompare(dutyOrder(b),'de'))).concat([otherWishOption]);
 }
 function employeeKey(emp){ const base=[emp?.groupKey||emp?.group||'', emp?.id||'', emp?.name||''].filter(Boolean).map(safeKeyPart).filter(Boolean).join('__'); return 'emp_'+(base||safeKeyPart(emp?.name||'unknown')); }
-function wishStore(data){ if(!data.wishes||typeof data.wishes!=='object')data.wishes={version:'13.0.226f-api',people:{}}; if(!data.wishes.people||typeof data.wishes.people!=='object')data.wishes.people={}; return data.wishes; }
+function wishStore(data){ if(!data.wishes||typeof data.wishes!=='object')data.wishes={version:'13.0.226j-api',people:{}}; if(!data.wishes.people||typeof data.wishes.people!=='object')data.wishes.people={}; return data.wishes; }
 function getWishes(data,emp,monthKey){ const ws=wishStore(data); return JSON.parse(JSON.stringify(ws.people?.[employeeKey(emp)]?.months?.[monthKey]?.days||{})); }
 function setWishes(data,emp,monthKey,days,identity,action){
   const ws=wishStore(data); const key=employeeKey(emp); const [y,m]=String(monthKey).split('-').map(Number);
   if(!ws.people[key])ws.people[key]={employeeId:emp.id,employeeName:emp.name,email:normEmail(identity),group:emp.group,months:{}};
   Object.assign(ws.people[key],{employeeId:emp.id,employeeName:emp.name,email:normEmail(identity),group:emp.group,groupKey:emp.groupKey,updatedAt:new Date().toISOString(),keyMode:'employee'});
   ws.people[key].months[monthKey]={year:y,month:m,days,group:emp.group,updatedAt:new Date().toISOString(),savedBy:{id:'code:'+emp.id,email:normEmail(identity),name:emp.name}};
-  ws.version='13.0.226f-api'; ws.updatedAt=new Date().toISOString();
+  ws.version='13.0.226j-api'; ws.updatedAt=new Date().toISOString();
   const count=Object.keys(days||{}).length;
   const act={id:'act_'+new Date().toISOString().replace(/[:.]/g,'-')+'_'+Math.random().toString(36).slice(2,8),at:new Date().toISOString(),action:action||'Wünsche gespeichert',user:{id:'code:'+emp.id,email:normEmail(identity),name:emp.name},area:'Wunschportal',group:emp.group,employeeName:emp.name,hash:'wishes-'+count+'-'+Date.now().toString(36),count,note:'Mitarbeiter-Wunschportal API'};
   data.activity=[act].concat(Array.isArray(data.activity)?data.activity:[]).slice(0,50);
@@ -140,21 +140,81 @@ function dateStr(y,m,d){return y+'-'+String(m).padStart(2,'0')+'-'+String(d).pad
 function dutyForPlan(st,code){ code=String(code||'').trim(); return (Array.isArray(st?.duties)?st.duties:[]).find(d=>String(d.code||'').trim()===code)||null; }
 function shortDutyLabel(st,entry){ if(!entry)return 'frei / leer'; const code=String(entry.code||'').trim(); if(!code)return 'frei / leer'; if(code==='FR')return 'Frei'; const d=dutyForPlan(st,code); const name=String(d?.name||entry.name||'').trim(); const time=(d?.start&&d?.end)?String(d.start)+'–'+String(d.end):''; return code+(name?' · '+name:'')+(time?' · '+time:''); }
 function shortWishLabel(type,wishOptions){ const f=(wishOptions||[]).find(o=>o[0]===type); return f?f[1]:(type||''); }
+function employeeIndexInState(st,emp){
+  const list=Array.isArray(st?.employees)?st.employees:[];
+  let idx=list.findIndex(e=>String(e?.id||'')===String(emp?.id||''));
+  if(idx>=0)return idx;
+  idx=list.findIndex(e=>normText(e?.name)===normText(emp?.name));
+  if(idx>=0)return idx;
+  const mailSet=new Set((emp?.emails||[]).map(normEmail));
+  if(mailSet.size){
+    idx=list.findIndex(e=>empEmails(e).some(m=>mailSet.has(normEmail(m))));
+    if(idx>=0)return idx;
+  }
+  return -1;
+}
+function possiblePlanIdsForEmployee(st,emp,date){
+  const ids=new Set();
+  if(emp?.id)ids.add(String(emp.id));
+  if(emp?.name)ids.add(String(emp.name));
+  const list=Array.isArray(st?.employees)?st.employees:[];
+  const idx=employeeIndexInState(st,emp);
+  if(idx>=0&&list[idx]){
+    if(list[idx].id)ids.add(String(list[idx].id));
+    if(list[idx].name)ids.add(String(list[idx].name));
+  }
+  const empIds=new Set(list.map(e=>String(e?.id||'')).filter(Boolean));
+  const orphanIds=[];
+  Object.keys(st?.plan||{}).forEach(k=>{
+    if(!String(k).startsWith(String(date)+'__')||String(k).startsWith('OPEN__'))return;
+    const parts=String(k).split('__'); const oldId=parts[1];
+    if(oldId&&!empIds.has(oldId)&&!orphanIds.includes(oldId))orphanIds.push(oldId);
+  });
+  if(idx>=0&&orphanIds[idx])ids.add(String(orphanIds[idx]));
+  return [...ids].filter(Boolean);
+}
+function planEntryForEmployee(st,emp,date){
+  const plan=(st&&st.plan&&typeof st.plan==='object')?st.plan:{};
+  for(const id of possiblePlanIdsForEmployee(st,emp,date)){
+    const e=plan[date+'__'+id];
+    if(e)return e;
+  }
+  const list=Array.isArray(st?.employees)?st.employees:[];
+  for(const [k,e] of Object.entries(plan)){
+    if(!String(k).startsWith(String(date)+'__'))continue;
+    const pid=String(k).split('__')[1]||'';
+    const pe=list.find(x=>String(x?.id||'')===pid);
+    if(pe&&(String(pe.id||'')===String(emp?.id||'')||normText(pe.name)===normText(emp?.name)))return e;
+    if(normText(pid)===normText(emp?.name))return e;
+  }
+  return null;
+}
+function planDayFromState(st,emp,date,wishes,wishOptions){
+  const p=String(date||'').split('-').map(Number); const y=p[0], m=p[1], d=p[2];
+  const dow=new Date(y,m-1,d).getDay();
+  const entry=planEntryForEmployee(st,emp,date);
+  const label=shortDutyLabel(st,entry); const has=!!(entry&&entry.code&&entry.code!=='FR');
+  const wish=wishes?.[date]?.type ? shortWishLabel(wishes[date].type,wishOptions) : '';
+  const fixed=!!(entry&&entry.fixed) || !!(st?.lockedMonths&&st.lockedMonths[String(date).slice(0,7)]);
+  return {day:d,date,dow:['So','Mo','Di','Mi','Do','Fr','Sa'][dow],weekend:dow===0||dow===6,hasDuty:has,code:entry?.code||'',label,wish,fixed,manual:!!entry?.manual};
+}
 function personalPlan(data,emp,monthKey,wishes,wishOptions){
   const [y,m]=String(monthKey).split('-').map(Number); const st=getGroupStateForEmployee(data,emp); const days=[]; const rows=[];
   if(!st||!y||!m)return {days,rows,planned:0,info:'Für '+emp.name+' wurde kein Gruppenplan gefunden.'};
   const daysIn=new Date(y,m,0).getDate(); let planned=0;
   for(let d=1; d<=daysIn; d++){
-    const date=dateStr(y,m,d); const dow=new Date(y,m-1,d).getDay();
-    const entry=(st.plan||{})[date+'__'+emp.id] || (st.plan||{})[date+'__'+emp.name] || null;
-    const label=shortDutyLabel(st,entry); const has=!!(entry&&entry.code&&entry.code!=='FR'); if(has)planned++;
-    const wish=wishes?.[date]?.type ? shortWishLabel(wishes[date].type,wishOptions) : '';
-    const day={day:d,date,dow:['So','Mo','Di','Mi','Do','Fr','Sa'][dow],weekend:dow===0||dow===6,hasDuty:has,code:entry?.code||'',label,wish};
-    days.push(day); if(entry&&entry.code)rows.push(day);
+    const date=dateStr(y,m,d); const day=planDayFromState(st,emp,date,wishes,wishOptions);
+    if(day.hasDuty)planned++; days.push(day); if(day.code)rows.push(day);
   }
-  return {days,rows,planned,info:'Persönlicher Dienstplan: '+emp.name+' · '+emp.group+' · '+monthKey+' · '+planned+' geplante Dienste. Stand aus dem aktuellen Server-Speicher.'};
+  return {monthKey,days,rows,planned,info:'Persönlicher Dienstplan: '+emp.name+' · '+emp.group+' · '+monthKey+' · '+planned+' geplante Dienste. Stand aus dem aktuellen Server-Speicher.'};
+}
+function currentDayPlan(data,emp,todayDate,wishOptions){
+  const date=String(todayDate||'').match(/^\d{4}-\d{2}-\d{2}$/)?String(todayDate):new Date().toISOString().slice(0,10);
+  const st=getGroupStateForEmployee(data,emp); if(!st)return {date,label:'kein Plan gefunden',hasDuty:false,fixed:false,info:'Für heute wurde kein Gruppenplan gefunden.'};
+  const ws=wishStore(data); const wishDays=ws.people?.[employeeKey(emp)]?.months?.[date.slice(0,7)]?.days||{};
+  return planDayFromState(st,emp,date,wishDays,wishOptions);
 }
 function wishDeadlineWeeks(data){ const ws=data?.wishSettings||{}; let weeks=Number(ws.deadlineWeeks); if(!Number.isFinite(weeks))weeks=Number(ws.weeks); if(!Number.isFinite(weeks))weeks=6; return Math.max(0,Math.min(26,Math.round(weeks))); }
-function publicPayload(row,emp,identity,monthKey){ const data=row.data; const wishes=getWishes(data,emp,monthKey); const opts=wishOptionsForEmployee(data,emp); return {ok:true,employee:emp,identity:normEmail(identity)||identity,monthKey,wishDeadlineWeeks:wishDeadlineWeeks(data),wishOptions:opts,wishes,personalPlan:personalPlan(data,emp,monthKey,wishes,opts),updatedAt:row.updated_at||new Date().toISOString()}; }
+function publicPayload(row,emp,identity,monthKey,todayDate){ const data=row.data; const wishes=getWishes(data,emp,monthKey); const opts=wishOptionsForEmployee(data,emp); const today=String(todayDate||'').match(/^\d{4}-\d{2}-\d{2}$/)?String(todayDate):new Date().toISOString().slice(0,10); const currentMonthKey=today.slice(0,7); const currentMonthWishes=getWishes(data,emp,currentMonthKey); return {ok:true,employee:emp,identity:normEmail(identity)||identity,monthKey,wishDeadlineWeeks:wishDeadlineWeeks(data),wishOptions:opts,wishes,personalPlan:personalPlan(data,emp,monthKey,wishes,opts),currentMonthPlan:personalPlan(data,emp,currentMonthKey,currentMonthWishes,opts),currentDay:currentDayPlan(data,emp,today,opts),updatedAt:row.updated_at||new Date().toISOString()}; }
 
 module.exports={allow,send,readBody,fetchStore,saveStore,findEmployee,publicPayload,setWishes};
