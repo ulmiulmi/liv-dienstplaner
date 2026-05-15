@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.226if · Split · Wunschfrist</title>
+<title>POLYPOINT Adapter · V13.0.226jf · Split · Wunschfrist</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -132,7 +132,7 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.226if</h1>
+        <h1>POLYPOINT Adapter · V13.0.226jf</h1>
         <div class="mini">Split-Version mit stabiler Serverbasis, Dienst-setzen-Fix und automatischer Wunsch-Aktualisierung ohne Dienstplan-Überschreibung.</div>
       </div>
       <div class="top-actions">
@@ -338,11 +338,11 @@
     let doc;
     try{ doc = frame && frame.contentDocument; }catch(_){ return; }
     if(!doc || !doc.body) return;
-    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226if'); }catch(_){ }
+    try{ if(doc.title) doc.title = doc.title.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226jf'); }catch(_){ }
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     const nodes=[];
     while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226if'); });
+    nodes.forEach(n => { if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/V13\.0\.(203|204|205|206|207|208|209|210|211|212|213|214|215|216|217|218|219|220)/g,'V13.0.226jf'); });
     doc.querySelectorAll('button').forEach(btn => {
       const onclick = btn.getAttribute('onclick') || '';
       const text = (btn.textContent || '').trim();
@@ -450,7 +450,7 @@
     return true;
   }
 
-  // V13.0.226if: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
+  // V13.0.226jf: Mitarbeiter-Wünsche aus dem Serverstand lokal cachen,
   // damit die aufgeteilten Planseiten sie anzeigen können. Der Cache wird nicht als Planungsdaten hochgeladen.
   function stableWishHash(wishes){
     let raw = '';
@@ -958,7 +958,7 @@
     if(!list) return;
     serverActivityCache = serverActivityFromData(row?.data);
     if(!serverActivityCache.length){
-      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.226if werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
+      list.innerHTML = '<div class="server-history-row"><div><div class="server-history-title">Noch keine Aktivität protokolliert.</div><div class="server-history-meta">Ab V13.0.226jf werden Server-Speichern und Wiederherstellen hier aufgeführt.</div></div></div>';
       return;
     }
     list.innerHTML = serverActivityCache.map(a => {
@@ -1381,7 +1381,7 @@
   }
 
 
-  // V13.0.226if: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
+  // V13.0.226jf: Wunsch-Erfüllung gegen aktuellen Server-Dienstplan prüfen. Nur Anzeige, kein Server-Schreibzugriff.
   let serverWishReportCache = null;
   function parseServerStateValue(val){
     if(!val) return null;
@@ -1554,7 +1554,7 @@
 
 
 
-  // V13.0.226if: Wunsch-Sync liest nur Wunschdaten vom Server. Der Dienstplan wird dabei nicht geladen oder überschrieben.
+  // V13.0.226jf: Wunsch-Sync liest nur Wunschdaten vom Server. Der Dienstplan wird dabei nicht geladen oder überschrieben.
   async function refreshWishCacheFromServer(opts={}){
     if(serverWishAutoBusy) return false;
     const cfg = getServerInputs();
@@ -1597,7 +1597,7 @@
 
 
 
-  // V13.0.226if: Wunschfrist für das Wunschportal administrierbar machen.
+  // V13.0.226jf: Wunschfrist für das Wunschportal administrierbar machen.
   function wishSettingsFromData(data){
     const ws = data && typeof data.wishSettings === 'object' ? data.wishSettings : {};
     let weeks = Number(ws.deadlineWeeks);
@@ -1647,7 +1647,7 @@
     }catch(e){ serverStatus('Wunschfrist konnte nicht gespeichert werden: ' + e.message, 'bad'); }
   }
 
-  // V13.0.226if: Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist. Nur lesen, kein Server-Schreiben.
+  // V13.0.226jf: Admin-Übersicht für Wunschzugänge und einstellbarer Wunschfrist. Nur lesen, kein Server-Schreiben.
   function parseServerJsonMaybe(v){
     if(!v || typeof v !== 'string') return null;
     try{ return JSON.parse(v); }catch(_){ return null; }
