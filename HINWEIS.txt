@@ -1,2 +1,1 @@
-Ulmipoint-Branding: sichtbare POLYPOINT-Hinweise wurden auf ULMIPOINT/Ulmipoint geändert.
-Technische polypoint_-Speicherschlüssel bleiben kompatibel, damit bestehende Serverstände weiter funktionieren.
+Sichtbare Versionsnummern wurden aus Kopfbereich/Titel entfernt. Technische Daten/Keys bleiben kompatibel.
