@@ -1,5 +1,5 @@
-const STORE_ID = process.env.POLYPOINT_STORE_ID || 'default';
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.POLYPOINT_SUPABASE_URL;
+const STORE_ID = process.env.ULMIPOINT_STORE_ID || process.env.POLYPOINT_STORE_ID || 'default';
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.ULMIPOINT_SUPABASE_URL || process.env.POLYPOINT_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SECRET_KEY;
 
 function send(res, status, data){
