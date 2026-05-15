@@ -5450,8 +5450,8 @@ function saveQuickCell(){
   }
   const hiddenHours=q('editVDHours');
   if(qh&&hiddenHours)hiddenHours.value=qh.value;
-  saveCell();
   closeCellPopover();
+  setTimeout(saveCell,0);
 }
 function quickSetCode(code){
   if(!selected?.empId)return;
@@ -5466,9 +5466,9 @@ function quickSetCode(code){
   syncQuickHoursBox();
   saveQuickCell();
 }
-function quickRemoveDuty(){removeDuty();closeCellPopover();}
-function quickAutoCell(){autoCell();closeCellPopover();}
-function quickToggleFixed(){toggleCellFixed();closeCellPopover();}
+function quickRemoveDuty(){closeCellPopover();setTimeout(removeDuty,0);}
+function quickAutoCell(){closeCellPopover();setTimeout(autoCell,0);}
+function quickToggleFixed(){closeCellPopover();setTimeout(toggleCellFixed,0);}
 
 function employeePlanDatesUntil(date){
   makeDates();
@@ -5505,15 +5505,21 @@ function fixEmployeeUntil(empId,date,unlock=false){
 }
 function quickFixEmployeeUntil(){
   if(!selected?.empId)return toast('Bitte Feld wählen','warn');
-  const res=fixEmployeeUntil(selected.empId,selected.date,false);
-  if(!res.ok)return toast(res.msg||'Nicht fixiert','bad');
-  saveState(false);renderPlan();toast(`Mitarbeiter bis hier fixiert: ${res.touched} Felder${res.empty?`, davon ${res.empty} leer als Frei`:''}`,'ok');
+  closeCellPopover();
+  setTimeout(()=>{
+    const res=fixEmployeeUntil(selected.empId,selected.date,false);
+    if(!res.ok)return toast(res.msg||'Nicht fixiert','bad');
+    saveState(false);renderPlan();toast(`Mitarbeiter bis hier fixiert: ${res.touched} Felder${res.empty?`, davon ${res.empty} leer als Frei`:''}`,'ok');
+  },0);
 }
 function quickUnfixEmployeeUntil(){
   if(!selected?.empId)return toast('Bitte Feld wählen','warn');
-  const res=fixEmployeeUntil(selected.empId,selected.date,true);
-  if(!res.ok)return toast(res.msg||'Nicht gelöst','bad');
-  saveState(false);renderPlan();toast(`Fixierung bis hier gelöst: ${res.touched} Felder`,'ok');
+  closeCellPopover();
+  setTimeout(()=>{
+    const res=fixEmployeeUntil(selected.empId,selected.date,true);
+    if(!res.ok)return toast(res.msg||'Nicht gelöst','bad');
+    saveState(false);renderPlan();toast(`Fixierung bis hier gelöst: ${res.touched} Felder`,'ok');
+  },0);
 }
 
 function planDatesUntil(date){
@@ -6240,7 +6246,7 @@ function saveCell(){
 }
 function removeDuty(){if(!selected?.empId)return toast('Bitte Mitarbeiterfeld wählen','warn');const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Dieses Feld ist durch Dienstplan bis hier eingefroren','bad');const emp=empById(selected.empId);const why=protectedSchoolReason(emp,selected.date,'');if(why)return toast(why,'bad');state.plan[k]={removed:true,manual:true,fixed:true,code:'',reason:'manuell entfernt'};saveState(true);renderPlan();}
 function clearCell(){if(!selected?.empId)return;const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Dieses Feld ist durch Dienstplan bis hier eingefroren','bad');const emp=empById(selected.empId);const why=protectedSchoolReason(emp,selected.date,'FR');if(why)return toast(why,'bad');state.plan[k]={code:'FR',manual:true,fixed:true,reason:'manuell frei gesetzt'};saveState(true);renderPlan();}
-function autoCell(){if(!selected?.empId)return;const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Dieses Feld ist durch Dienstplan bis hier eingefroren','bad');const emp=empById(selected.empId);const why=protectedSchoolReason(emp,selected.date,'');if(why)return toast(why,'bad');delete state.plan[k];makePlan(true);}
+function autoCell(){if(!selected?.empId)return;const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Dieses Feld ist durch Dienstplan bis hier eingefroren','bad');const emp=empById(selected.empId);const why=protectedSchoolReason(emp,selected.date,'');if(why)return toast(why,'bad');delete state.plan[k];saveState(false);renderPlan();toast('Feld ist wieder automatisch planbar','ok');}
 function toggleCellFixed(){if(!selected?.empId)return;const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Diese Fixierung gehört zum eingefrorenen Gesamtplan','bad');if(!state.plan[k])state.plan[k]={code:'FR',manual:true};state.plan[k].fixed=!state.plan[k].fixed;saveState(true);renderPlan();}
 function saveDayStatus(){if(!selected?.date)return toast('Bitte Datum wählen','warn');{const ds=q('dayStatusSelect'); if(!ds)return toast('Tagesbedarf bitte im Bereich BT / Tagesstatus bearbeiten','warn'); state.dayStatus[selected.date]=ds.value;}saveState(true);renderPlan();toast('Tagesstatus gespeichert','ok');}
 function clearDayStatus(){if(!selected?.date)return;delete state.dayStatus[selected.date];saveState(true);renderPlan();}
