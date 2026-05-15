@@ -64,6 +64,12 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 
     /* V13.0.226j: Doppelte Hauptaktionen bleiben technisch vorhanden, werden aber in der Plan-Leiste ausgeblendet. */
     .dup-hidden{display:none!important}
+
+.release-summary{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:12px}
+.release-summary .sum .k{font-size:11px;color:var(--muted);font-weight:950;text-transform:uppercase;letter-spacing:.04em}
+#releaseCheckPanel{margin-top:12px;border:1px solid var(--line);border-radius:18px;background:#fbfcfe;padding:14px}
+#releaseCheckPanel h3{margin:0;font-size:20px}
+@media(max-width:740px){.release-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -133,7 +139,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 <main class="app">
   <section class="hero no-print">
     <div><div class="eyebrow">ULMIPOINT Adapter · DELOS</div><h1>Delos</h1></div>
-    <div class="toolbar"><button onclick="makePlan(true)">Monat planen</button><button onclick="fixCurrentMonth()">Monat sperren</button><button onclick="unfixCurrentMonth()">Monat freigeben</button></div>
+    <div class="toolbar"><button onclick="makePlan(true)">Monat planen</button><button class="okbtn" onclick="openReleaseCheck()">Freigabe prüfen</button><button onclick="fixCurrentMonth()">Monat sperren</button><button onclick="unfixCurrentMonth()">Monat freigeben</button></div>
   </section>
   <nav class="tabs no-print">
     <button class="tab active" onclick="showView('plan',this)">📅 Plan</button>
@@ -221,7 +227,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
   <section id="checks" class="view"><article class="card control-card"><div class="section control-head"><h2 class="control-title">Kontrolle / Regelzentrale</h2><span class="pill blue" id="checkCount">0 Punkte</span></div><div class="mini control-intro">Hier werden die aktiven Regeln, die klaren KI-Befehle und die Konflikte des Plans geprüft. Solange der Plan noch nicht vollständig gedeckt ist, bleiben abhängige Punkte im Entwurf gelb; absolute Sperren bleiben rot. BT / Tagesstatus, Dienstkatalog, Schulferien und Feiertage bleiben die Eingabe unter Dienste.</div>
     <details class="control-accordion"><summary>Regelzentrale</summary><div class="rulegrid" id="ruleCards"></div></details>
     <details class="control-accordion"><summary>Klare Befehle an die KI</summary><div class="cmd-box">Diese Befehle sind die Planungsanweisung. Planung, Kontrolle und Korrektur sollen dieselben Befehle verwenden.</div><div id="aiCommandList" class="commandgrid"></div></details>
-    <div class="toolbar control-actions"><button class="primary" onclick="renderRules(); renderChecks()">Kontrolle aktualisieren</button><button onclick="makePlan(true); renderRules(); renderChecks()">Neu berechnen & kontrollieren</button></div><div id="planningPhaseLog" class="issue green" style="display:none;margin-top:10px"></div><div class="control-results-title"><span>Prüfung & Konflikte</span><span class="mini">Ergebnis der aktuellen Kontrolle</span></div><div id="issueList" style="margin-top:12px"></div></article></section>
+    <div class="toolbar control-actions"><button class="primary" onclick="renderRules(); renderChecks()">Kontrolle aktualisieren</button><button class="okbtn" onclick="renderReleaseCheck()">Freigabe-Check aktualisieren</button><button onclick="makePlan(true); renderRules(); renderChecks()">Neu berechnen & kontrollieren</button></div><div id="releaseCheckPanel"></div><div id="planningPhaseLog" class="issue green" style="display:none;margin-top:10px"></div><div class="control-results-title"><span>Prüfung & Konflikte</span><span class="mini">Ergebnis der aktuellen Kontrolle</span></div><div id="issueList" style="margin-top:12px"></div></article></section>
 
   <section id="system" class="view"><article class="card"><div class="section"><h2>Speicher & System</h2><span class="pill blue">Delos</span></div><div class="toolbar"><button onclick="tryMigrateV12()">alte Daten suchen</button><button class="okbtn" onclick="rescueBestStoredState(true)">Daten retten</button><button class="danger" onclick="clearV13Storage()">Speicher dieses Geräts löschen</button></div><div id="systemInfo" class="issue green" style="margin-top:12px"></div>
     <details open style="margin-top:12px"><summary><b>OpenAI API direkt ohne Server</b></summary>
@@ -6516,7 +6522,111 @@ if(isRuleOn('officePlanning')&&['B','G'].includes(e.code)&&(isWeekend(date)||isH
     const yb=yearBalance(emp.id,state.selectedYear,state.selectedMonth);const minYb=yearBalanceMinSaldo(state.selectedYear,state.selectedMonth);const maxYb=yearBalanceMaxSaldoForMonth(state.selectedYear,state.selectedMonth);const kfNeed=holidayCompNeededThisMonth(emp,state.selectedYear,state.selectedMonth);if(kfNeed>0)issues.push({level:'yellow',type:'holidayCompMissing',emp:emp.name,text:`${emp.name}: ${kfNeed} KF-/Feiertags-Frei-Tag(e) für diesen Monat noch nicht automatisch platziert`});if(isRuleOn('yearBalance')&&yb<minYb-0.01)issues.push({level:'red',type:'yearMinus',emp:emp.name,text:`${emp.name}: Saldo ${formatHoursHMLabel(yb,{plus:true})} unter saisonalem Ziel ${yearBalanceRangeLabel(state.selectedYear,state.selectedMonth)}. Dienst auf Person mit Plus umverteilen oder zusätzliche Arbeitszeit prüfen.`});if(isRuleOn('yearBalance')&&yb>maxYb+0.01)issues.push({level:isCompensationSeasonMonth(state.selectedMonth)?'red':'yellow',type:'yearPlus',emp:emp.name,text:`${emp.name}: Saldo ${formatHoursHMLabel(yb,{plus:true})} über saisonalem Zielkorridor ${yearBalanceRangeLabel(state.selectedYear,state.selectedMonth)}${isCompensationSeasonMonth(state.selectedMonth)?' – Oktober bis Dezember: Kompensation ist Pflicht/aktiv zu suchen.':(isHolidayPlusMonth(state.selectedMonth)||isSummerVacationPlusMonth(state.selectedMonth)?' – Plus ist bis zum Puffer bewusst erlaubt; darüber KGL prüfen.':' – KGL-Kompensation planen; KF läuft separat als Feiertags-Frei')}`});if(isRuleOn('students')&&isStudent(emp)&&apprenticeYear(emp)<=2&&monthHours(emp.id,state.selectedYear,state.selectedMonth)<monthTarget(emp,state.selectedYear,state.selectedMonth)-1)issues.push({level:'yellow',type:'studentMinus',emp:emp.name,text:`${emp.name}: FaBe in Ausbildung Stunden im Monat noch unter Soll`});if(isRuleOn('students')&&isStudent(emp)&&studentAge(emp)===null)issues.push({level:'yellow',type:'learnerAge',emp:emp.name,text:`${emp.name}: Alter fehlt für FaBe-in-Ausbildung-Regeln`});if(isRuleOn('students')&&isStudent(emp)&&state.rules.students.noOvertime&&monthHours(emp.id,state.selectedYear,state.selectedMonth)>monthTarget(emp,state.selectedYear,state.selectedMonth)+1)issues.push({level:'yellow',type:'learnerOvertime',emp:emp.name,text:`${emp.name}: FaBe in Ausbildung über Monats-Soll – Überzeit vermeiden/kompensieren`});});return finalizeValidationIssues(compactDutyConfigCascade(issues));}
 function checkStudentAssist(date,issues){const groups=coverageEntries(date);groups.forEach(st=>{if(!(isStudent(st.emp)&&apprenticeYear(st.emp)<=2))return;const overlap=groups.filter(x=>x.start<st.end&&x.end>st.start);if(!overlap.some(x=>isFP(x.emp)))issues.push({level:'red',type:'studentFP',date,emp:st.emp.name,text:`${date}: ${st.emp.name} ohne Fachperson im gleichen Zeitfenster`});if(overlap.some(x=>isAssist(x.emp))&&!overlap.some(x=>isFP(x.emp)))issues.push({level:'red',type:'studentAssist',date,emp:st.emp.name,text:`${date}: Schüler nur mit Assistenz`});});}
 function commandForIssue(i){if(i.type==='overlap')return `Befehl: Dienstauswahl im BT prüfen oder Dienstkombination ändern. Die erlaubte Überschneidung wird automatisch aus den gewählten BT-Diensten berechnet (${fmtOverlapMinutes(i.allowed||defaultOverlapMinutes())}).`;const map={dutyConfig:'Befehl: Dienstkatalog öffnen und Haken prüfen. Gruppendienste brauchen Arbeit + Gruppe + Auto. Danach Dienstkatalog übernehmen und neu berechnen.',yearMinus:'Befehl: Saldo unter saisonalem Mindestwert. Zuerst automatische Dienste von Personen mit Plus auf diese Person umlegen; keine harten Regeln, Fixierungen oder 2-Frei-/5-Tage-Regeln verletzen. Februar darf kurzfristig bis zum Puffer laufen.',yearPlus:'Befehl: saisonal behandeln. April bis August Plus-Puffer akzeptieren; darüber KGL prüfen. Oktober bis Dezember Überstunden aktiv abbauen, im Dezember möglichst Richtung 0:00h.',open:'Befehl: Dienst offen lassen, wenn niemand regelkonform passt; nicht mit verbotener Person füllen.',teamMeetingMissing:'Befehl: TS/TSK/TSN ist obligatorisch. Auf freie Felder setzen oder als Zusatzmarkierung auf bestehende Arbeitsdienste legen; geschützte Abwesenheiten/Frei/Fixiert nicht überschreiben.',pikettOpen:'Befehl: Pikettdienst nur setzen, wenn alle regulären Dienste des Tages gedeckt sind und es kein Teamsitzungstag ist. An Sitzungstagen oder bei fehlenden regulären Diensten P weglassen. Wenn Pikett mit Azore gedeckt ist, im Datums-Dropdown "P durch Azore gedeckt" setzen. P immer auf ein leeres Feld ohne anderen Dienst.',pikettMax:'Befehl: Pikett auf leeren Tag einer anderen Person umverteilen; maximal 2× P pro Person und Monat.',pikettPct:'Befehl: P bei dieser Person entfernen. Pikett darf nur an Personen unter 90% Pensum gehen; reguläre Dienste zuerst decken, sonst P weglassen.',pikettOnDuty:'Befehl: P vom Arbeitsdienst trennen. Entweder Arbeitsdienst behalten und P auf leeren Tag einer anderen Person setzen oder dieses Feld ausschliesslich auf P stellen.',pikettSpacing:'Befehl: Pikett-Jahresabstand korrigieren. Gleiche Person darf Pikett nur direkt nacheinander als Block haben oder sonst mit mindestens 14 Tagen Abstand über Januar bis Dezember. P zählt zusätzlich zur 5-Tage-Regel.',overlap:'Befehl: Dienstkombination ändern; mehr reguläre MA als erlaubt nur so lange, wie die BT-Dienstauswahl es nötig macht.',studentLate:'Befehl: Spätdienst entfernen; Schüler vor 3. Lehrjahr nicht spät einteilen.',studentFP:'Befehl: Schülerdienst nur behalten, wenn im gleichen Zeitfenster eine Fachperson arbeitet.',studentAssist:'Befehl: Schüler nicht nur mit Assistenz einteilen.',split:'Befehl: zweiten geteilten Dienst entfernen oder durch Früh/Spät lösen.',splitWeek:'Befehl: in dieser Woche nur einen GD pro Person behalten; zusätzliche geteilte Dienste durch Früh/Spät/Büro-Kombination oder andere Person ersetzen.',shortDutyWeek:'Befehl: bei Pensum über 80% höchstens einen kurzen Dienst pro Woche behalten; weitere kurze Dienste durch langen Dienst, Büro-Kombination oder andere Person ersetzen.',officeMissing:'Befehl: Büro-% sind Pflicht; B-Tage oder saubere BÜRO-Zusätze auf Werktage verplanen, ohne Gruppe/TS/Ferien/Krank zu überschreiben.',officeBand:'Befehl: Bürozeit korrigieren; Monats-Büro muss innerhalb ±5% vom Büro-Soll liegen.',officeWeekMissing:'Befehl: bei mehr als 20% Büro mindestens einen kompletten B-Tag in dieser Kalenderwoche setzen; Dienstag möglichst meiden, wenn Teamsitzung belegt.',officeHoliday:'Befehl: B/G von Feiertag, ½-Feiertag oder Wochenende entfernen und Büro auf normalen Werktag verschieben.',officeRule:'Befehl: Büroeintrag entfernen oder auf normalen regelkonformen Werktag verschieben; Büro muss alle Dienstregeln plus Büroregeln einhalten.',vacationInvalid:'Befehl: FER von Wochenende/Feiertag entfernen; Ferien nur auf normale Mo–Fr-Tage setzen.',vacationWeekendWork:'Befehl: Dienst entfernen; Wochenende vor/nach Ferienblock muss frei bleiben.',special:'Befehl: Sonderbedarf mit den gewählten Tagesdiensten decken.',fp:'Befehl: Fachperson in das Sonderbedarf-Zeitfenster einteilen.',tv:'Befehl: Tagesverantwortung sicherstellen. Leitung nicht als TV zählen; TKO nur verwenden, wenn die Person an diesem Datum nicht im Büro gebunden ist. Sonst Dienst auf eine andere TV-fähige Person umlegen.',skillMixFP:'Befehl: Skill-Mix korrigieren. Mindestens eine Fachperson/FABE mit abgeschlossener Ausbildung einplanen; Schüler/Ausbildung zählen nicht als Fachperson.',skillMixAssist:'Befehl: reine Assistenzdeckung auflösen. Einen automatisch geplanten Assistenzdienst auf eine Fachperson/FABE umlegen.',skillMixStudent:'Befehl: Schüler-/Ausbildungsdeckung auflösen. Schüler/Ausbildung nur zusätzlich oder begleitet einsetzen, nicht als tragende Alleindeckung.',school:'Befehl: SCH entfernen; an Sonntag/Feiertag/Ferien keine Schule planen.',schoolProtected:'Befehl: diesen Dienst entfernen und SCH/SCHF wiederherstellen. Schule und Schule-Freizeit sind absolute Sperren und dürfen nicht überschrieben werden.',studentMinus:'Befehl: FaBe in Ausbildung zusätzlich über Früh/GD auffüllen, aber nicht über Mittel/Spät vor 3. Lehrjahr.',learnerRule:'Befehl: Einsatz entfernen oder durch erlaubten Dienst ersetzen; FaBe-in-Ausbildung-Regel ist hart.',learnerAge:'Befehl: Alter eintragen, sonst werden Spät-/Sonn-/Feiertag-Einsätze vorsichtig blockiert.',learnerOvertime:'Befehl: keine Zusatzdienste; bei Überzeit KGL/KF oder freien Ausgleich prüfen.',inactivePlanned:'Befehl: Eintrag entfernen oder Aktiv-bis/ab-Datum korrigieren.',lateEarly:'Befehl: sofort korrigieren. Zwischen zwei Diensten müssen mindestens 11 Stunden Ruhezeit liegen. Zu kurzen Folgedienst oder Vordienst entfernen/umlegen. Diese Regel bleibt auch mit Tages-Ausnahme hart.',teamMeetingS6Office:'Befehl: BÜRO-Zusatz entfernen. TS mit BÜRO ist erlaubt, aber nicht zusammen mit S6; bei TS + S6 bleibt Pause.',teamMeetingSplitPause:'Befehl: TS/TSK/TSN von diesem geteilten Dienst entfernen oder Person/Dienst wechseln. Teamsitzung darf nicht in die Pause von GD/GD3/GD2/GD4 fallen.',holidayCompMissing:'Befehl: aktuellen Monat neu berechnen oder im Planfeld-Dropdown KF manuell als Block setzen. KF wird nur auf leere normale Werktage gesetzt.',weekendFairness:'Befehl: Wochenenddienste über das Jahreskonto umverteilen. Ziel: echte freie Wochenenden fair von Januar bis Dezember; grundsätzlich jedes zweite Wochenende frei. P zählt als Wochenendbelastung.',holidayFairness:'Befehl: Feiertagsbelastung über das Jahreskonto prüfen. Wichtige Feiertage und P an Feiertagen möglichst auf Mitarbeitende mit weniger Feiertagsbelastung verteilen; harte Regeln bleiben stärker.',staffReserve:'Befehl: nicht weiter auf Kante planen. Automatische Zusatzdienste, KGL/KF oder Pikett so umlegen, dass mindestens eine nicht-schulische Reserve frei bleibt; an kritischen Tagen möglichst auch eine freie Fachperson/FABE als Reserve behalten.',employeeLimit:'Befehl: Dienst kürzen/wechseln oder Arbeitstage verteilen. Die Einschränkung im Feld-Dropdown ist eine harte Regel und wird nicht durch Tages-Ausnahme aufgehoben.',workSequence:'Befehl: sofort korrigieren: nach D5 müssen zwei freie Tage kommen. D6, D7 usw. sind verboten. SCH/ÜK/WB/FER/KR zählen mit.',dutyStability:'Befehl: Planstil prüfen und Auto-Dienste an Blockränder oder gleiche Dienstarten umlegen. Grosse Blöcke möglichst stabil halten; normal nur unnötige Wechsel korrigieren; klein & verteilt nicht zu lange blocken. Harte Regeln, Fixierungen und Deckung bleiben stärker.',freeBlockSoft:'Befehl: möglichst nach jedem Arbeitsblock 2 freie Tage lassen; Einzelfrei zwischen zwei Arbeitsblöcken vermeiden.'};return map[i.type]||'';}
-function renderChecks(){renderPlanningPhaseLog();const issues=validatePlan();const calcErr=window.__lastPlanError;const shown=calcErr?[{level:'red',type:'calcError',text:'Berechnung wurde abgebrochen: '+calcErr},...issues]:issues;q('checkCount').textContent=shown.length+' Punkte';const list=q('issueList');list.innerHTML=shown.length?shown.map(i=>`<div class="issue ${i.level==='red'?'red':i.level==='yellow'?'yellow':'green'}"><b>${i.type==='calcError'?'Berechnungsfehler':i.level==='red'?'Regelbruch':'Offen / Ziel'}</b><div>${esc(i.text)}</div>${commandForIssue(i)?`<div class="cmd-box">${commandForIssue(i)}</div>`:''}</div>`).join(''):'<div class="issue green"><b>Keine kritischen Punkte gefunden.</b><div>Die Eingaben aus BT / Tagesstatus und Dienstkatalog sind im Plan erfüllt.</div></div>';renderQuickIssues();}
+
+
+// Freigabe-Check: kompakte Monatskontrolle vor dem Sperren/Freigeben.
+function releaseCheckWishConflicts(){
+  makeDates();
+  const hardTypes=new Set(['NO','FR','WF','SCH','SCHF','FER','WB','WB%','KF','KGL','UK','ÜK','UEK']);
+  const out=[];
+  state.employees.filter(emp=>isActiveInMonth(emp)).forEach(emp=>{
+    dates.forEach(date=>{
+      const w=employeeWishForDate(emp,date);
+      if(!w)return;
+      const type=String(w.type||'').toUpperCase();
+      if(!type)return;
+      const e=state.plan[entryKey(emp.id,date)]||null;
+      const code=e&&!e.removed?String(e.code||''):'';
+      const work=code && (typeof isWorkCode==='function'?isWorkCode(code):!!code);
+      const matches=wishTypeMatchesCode(type,code,w.comment||'');
+      const label=wishTypeText(type);
+      if(hardTypes.has(type)){
+        if(work&&!matches){
+          out.push({level:'red',date,emp:emp.name,type:'wishHard',text:`${date}: ${emp.name} hat ${label}, ist aber mit ${code} verplant.`});
+        }
+        return;
+      }
+      if(type==='OTHER'){
+        if(work&&!matches&&w.comment){
+          out.push({level:'yellow',date,emp:emp.name,type:'wishOther',text:`${date}: ${emp.name} hat Wunsch-Kommentar, bitte prüfen (${code||'kein Dienst'}).`});
+        }
+        return;
+      }
+      if(!code){
+        out.push({level:'yellow',date,emp:emp.name,type:'wishMissing',text:`${date}: ${emp.name} wünscht ${label}, ist aber nicht verplant.`});
+      }else if(!matches){
+        out.push({level:'yellow',date,emp:emp.name,type:'wishMismatch',text:`${date}: ${emp.name} wünscht ${label}, eingetragen ist ${code}.`});
+      }
+    });
+  });
+  return out;
+}
+function releaseCheckManualOpen(){
+  makeDates();
+  const out=[];
+  dates.forEach(date=>{
+    state.employees.forEach(emp=>{
+      const e=state.plan[entryKey(emp.id,date)];
+      if(e&&e.manual&&!e.fixed&&!e.removed){
+        out.push({level:'yellow',date,emp:emp.name,type:'manualNotFixed',text:`${date}: ${emp.name} wurde manuell gesetzt, ist aber nicht fixiert.`});
+      }
+    });
+  });
+  return out;
+}
+function releaseCheckBalanceItems(){
+  const out=[];
+  state.employees.filter(emp=>isActiveInMonth(emp)).forEach(emp=>{
+    const b=employeeBalanceData(emp);
+    if(b.ratio>0.18)out.push({level:'yellow',emp:emp.name,type:'overHours',text:`${emp.name}: deutlich über Soll (${formatHoursHMLabel(b.diff,{plus:true})}).`});
+    if(b.ratio<-0.22)out.push({level:'yellow',emp:emp.name,type:'underHours',text:`${emp.name}: deutlich unter Soll (${formatHoursHMLabel(b.diff,{plus:true})}).`});
+  });
+  return out.slice(0,12);
+}
+function releaseIssueListHtml(title,items,emptyText,limit=8){
+  if(!items.length)return `<div class="issue green"><b>${esc(title)}</b><div>${esc(emptyText)}</div></div>`;
+  const red=items.some(i=>i.level==='red');
+  return `<div class="issue ${red?'red':'yellow'}"><b>${esc(title)} · ${items.length}</b><div>${items.slice(0,limit).map(i=>'• '+esc(i.text||String(i))).join('<br>')}${items.length>limit?'<br>… weitere Punkte in der Kontrolle':''}</div></div>`;
+}
+function renderReleaseCheck(){
+  const el=q('releaseCheckPanel');
+  if(!el)return;
+  const issues=validatePlan();
+  const red=issues.filter(i=>i.level==='red');
+  const missing=allMissingNeedItems();
+  const wishes=releaseCheckWishConflicts();
+  const wishRed=wishes.filter(i=>i.level==='red');
+  const wishYellow=wishes.filter(i=>i.level!=='red');
+  const manual=releaseCheckManualOpen();
+  const balance=releaseCheckBalanceItems();
+  const blockers=red.length+missing.length+wishRed.length;
+  const warnings=wishYellow.length+manual.length+balance.length+issues.filter(i=>i.level==='yellow').length;
+  const badge=blockers?`<span class="pill red">Nicht bereit · ${blockers} Stopper</span>`:(warnings?`<span class="pill yellow">Fast bereit · ${warnings} Hinweise</span>`:`<span class="pill green">Bereit</span>`);
+  const now=new Date().toLocaleString('de-CH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  el.innerHTML=`<div class="section"><h3>Freigabe-Check</h3>${badge}</div>
+    <div class="mini">Monat ${esc(MONTHS[state.selectedMonth-1])} ${state.selectedYear} · geprüft ${esc(now)}. Stopper zuerst lösen, bevor der Monat gesperrt oder an Mitarbeitende freigegeben wird.</div>
+    <div class="summary release-summary">
+      <div class="sum"><div class="k">Regelbrüche</div><div class="v">${red.length}</div></div>
+      <div class="sum"><div class="k">Dienste offen</div><div class="v">${missing.length}</div></div>
+      <div class="sum"><div class="k">Wünsche verletzt</div><div class="v">${wishRed.length}</div></div>
+      <div class="sum"><div class="k">Hinweise</div><div class="v">${warnings}</div></div>
+    </div>
+    ${releaseIssueListHtml('Harte Regelbrüche',red,'Keine harten Regelbrüche gefunden.',6)}
+    ${releaseIssueListHtml('Fehlende Dienste',missing.map(x=>({level:'yellow',text:`${x.date}: ${x.code} fehlt${x.missing>1?' × '+x.missing:''}`})),'Alle Dienste sind gedeckt.',8)}
+    ${releaseIssueListHtml('Wünsche mit hoher Priorität verletzt',wishRed,'Schule, frei, Ferien und nicht verfügbar werden respektiert.',8)}
+    ${releaseIssueListHtml('Wunsch-Hinweise',wishYellow,'Keine offenen Wunsch-Hinweise.',8)}
+    ${releaseIssueListHtml('Manuelle Einträge ohne Fixierung',manual,'Manuelle Einträge sind geschützt.',6)}
+    ${releaseIssueListHtml('Stunden / Belastung prüfen',balance,'Keine groben Stunden-Ausreisser.',6)}`;
+}
+function openReleaseCheck(){
+  const tab=[...document.querySelectorAll('.tab')].find(b=>String(b.getAttribute('onclick')||'').includes("checks"));
+  showView('checks',tab||null);
+  renderRules();
+  renderChecks();
+  setTimeout(()=>q('releaseCheckPanel')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+}
+
+function renderChecks(){renderPlanningPhaseLog();renderReleaseCheck();const issues=validatePlan();const calcErr=window.__lastPlanError;const shown=calcErr?[{level:'red',type:'calcError',text:'Berechnung wurde abgebrochen: '+calcErr},...issues]:issues;q('checkCount').textContent=shown.length+' Punkte';const list=q('issueList');list.innerHTML=shown.length?shown.map(i=>`<div class="issue ${i.level==='red'?'red':i.level==='yellow'?'yellow':'green'}"><b>${i.type==='calcError'?'Berechnungsfehler':i.level==='red'?'Regelbruch':'Offen / Ziel'}</b><div>${esc(i.text)}</div>${commandForIssue(i)?`<div class="cmd-box">${commandForIssue(i)}</div>`:''}</div>`).join(''):'<div class="issue green"><b>Keine kritischen Punkte gefunden.</b><div>Die Eingaben aus BT / Tagesstatus und Dienstkatalog sind im Plan erfüllt.</div></div>';renderQuickIssues();}
 function renderQuickIssues(){
   const issues=validatePlan();if(!q('quickIssues'))return;
   const red=issues.filter(i=>i.level==='red');
@@ -6661,7 +6771,13 @@ function openPrintPDFPage(){
     td.innerHTML='<b>'+esc(name)+'</b>'+(role?'<div class="print-role">'+esc(role)+'</div>':'');
   });
   clone.classList.add('print-plan-table');
-  const html=`<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${printPageCSS()}</style></head><body>
+  const html=`<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${printPageCSS()}
+.release-summary{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:12px}
+.release-summary .sum .k{font-size:11px;color:var(--muted);font-weight:950;text-transform:uppercase;letter-spacing:.04em}
+#releaseCheckPanel{margin-top:12px;border:1px solid var(--line);border-radius:18px;background:#fbfcfe;padding:14px}
+#releaseCheckPanel h3{margin:0;font-size:20px}
+@media(max-width:740px){.release-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style></head><body>
   <div class="screenbar"><div><b>${esc(title)}</b><div class="mini">A4 quer · kompakte Druckansicht ohne lange Saldo-Zeilen. Im Druckdialog „Als PDF speichern“ wählen.</div></div><div><button onclick="window.close()">Schliessen</button><button class="primary" onclick="window.print()">PDF speichern / Drucken</button></div></div>
   <main class="paper"><header class="print-head"><div><h1>${esc(title)}</h1><div class="meta" style="text-align:left">Plan passt kompakt auf eine A4-Seite quer. Namen bleiben kurz lesbar.</div></div><div class="meta">Erstellt: ${esc(generated)}<br><span id="scaleInfo">Skalierung wird berechnet…</span></div></header><section class="fitbox"><div class="fitcontent" id="fitcontent">${clone.outerHTML}</div></section><div class="print-note">Bei Bedarf im Druckdialog: Layout Querformat, Skalierung Standard/100%, Ränder Standard oder Keine.</div></main>
   <script>
