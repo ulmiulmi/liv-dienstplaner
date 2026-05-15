@@ -10,12 +10,13 @@
   html,body{height:100%;margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);overflow:hidden}
   .shell{height:100%;display:grid;grid-template-rows:auto 1fr;gap:0}
   .top{background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);box-shadow:0 8px 24px rgba(16,24,40,.07);padding:9px 12px;z-index:20}
-  .head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px 12px;margin-bottom:8px}
-  h1{font-size:20px;line-height:1.1;margin:0;letter-spacing:-.04em}
+  .head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px 14px;margin-bottom:8px}
+  h1{font-size:24px;line-height:1.08;margin:0;letter-spacing:-.045em}
 
-  .brand{display:flex;align-items:flex-start;min-width:0}
-  .brand-logo{grid-column:2;grid-row:1;justify-self:end;display:block;height:46px;width:auto;max-width:min(310px,42vw);border-radius:12px;background:#08101a;box-shadow:0 8px 18px rgba(16,24,40,.10)}
+  .brand{display:flex;align-items:flex-start;min-width:0;padding-top:4px}
+  .brand-logo{grid-column:2;grid-row:1;justify-self:end;display:block;height:72px;width:auto;max-width:min(430px,42vw);border-radius:14px;background:#08101a;box-shadow:0 8px 18px rgba(16,24,40,.10)}
   .brand-copy{min-width:0}
+  .top-actions{grid-column:1 / -1}
   .visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
   .mini{font-size:12px;color:var(--muted);font-weight:850;line-height:1.35}
   .pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:950;background:#eef2f7;color:#475467;white-space:nowrap}
@@ -138,8 +139,7 @@
     <div class="head">
       <div class="brand">
         <div class="brand-copy">
-          <h1 class="visually-hidden">ULMIPOINT Adapter</h1>
-          <div class="mini">Adapter · Split-Version mit stabiler Serverbasis, Dienst-setzen-Fix und automatischer Wunsch-Aktualisierung ohne Dienstplan-Überschreibung.</div>
+          <h1>ULMIPOINT Adapter</h1>
         </div>
       </div>
       <img class="brand-logo" src="assets/ulmipoint-titlebar.png" alt="ULMIPOINT KI-Planer">
