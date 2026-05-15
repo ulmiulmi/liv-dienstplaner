@@ -5589,7 +5589,7 @@ function applyVacationRangeForEmployee(empId,start,end){
     const k=entryKey(emp.id,d);
     const old=state.plan[k];
     if(old?.fixed||isEducationCode(old?.code)||shouldHaveSchool(emp,d)||shouldHaveSchoolFree(emp,d)){skip++;continue;}
-    state.plan[k]={code:'FER',manual:true,vacationRange:true};
+    state.plan[k]={code:'FER',manual:true,fixed:true,vacationRange:true,reason:'manuell gesetzt'};
     n++;
   }
   setWeekendFreeAroundVacationRange(emp,start,end);
@@ -5624,7 +5624,7 @@ function applyHolidayCompRangeForEmployee(empId,start,end){
     if(old?.fixed||isEducationCode(old?.code)){skip++;continue;}
     if(old&&!old.removed&&old.code===code){old.manual=true;old.holidayComp=true;old.reason='Feiertags-Frei manuell als Block gesetzt';already++;n++;continue;}
     if(old&&!old.removed){skip++;continue;}
-    state.plan[k]={code,manual:true,holidayComp:true,holidayCompRange:true,holidayCompFrom:start,holidayCompTo:end,reason:'Feiertags-Frei manuell als Block gesetzt'};
+    state.plan[k]={code,manual:true,fixed:true,holidayComp:true,holidayCompRange:true,holidayCompFrom:start,holidayCompTo:end,reason:'Feiertags-Frei manuell als Block gesetzt'};
     n++;
   }
   return {ok:true,n,skip,already,remaining};
@@ -5692,7 +5692,7 @@ function applyOvertimeCompRangeForEmployee(empId,start,end){
     if(old&&!old.removed&&!['FR','WF'].includes(old.code||'')){skip++;continue;}
     const limitMsg=kglLimitReason(emp,d);
     if(limitMsg){limit++;skip++;continue;}
-    state.plan[k]={code,manual:true,compensation:true,overtimeComp:true,overtimeCompRange:true,overtimeCompFrom:start,overtimeCompTo:end,reason:'Überzeit-Kompensation manuell als Block gesetzt'};
+    state.plan[k]={code,manual:true,fixed:true,compensation:true,overtimeComp:true,overtimeCompRange:true,overtimeCompFrom:start,overtimeCompTo:end,reason:'Überzeit-Kompensation manuell als Block gesetzt'};
     n++;
   }
   return {ok:true,n,skip,already,limit,remaining:kglRemainingCompHours(emp)};
@@ -5792,7 +5792,7 @@ function applySickRangeForEmployee(empId,start,end){
     const krHours=sickHoursForDate(emp,d,old,start);
     if(oldCode&&duty(oldCode)?.countsForCoverage)lost.push({date:d,code:oldCode,hours:oldHours});
     if(oldCode==='P')lost.push({date:d,code:'P',hours:0,pikettOnly:sickNo===1});
-    state.plan[k]={code:'KR',manual:true,sickRange:true,sickFrom:start,sickTo:end,manualHours:krHours,sickDayNo:sickNo};
+    state.plan[k]={code:'KR',manual:true,fixed:true,sickRange:true,sickFrom:start,sickTo:end,manualHours:krHours,sickDayNo:sickNo};
     if(oldCode){state.plan[k].sickOriginalCode=oldCode;state.plan[k].sickOriginalHours=oldHours;state.plan[k].sickOriginalReason='Krank ersetzt geplanten Dienst';}
     n++;
   }
@@ -5907,7 +5907,7 @@ function assignSickReplacement(date,code,empId,sickEmpId,force=false){
     res=canHavePikett(emp,date)?{ok:true}:{ok:false,why:'Pikett-Regel'};
     if(!res.ok&&force)res=forceAssignAllowed(emp,code,date);
     if(!res.ok)return toast(`${emp.name}: ${res.why||'P kann hier nicht gesetzt werden'}`,'bad');
-    state.plan[k]={code:'P',manual:true,reason:'Einspringen wegen Krank-Ausfall'};
+    state.plan[k]={code:'P',manual:true,fixed:true,reason:'Einspringen wegen Krank-Ausfall'};
   }else{
     res=canAssign(emp,code,date,{asCoverage:true});
     if(!res.ok&&force){
@@ -5917,7 +5917,7 @@ function assignSickReplacement(date,code,empId,sickEmpId,force=false){
       if(!res.ok){const f=forceAssignAllowed(emp,code,date);if(f.ok)res=f;}
     }
     if(!res.ok)return toast(`${emp.name}: ${res.why||'Dienst kann nicht gesetzt werden'}`,'bad');
-    state.plan[k]={code,manual:true,reason:force?'Einspringen mit Tages-Ausnahme wegen Krank-Ausfall':'Einspringen wegen Krank-Ausfall'};
+    state.plan[k]={code,manual:true,fixed:true,reason:force?'Einspringen mit Tages-Ausnahme wegen Krank-Ausfall':'Einspringen wegen Krank-Ausfall'};
   }
   saveState(false);
   renderPlan();
@@ -6100,7 +6100,7 @@ function assignMissingDutyToEmployee(date,code,empId,force=false){
     if(pikettOnDate(date).length>0 && !(existing&&hasPikettEntry(existing))){toast(`${date}: Es gibt bereits ein Pikett`, 'warn');return false;}
     res=force?forceAssignAllowed(emp,code,date):(canHavePikett(emp,date)?{ok:true}:{ok:false,why:'Pikett-Regel'});
     if(!res.ok){toast(`${emp.name}: ${res.why||'P kann hier nicht gesetzt werden'}`,'bad');return false;}
-    state.plan[k]={code:'P',manual:true,pikettAuto:false,reason:'aus Tagesvorschlag gesetzt'};
+    state.plan[k]={code:'P',manual:true,fixed:true,pikettAuto:false,reason:'aus Tagesvorschlag gesetzt'};
   }else{
     res=canAssign(emp,code,date,{asCoverage:true});
     if(!res.ok&&force){
@@ -6113,7 +6113,7 @@ function assignMissingDutyToEmployee(date,code,empId,force=false){
       }
     }
     if(!res.ok){toast(`${emp.name}: ${res.why||'Dienst kann nicht gesetzt werden'}`,'bad');return false;}
-    state.plan[k]={code,manual:true,reason:force?'aus Tagesvorschlag mit Tages-Ausnahme':'aus Tagesvorschlag gesetzt'};
+    state.plan[k]={code,manual:true,fixed:true,reason:force?'aus Tagesvorschlag mit Tages-Ausnahme':'aus Tagesvorschlag gesetzt'};
   }
   deleteOneOpenPlaceholder(date,code);
   if(code!=='P'&&!isTeamMeetingCode(code)){
@@ -6227,7 +6227,7 @@ function saveCell(){
   }else{
     const d=duty(code);
     const mh=d?.hoursMode==='manual'?(parseFloat(q('editVDHours').value)||0):0;
-    const newEntry={code,manual:true,manualHours:mh,vdHours:code==='VD'?mh:0};
+    const newEntry={code,manual:true,fixed:true,manualHours:mh,vdHours:code==='VD'?mh:0,reason:'manuell gesetzt'};
     const limWhy=employeeLimitEntryViolation(emp,selected.date,newEntry);if(limWhy)return toast(limWhy,'bad');
     const lateEarlyWhy=lateEarlyConflictReason(emp,code,selected.date,{entry:newEntry});if(lateEarlyWhy)return toast(lateEarlyWhy,'bad');
     state.plan[k]=newEntry;
@@ -6238,8 +6238,8 @@ function saveCell(){
   saveState(true);
   renderPlan();
 }
-function removeDuty(){if(!selected?.empId)return toast('Bitte Mitarbeiterfeld wählen','warn');const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Dieses Feld ist durch Dienstplan bis hier eingefroren','bad');const emp=empById(selected.empId);const why=protectedSchoolReason(emp,selected.date,'');if(why)return toast(why,'bad');state.plan[k]={removed:true,manual:true,code:''};saveState(true);renderPlan();}
-function clearCell(){if(!selected?.empId)return;const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Dieses Feld ist durch Dienstplan bis hier eingefroren','bad');const emp=empById(selected.empId);const why=protectedSchoolReason(emp,selected.date,'FR');if(why)return toast(why,'bad');state.plan[k]={code:'FR',manual:true};saveState(true);renderPlan();}
+function removeDuty(){if(!selected?.empId)return toast('Bitte Mitarbeiterfeld wählen','warn');const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Dieses Feld ist durch Dienstplan bis hier eingefroren','bad');const emp=empById(selected.empId);const why=protectedSchoolReason(emp,selected.date,'');if(why)return toast(why,'bad');state.plan[k]={removed:true,manual:true,fixed:true,code:'',reason:'manuell entfernt'};saveState(true);renderPlan();}
+function clearCell(){if(!selected?.empId)return;const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Dieses Feld ist durch Dienstplan bis hier eingefroren','bad');const emp=empById(selected.empId);const why=protectedSchoolReason(emp,selected.date,'FR');if(why)return toast(why,'bad');state.plan[k]={code:'FR',manual:true,fixed:true,reason:'manuell frei gesetzt'};saveState(true);renderPlan();}
 function autoCell(){if(!selected?.empId)return;const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Dieses Feld ist durch Dienstplan bis hier eingefroren','bad');const emp=empById(selected.empId);const why=protectedSchoolReason(emp,selected.date,'');if(why)return toast(why,'bad');delete state.plan[k];makePlan(true);}
 function toggleCellFixed(){if(!selected?.empId)return;const k=entryKey(selected.empId,selected.date);if(isHardFrozenEntry(state.plan[k]))return toast('Diese Fixierung gehört zum eingefrorenen Gesamtplan','bad');if(!state.plan[k])state.plan[k]={code:'FR',manual:true};state.plan[k].fixed=!state.plan[k].fixed;saveState(true);renderPlan();}
 function saveDayStatus(){if(!selected?.date)return toast('Bitte Datum wählen','warn');{const ds=q('dayStatusSelect'); if(!ds)return toast('Tagesbedarf bitte im Bereich BT / Tagesstatus bearbeiten','warn'); state.dayStatus[selected.date]=ds.value;}saveState(true);renderPlan();toast('Tagesstatus gespeichert','ok');}
