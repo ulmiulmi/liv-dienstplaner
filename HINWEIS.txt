@@ -1,2 +1,1 @@
 Sichtbare Versionsnummern wurden aus Kopfbereich/Titel entfernt. Technische Daten/Keys bleiben kompatibel.
-2026-05-15: Wunschportal-Loginbereich auf eine Spalte gesetzt, damit rechts keine leere Fläche bleibt.
