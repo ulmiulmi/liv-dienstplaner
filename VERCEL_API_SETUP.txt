@@ -1,11 +1,11 @@
-POLYPOINT V13.0.226f – Wunschportal API Setup
+ULMIPOINT V13.0.226f – Wunschportal API Setup
 
 In Vercel beim Projekt eintragen:
 Settings → Environment Variables
 
 SUPABASE_URL = https://ezjufsxacihfdwpyoibs.supabase.co
 SUPABASE_SERVICE_ROLE_KEY = dein Supabase service_role secret key
-POLYPOINT_STORE_ID = default
+ULMIPOINT_STORE_ID = default
 
 Wichtig: Den Service-Role-Key nie in HTML oder im Chat veröffentlichen.
 Nach dem Eintragen Deployment neu starten / neu deployen.

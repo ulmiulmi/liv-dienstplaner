@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>POLYPOINT Adapter · V13.0.226jf · Split · Wunschfrist</title>
+<title>ULMIPOINT Adapter · V13.0.226jf · Split · Wunschfrist</title>
 <style>
   :root { --bg:#f6f8fc; --card:#fff; --text:#172033; --muted:#667085; --line:#d9e2ef; --blue:#2563eb; --green:#0f8a5f; --brown:#7c2d12; --red:#c73636; --shadow:0 12px 30px rgba(16,24,40,.08); }
   *{box-sizing:border-box}
@@ -132,7 +132,7 @@
   <header class="top">
     <div class="head">
       <div>
-        <h1>POLYPOINT Adapter · V13.0.226jf</h1>
+        <h1>ULMIPOINT Adapter · V13.0.226jf</h1>
         <div class="mini">Split-Version mit stabiler Serverbasis, Dienst-setzen-Fix und automatischer Wunsch-Aktualisierung ohne Dienstplan-Überschreibung.</div>
       </div>
       <div class="top-actions">
@@ -208,7 +208,7 @@
           <button type="button" id="serverDownloadBtn">Serverstand neu laden</button>
           <button type="button" id="serverDownloadBackupBtn">Server-Sicherung herunterladen</button>
         </div>
-        <div class="server-small">Speichert/lädt alle POLYPOINT-Browserdaten dieser GitHub-Seite, also auch die aufgeteilten Bereiche.</div>
+        <div class="server-small">Speichert/lädt alle ULMIPOINT-Browserdaten dieser GitHub-Seite, also auch die aufgeteilten Bereiche.</div>
       </div>
       <div class="emp-box">
         <h3>Arbeitskopie</h3>
@@ -495,7 +495,7 @@
     }
   }
 
-  function collectPolypointStorage(){
+  function collectUlmipointStorage(){
     const items = {};
     for(let i=0;i<localStorage.length;i++){
       const key = localStorage.key(i);
@@ -514,7 +514,7 @@
     keys.forEach(k => { mix(k); mix(items[k]); });
     return keys.length + '-' + h.toString(16);
   }
-  function localStorageSnapshot(){ const items = collectPolypointStorage(); return {items, hash: stableHashFromItems(items), count: Object.keys(items).length}; }
+  function localStorageSnapshot(){ const items = collectUlmipointStorage(); return {items, hash: stableHashFromItems(items), count: Object.keys(items).length}; }
   function isServerSessionFresh(s){ return !!(s && s.access_token && (!s.expires_at || s.expires_at > Date.now() + 30000)); }
   function loadServerSession(){
     try { const s = JSON.parse(localStorage.getItem(SERVER_TOKEN_KEY) || '{}'); if(s && (s.access_token || s.refresh_token)) return s; } catch(e){ console.warn(e); }
@@ -641,7 +641,7 @@
     return n;
   }
   function makeFullLocalBackup(reason, download=false){
-    const payload = {kind:'polypoint-local-backup', version:'13.0.226-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectPolypointStorage()};
+    const payload = {kind:'polypoint-local-backup', version:'13.0.226-split', createdAt:new Date().toISOString(), reason:reason || 'server_sync', items:collectUlmipointStorage()};
     const key = 'polypoint_sicherung__' + String(reason || 'server_sync') + '__' + new Date().toISOString().replace(/[:.]/g,'-');
     try { localStorage.setItem(key, JSON.stringify(payload)); } catch(e){ console.warn(e); }
     if(download){
@@ -669,7 +669,7 @@
     if(!confirm('Letzte lokale Notfallkopie wiederherstellen? Der aktuelle Arbeitsstand wird vorher nochmals als Notfallkopie gesichert.')) return;
     const currentBackup = makeFullLocalBackup('before_restore_emergency_backup', false);
     const incoming = found.payload.items || {};
-    Object.keys(collectPolypointStorage()).forEach(key => { if(!(key in incoming) && relevantStorageKey(key)) localStorage.removeItem(key); });
+    Object.keys(collectUlmipointStorage()).forEach(key => { if(!(key in incoming) && relevantStorageKey(key)) localStorage.removeItem(key); });
     Object.entries(incoming).forEach(([key,val]) => { if(relevantStorageKey(key)) localStorage.setItem(key, String(val ?? '')); });
     reloadSplitFrames();
     saveServerMeta({lastHash:'', lastSyncAt:'', restoredFrom:found.key, restoredAt:new Date().toISOString()});
@@ -1117,7 +1117,7 @@
       const examples = g.beispiele.length ? '<div class="compare-meta">Beispiele: ' + escapeHtml(g.beispiele.join(', ')) + '</div>' : '';
       return '<div class="compare-card ' + cls + '"><div class="compare-area">' + escapeHtml(g.area) + '</div><div class="compare-counts"><span class="compare-pill ' + (changed ? 'warn' : 'ok') + '">' + (changed ? 'anders' : 'gleich') + '</span><span class="compare-pill blue">gleich ' + g.gleich + '</span><span class="compare-pill warn">geändert ' + g.geaendert + '</span><span class="compare-pill bad">nur alt ' + g.nurAlt + '</span><span class="compare-pill blue">nur aktuell ' + g.nurAktuell + '</span></div>' + examples + '</div>';
     }).join('') || '<div class="compare-card same"><div class="compare-area">Keine Unterschiede gefunden.</div></div>';
-    box.innerHTML = '<div class="compare-head"><div><div class="compare-title">Speicherstand-Vergleich</div><div class="compare-meta">Alt: ' + escapeHtml(oldLabel) + '</div><div class="compare-meta">Aktuell: ' + escapeHtml(currentLabel) + '</div></div><button type="button" id="serverHistoryCompareCloseBtn">Schliessen</button></div><div class="compare-meta"><b>' + (total ? total + ' Unterschied(e) gefunden.' : 'Keine Unterschiede gefunden.') + '</b> Vergleich nach gespeicherten POLYPOINT-Browserdaten.</div><div class="compare-grid">' + cards + '</div>';
+    box.innerHTML = '<div class="compare-head"><div><div class="compare-title">Speicherstand-Vergleich</div><div class="compare-meta">Alt: ' + escapeHtml(oldLabel) + '</div><div class="compare-meta">Aktuell: ' + escapeHtml(currentLabel) + '</div></div><button type="button" id="serverHistoryCompareCloseBtn">Schliessen</button></div><div class="compare-meta"><b>' + (total ? total + ' Unterschied(e) gefunden.' : 'Keine Unterschiede gefunden.') + '</b> Vergleich nach gespeicherten ULMIPOINT-Browserdaten.</div><div class="compare-grid">' + cards + '</div>';
     box.classList.add('show');
     document.getElementById('serverHistoryCompareCloseBtn')?.addEventListener('click', () => { box.classList.remove('show'); box.innerHTML=''; });
     serverStatus(total ? 'Vergleich erstellt: ' + total + ' Unterschied(e).' : 'Vergleich erstellt: keine Unterschiede.', total ? '' : 'ok');
@@ -1201,7 +1201,7 @@
       };
       makeFullLocalBackup('before_history_restore', false);
       await supabaseRequest('/rest/v1/planer_store', {method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + session.access_token,'Prefer':'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({id:cfg.store, data:payload, updated_at:new Date().toISOString()})});
-      Object.keys(collectPolypointStorage()).forEach(key => { if(!(key in items) && relevantStorageKey(key)) localStorage.removeItem(key); });
+      Object.keys(collectUlmipointStorage()).forEach(key => { if(!(key in items) && relevantStorageKey(key)) localStorage.removeItem(key); });
       Object.entries(items).forEach(([key,val]) => { if(relevantStorageKey(key)) localStorage.setItem(key, String(val ?? '')); });
       reloadSplitFrames();
       saveServerMeta({store:cfg.store, lastHash:snap.hash, lastSyncAt:new Date().toISOString(), serverUpdatedAt:payload.savedAt, count:snap.count, origin:location.href, restoredFrom:entry.id});
@@ -1277,7 +1277,7 @@
       const backupKey = makeFullLocalBackup('before_server_download', false);
       cacheServerWishesFromData(row.data);
       const incoming = row.data.items || {};
-      Object.keys(collectPolypointStorage()).forEach(key => { if(!(key in incoming) && relevantStorageKey(key)) localStorage.removeItem(key); });
+      Object.keys(collectUlmipointStorage()).forEach(key => { if(!(key in incoming) && relevantStorageKey(key)) localStorage.removeItem(key); });
       Object.entries(incoming).forEach(([key,val]) => { if(relevantStorageKey(key)) localStorage.setItem(key, String(val ?? '')); });
       reloadSplitFrames();
       const newHash = row.data.hash || stableHashFromItems(incoming);
@@ -1361,7 +1361,7 @@
       const serverHash = row.data.hash || stableHashFromItems(incoming);
       if(localSnap.hash !== serverHash){
         const backupKey = makeFullLocalBackup('before_auto_server_primary_load', false);
-        Object.keys(collectPolypointStorage()).forEach(key => { if(!(key in incoming) && relevantStorageKey(key)) localStorage.removeItem(key); });
+        Object.keys(collectUlmipointStorage()).forEach(key => { if(!(key in incoming) && relevantStorageKey(key)) localStorage.removeItem(key); });
         Object.entries(incoming).forEach(([key,val]) => { if(relevantStorageKey(key)) localStorage.setItem(key, String(val ?? '')); });
         reloadSplitFrames();
         serverStatus('Server-Hauptspeicher automatisch geladen. Vorherige lokale Arbeitskopie als Notfallkopie gesichert: ' + backupKey, 'ok');
