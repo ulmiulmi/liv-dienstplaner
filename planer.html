@@ -150,7 +150,6 @@
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
         <span class="pill green">GitHub Pages</span>
-        <span class="pill blue" title="Planer repariert V12">Haus 1 direkt</span>
         <span class="pill brown">aufgeteilt</span>
         <button type="button" onclick="window.open('wunschportal.html','_blank')">👤 Wunschportal</button>
         <button type="button" onclick="window.open('organisation-admin.html','_blank')">🏢 Organisation verwalten</button>
@@ -429,17 +428,81 @@
   applyHouseContextToLabels();
 
   function siteOverviewHtml(){
-    const site = HOUSE_CONTEXT || {name:"Haus 1", id:"haus_1", units:[]};
-    const units = realHouseUnits();
-    const unitChips = units.length ? units.map(u => `<span class="unit-chip">${escapeHtml(u.name || u.id || "Bereich")} <small>${escapeHtml(u.type || "")}</small></span>`).join("") : `<div class="empty-note">Dieses Haus hat noch keine eigenen Gruppen/Bereiche. In der Organisation bearbeiten und Gruppen hinzufügen.</div>`;
+    const site = HOUSE_CONTEXT || {name:"Haus", id:"haus", units:[]};
+    const units = realHouseUnits().slice(0,4);
+
+    const palettes = [
+      {emoji:"🌿", bg:"linear-gradient(135deg,#d8f3dc,#95d5b2)", text:"#1b4332"},
+      {emoji:"🌊", bg:"linear-gradient(135deg,#caf0f8,#48cae4)", text:"#023e8a"},
+      {emoji:"🌸", bg:"linear-gradient(135deg,#ffe5ec,#ffafcc)", text:"#7a1134"},
+      {emoji:"☀️", bg:"linear-gradient(135deg,#fff3b0,#f9c74f)", text:"#7c4a03"}
+    ];
+
+    const rooms = units.map((u,idx)=>{
+      const p = palettes[idx % palettes.length];
+      return `<button class="room room-${idx+1}" data-target="${escapeHtml(plannerIdForUnit(u))}" style="background:${p.bg};color:${p.text}">
+        <span class="room-emoji">${p.emoji}</span>
+        <strong>${escapeHtml(u.name || ("Gruppe " + (idx+1)))}</strong>
+        <small>${escapeHtml(u.type || "Gruppe")}</small>
+      </button>`;
+    }).join("");
+
+    const emptyRooms = Array.from({length: Math.max(0,4-units.length)}).map((_,idx)=>`
+      <div class="room empty-room">
+        <span class="room-emoji">➕</span>
+        <strong>Raum frei</strong>
+        <small>in Organisation erfassen</small>
+      </div>
+    `).join("");
+
     return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
       :root{--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
-      *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);padding:18px}
-      .hero{background:#fff;border:1px solid var(--line);border-radius:26px;padding:18px;box-shadow:var(--shadow)}
+      *{box-sizing:border-box}
+      body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);padding:16px}
+      .hero{background:#fff;border:1px solid var(--line);border-radius:28px;padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
       .eyebrow{font-size:12px;font-weight:950;color:var(--blue);letter-spacing:.06em;text-transform:uppercase}
-      h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.07em;line-height:.94;margin:4px 0 8px}
-      .mini{font-size:13px;color:var(--muted);font-weight:850}.grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.unit-chip{display:inline-flex;gap:5px;border:1px solid var(--line);background:#fbfcfe;border-radius:999px;padding:8px 10px;font-size:13px;font-weight:900}.auto{background:#fff7e6;color:#9a6700}.empty-note{border:1px dashed #c9dcff;background:#f7fbff;color:#175cd3;border-radius:18px;padding:18px;font-weight:900}.btn{display:inline-flex;margin-top:14px;text-decoration:none;border:1px solid #c9dcff;border-radius:999px;padding:10px 13px;font-weight:950;color:#175cd3;background:#fff}
-    </style></head><body><section class="hero"><div class="eyebrow">ULMIPOINT · ${escapeHtml(site.type || "Haus")}</div><h1>${escapeHtml(site.name || "Haus")}</h1><div class="mini">Eigener Haus-Kontext: ${escapeHtml(site.id || "")}</div><div class="grid">${unitChips}<span class="unit-chip auto">Haus-Pikett <small>automatisch</small></span><span class="unit-chip auto">Haus-Dienstplan <small>automatisch</small></span></div><a class="btn" href="organisation-admin.html" target="_blank">Organisation bearbeiten</a></section></body></html>`;
+      h1{font-size:clamp(38px,7vw,76px);letter-spacing:-.08em;line-height:.9;margin:4px 0 6px}
+      .mini{font-size:13px;color:var(--muted);font-weight:850}
+      .house{position:relative;max-width:980px;margin:0 auto;background:linear-gradient(180deg,#eaf6ff 0 38%,#f8fafc 38% 100%);border:1px solid var(--line);border-radius:30px;box-shadow:var(--shadow);overflow:hidden;padding:42px 18px 18px;min-height:560px}
+      .roof{position:absolute;left:8%;right:8%;top:18px;height:120px;background:linear-gradient(135deg,#6b7280,#374151);clip-path:polygon(50% 0,100% 100%,0 100%);opacity:.95}
+      .facade{position:relative;margin-top:72px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.85);border-radius:26px;padding:18px;box-shadow:0 18px 40px rgba(16,24,40,.14)}
+      .nacht{position:relative;z-index:2;margin:-54px auto 14px;max-width:360px;border:1px solid rgba(255,255,255,.45);background:linear-gradient(135deg,#111827,#1e3a8a);color:#fff;border-radius:22px;padding:18px;text-align:center;box-shadow:0 14px 34px rgba(16,24,40,.25)}
+      .nacht strong{font-size:28px;letter-spacing:-.04em}.nacht small{display:block;color:#dbeafe;font-weight:850}
+      .rooms{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+      .room{min-height:150px;border:1px solid rgba(255,255,255,.7);border-radius:24px;padding:16px;text-align:left;box-shadow:0 12px 26px rgba(16,24,40,.12);cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;position:relative}
+      .room:before{content:"";position:absolute;inset:10px;border:1px solid rgba(255,255,255,.55);border-radius:18px;pointer-events:none}
+      .room strong{font-size:clamp(24px,4vw,38px);letter-spacing:-.06em;line-height:.9;position:relative;z-index:1}
+      .room small{font-size:12px;font-weight:950;opacity:.82;position:relative;z-index:1}
+      .room-emoji{font-size:34px;position:absolute;right:16px;top:14px;z-index:1}
+      .empty-room{background:linear-gradient(135deg,#f8fafc,#eef2f7);color:#667085;cursor:default}
+      .house-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+      .action{border:1px solid var(--line);background:#fff;color:var(--text);border-radius:999px;padding:10px 14px;font-weight:950;text-decoration:none;cursor:pointer}
+      .action.pikett{background:#fff7e6;color:#9a6700;border-color:#f3d28f}.action.plan{background:#eaf2ff;color:#2563eb;border-color:#c9dcff}.action.org{background:#e7f7ef;color:#0f8a5f;border-color:#b7e4ca}
+      @media(max-width:700px){body{padding:10px}.house{border-radius:22px;min-height:auto}.rooms{grid-template-columns:1fr}.room{min-height:130px}.nacht strong{font-size:24px}}
+    </style></head><body>
+      <section class="hero">
+        <div class="eyebrow">ULMIPOINT · ${escapeHtml(site.type || "Haus")}</div>
+        <h1>${escapeHtml(site.name || "Haus")}</h1>
+        <div class="mini">Maximal 4 Gruppen/Räume pro Haus. Nachtwache, Pikett und Haus-Dienstplan sind Hausfunktionen.</div>
+      </section>
+      <main class="house">
+        <div class="roof"></div>
+        <section class="facade">
+          <button class="nacht" data-target="nachtwache"><strong>Nachtwache</strong><small>fixe Hausfunktion</small></button>
+          <div class="rooms">${rooms}${emptyRooms}</div>
+          <div class="house-actions">
+            <button class="action pikett" data-target="pikett">Haus-Pikett</button>
+            <button class="action plan" data-target="hausdienstplan">Haus-Dienstplan</button>
+            <a class="action org" href="organisation-admin.html" target="_blank">Organisation bearbeiten</a>
+          </div>
+        </section>
+      </main>
+      <script>
+        document.querySelectorAll("[data-target]").forEach(btn=>{
+          btn.addEventListener("click",()=>parent.postMessage({type:"loadPlanner",id:btn.dataset.target},"*"));
+        });
+      <\/script>
+    </body></html>`;
   }
 
   function escapeHtml(value){
@@ -521,7 +584,7 @@
     iframe.className = 'planner-frame';
     iframe.dataset.planner = id;
     iframe.title = labels[id];
-    if(id === "overview" && HOUSE_CONTEXT){
+    if(id === "overview" && HOUSE_CONTEXT && !IS_HAUS_1){
       iframe.srcdoc = siteOverviewHtml();
     } else if(shouldNamespaceFrame(id)){
       iframe.srcdoc = namespacedFrameLoadingHtml(id);
