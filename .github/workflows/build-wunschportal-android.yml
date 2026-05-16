@@ -38,6 +38,7 @@ jobs:
           mkdir -p release-files
           cp android-wunschportal/app/build/outputs/apk/debug/app-debug.apk release-files/ulmipoint-wunschportal.apk
           cp android-wunschportal/app/build/outputs/bundle/release/app-release.aab release-files/ulmipoint-wunschportal.aab
+          ls -lh release-files
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -45,10 +46,18 @@ jobs:
           name: ULMIPOINT-Wunschportal-Android
           path: release-files/*
 
-      - name: Publish release download
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: wunschportal-android-latest
-          name: ULMIPOINT Wunschportal Android
-          files: release-files/*
-          make_latest: true
+      - name: Recreate public release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete wunschportal-android-latest --yes --cleanup-tag || true
+          gh release create wunschportal-android-latest \
+            release-files/ulmipoint-wunschportal.apk \
+            release-files/ulmipoint-wunschportal.aab \
+            --title "ULMIPOINT Wunschportal Android" \
+            --notes "Aktuelle Android-App für das ULMIPOINT Wunschportal." \
+            --latest
+
+      - name: Verify public APK link
+        run: |
+          curl -I -L --fail https://github.com/ulmiulmi/liv-dienstplaner/releases/latest/download/ulmipoint-wunschportal.apk
