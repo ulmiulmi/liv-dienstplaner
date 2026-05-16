@@ -346,7 +346,20 @@
 
   function realHouseUnits(){
     const units = HOUSE_CONTEXT && Array.isArray(HOUSE_CONTEXT.units) ? HOUSE_CONTEXT.units : [];
-    return units.filter(u => u && !["pikett","hausdienstplan"].includes(String(u.type || "")));
+    return units.filter(u => u && !["pikett","hausdienstplan","nachtwache"].includes(String(u.type || "")));
+  }
+
+  function defaultAutoFunctionsForSite(site){
+    const type = site && site.type ? String(site.type) : "wohnheim";
+    return type === "wohnheim"
+      ? {nachtwache:true,pikett:true,hausdienstplan:true}
+      : {nachtwache:false,pikett:false,hausdienstplan:false};
+  }
+  function autoFunctionEnabled(name){
+    const site = HOUSE_CONTEXT || {type:"wohnheim"};
+    const def = defaultAutoFunctionsForSite(site);
+    const a = site.automaticFunctions && typeof site.automaticFunctions === "object" ? site.automaticFunctions : {};
+    return a[name] === undefined ? !!def[name] : !!a[name];
   }
 
   function slugId(value){
@@ -385,8 +398,13 @@
       };
     });
 
-    // Hausfunktionen gibt es pro Haus automatisch, aber im eigenen Haus-Speicher.
-    ["pikett","hausdienstplan","zeiterfassung","monatsabschluss"].forEach(id => {
+    // Hausfunktionen sind je nach Standorttyp optional.
+    if(autoFunctionEnabled("nachtwache") && labels.nachtwache) allowed.add("nachtwache");
+    if(autoFunctionEnabled("pikett") && labels.pikett) allowed.add("pikett");
+    if(autoFunctionEnabled("hausdienstplan") && labels.hausdienstplan) allowed.add("hausdienstplan");
+
+    // Zeiterfassung und Monatsabschluss bleiben für berechtigte Planung verfügbar.
+    ["zeiterfassung","monatsabschluss"].forEach(id => {
       if(labels[id]) allowed.add(id);
     });
 
@@ -430,6 +448,9 @@
   function siteOverviewHtml(){
     const site = HOUSE_CONTEXT || {name:"Haus", id:"haus", units:[]};
     const units = realHouseUnits().slice(0,4);
+    const showNachtwache = autoFunctionEnabled("nachtwache");
+    const showPikett = autoFunctionEnabled("pikett");
+    const showHausdienstplan = autoFunctionEnabled("hausdienstplan");
 
     const palettes = [
       {emoji:"🌿", bg:"linear-gradient(135deg,#d8f3dc,#95d5b2)", text:"#1b4332"},
@@ -483,16 +504,16 @@
       <section class="hero">
         <div class="eyebrow">ULMIPOINT · ${escapeHtml(site.type || "Haus")}</div>
         <h1>${escapeHtml(site.name || "Haus")}</h1>
-        <div class="mini">Maximal 4 Gruppen/Räume pro Haus. Nachtwache, Pikett und Haus-Dienstplan sind Hausfunktionen.</div>
+        <div class="mini">Maximal 4 Gruppen/Räume pro Standort. Nachtwache, Pikett und Haus-Dienstplan sind je nach Standort optional.</div>
       </section>
       <main class="house">
         <div class="roof"></div>
         <section class="facade">
-          <button class="nacht" data-target="nachtwache"><strong>Nachtwache</strong><small>fixe Hausfunktion</small></button>
+          ${showNachtwache ? '<button class="nacht" data-target="nachtwache"><strong>Nachtwache</strong><small>Hausfunktion</small></button>' : ''}
           <div class="rooms">${rooms}${emptyRooms}</div>
           <div class="house-actions">
-            <button class="action pikett" data-target="pikett">Haus-Pikett</button>
-            <button class="action plan" data-target="hausdienstplan">Haus-Dienstplan</button>
+            ${showPikett ? '<button class="action pikett" data-target="pikett">Haus-Pikett</button>' : ''}
+            ${showHausdienstplan ? '<button class="action plan" data-target="hausdienstplan">Haus-Dienstplan</button>' : ''}
             <a class="action org" href="organisation-admin.html" target="_blank">Organisation bearbeiten</a>
           </div>
         </section>
@@ -515,6 +536,18 @@
 
   function pageSourceForId(id){
     return isDynamicUnitPage(id) ? "vorlage.html" : (id + ".html");
+  }
+
+  function dynamicUnitUrl(id){
+    const ctx = UNIT_CONTEXT_BY_PLANNER[id] || {id, name: labels[id] || id, type:"bereich", plannerKey:id, siteId:HOUSE_ID, siteName:HOUSE_CONTEXT?.name || HOUSE_ID};
+    const p = new URLSearchParams();
+    p.set("siteId", ctx.siteId || HOUSE_ID);
+    p.set("siteName", ctx.siteName || HOUSE_CONTEXT?.name || HOUSE_ID);
+    p.set("unitId", ctx.id || id);
+    p.set("unitName", ctx.name || labels[id] || id);
+    p.set("unitType", ctx.type || "bereich");
+    p.set("plannerKey", id);
+    return "vorlage.html?" + p.toString();
   }
 
   function shouldNamespaceFrame(id){
@@ -586,6 +619,8 @@
     iframe.title = labels[id];
     if(id === "overview" && HOUSE_CONTEXT && !IS_HAUS_1){
       iframe.srcdoc = siteOverviewHtml();
+    } else if(isDynamicUnitPage(id)){
+      iframe.src = dynamicUnitUrl(id);
     } else if(shouldNamespaceFrame(id)){
       iframe.srcdoc = namespacedFrameLoadingHtml(id);
       fetch(pageSourceForId(id), {cache:'no-store'})

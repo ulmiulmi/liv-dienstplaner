@@ -66,13 +66,32 @@ button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:
 <section class="card">
   <h2>Monatsplan</h2>
   <div class="notice warn">Diese Vorlage ist leer. Mitarbeitende und Dienste werden nur für diesen Bereich gespeichert. Der Monatsplan-Aufbau kommt danach auf dieser Basis.</div>
-  <div id="status" class="notice" style="margin-top:10px">Bereit.</div>
+  <div id="status" class="notice" style="margin-top:10px">Bereit. Eigener Speicher pro Haus und Gruppe.</div>
 </section>
 
 <script>
 (function(){
-  const ctx = window.__ULMI_UNIT_CONTEXT__ || {name:'Neue Gruppe',type:'Bereich',siteName:'Haus'};
-  const STORE_KEY = 'ulmipoint_empty_unit_template_v1';
+  function param(name, fallback=''){
+    try{return new URLSearchParams(location.search).get(name) || fallback;}catch(_){return fallback;}
+  }
+  function slug(value){
+    return String(value||'')
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,'_')
+      .replace(/^_+|_+$/g,'') || 'bereich';
+  }
+  const queryCtx = {
+    siteId:param('siteId','haus'),
+    siteName:param('siteName','Haus'),
+    id:param('unitId',param('plannerKey','bereich')),
+    name:param('unitName','Neue Gruppe'),
+    type:param('unitType','Bereich'),
+    plannerKey:param('plannerKey',param('unitId','bereich'))
+  };
+  const ctx = Object.assign({}, queryCtx, window.__ULMI_UNIT_CONTEXT__ || {});
+  const STORE_KEY = 'ulmipoint_unit_' + slug(ctx.siteId) + '__' + slug(ctx.plannerKey || ctx.id || ctx.name) + '_v1';
   let state = {employees:[], duties:[], updatedAt:''};
 
   const $=id=>document.getElementById(id);
@@ -86,6 +105,7 @@ button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:
     $('unitName').textContent=ctx.name||'Neue Gruppe';
     $('siteName').textContent=ctx.siteName||'ULMIPOINT';
     $('unitType').textContent=ctx.type||'Bereich';
+    document.title = 'ULMIPOINT · ' + (ctx.name||'Bereich');
     render();
   }
   function save(){

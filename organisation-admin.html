@@ -26,6 +26,9 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
 .lock{position:fixed;inset:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px}
 .lock-card{max-width:520px;width:100%;background:#fff;border:1px solid var(--line);border-radius:28px;padding:18px;box-shadow:var(--shadow)}
 .lock-card h1{font-size:42px;margin:0 0 10px}
+.auto-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:10px 0}
+.auto-toggle{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:14px;padding:9px;font-weight:950;font-size:12px}
+.auto-toggle input{width:auto}
 </style>
 </head>
 <body>
@@ -82,11 +85,33 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   function status(t,k=''){const el=$('status');el.textContent=t;el.className='notice'+(k?' '+k:'')}
   function icon(type){return type==='tageszentrum'?'☀️':type==='verwaltung'?'🗂️':type==='zentrale_dienste'?'⚙️':'🏠'}
   function typeLabel(t){return ({wohnheim:'Haus',tageszentrum:'Tageszentrum',verwaltung:'Verwaltung',zentrale_dienste:'Zentrale Dienste',sonstiges:'Sonstiges'})[t]||t}
-  function realUnits(site){return (site.units||[]).filter(u=>!['pikett','hausdienstplan'].includes(u.type))}
+  function defaultAutoFunctions(type){
+    return type==='wohnheim'
+      ? {nachtwache:true,pikett:true,hausdienstplan:true}
+      : {nachtwache:false,pikett:false,hausdienstplan:false};
+  }
+  function autoFunctions(site){
+    const def=defaultAutoFunctions(site&&site.type);
+    const a=(site&&site.automaticFunctions&&typeof site.automaticFunctions==='object')?site.automaticFunctions:{};
+    return {
+      nachtwache:a.nachtwache===undefined?def.nachtwache:!!a.nachtwache,
+      pikett:a.pikett===undefined?def.pikett:!!a.pikett,
+      hausdienstplan:a.hausdienstplan===undefined?def.hausdienstplan:!!a.hausdienstplan
+    };
+  }
+  function realUnits(site){return (site.units||[]).filter(u=>!['pikett','hausdienstplan','nachtwache'].includes(u.type))}
+  function autoFunctionChips(site){
+    const a=autoFunctions(site);
+    let out='';
+    if(a.nachtwache) out+='<span class="unit-chip">Nachtwache <small>automatisch</small></span>';
+    if(a.pikett) out+='<span class="unit-chip">Haus-Pikett <small>automatisch</small></span>';
+    if(a.hausdienstplan) out+='<span class="unit-chip">Haus-Dienstplan <small>automatisch</small></span>';
+    return out;
+  }
   function cleanupAutoUnits(){
     (org.sites||[]).forEach(site=>{
       site.units=realUnits(site);
-      site.automaticFunctions=Object.assign({pikett:true,hausdienstplan:true},site.automaticFunctions||{});
+      site.automaticFunctions=autoFunctions(site);
       if(site.type==='wohnheim' && /^Wohnheim\s+\d+$/i.test(String(site.name||''))){
         site.name=String(site.name).replace(/^Wohnheim/i,'Haus');
         site.id=slug(site.name);
@@ -151,7 +176,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       type,
       canton:'BS',
       active:true,
-      automaticFunctions:{pikett:true,hausdienstplan:true},
+      automaticFunctions:defaultAutoFunctions(type),
       units:[]
     };
   }
@@ -190,8 +215,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
         </div>
         <div class="units">
           ${realUnits(site).map((u,ui)=>`<span class="unit-chip">${esc(u.name)} <small>${esc(u.type)}</small><button onclick="window.__orgRemoveUnit(${si},${ui})">×</button></span>`).join('') || '<span class="mini">Noch keine Bereiche</span>'}
-          <span class="unit-chip">Haus-Pikett <small>automatisch</small></span>
-          <span class="unit-chip">Haus-Dienstplan <small>automatisch</small></span>
+          ${autoFunctionChips(site)}
         </div>
         <div class="edit-panel" id="edit-${si}">
           <div class="edit-grid">
@@ -201,6 +225,12 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
             </select></label>
             <label><span class="mini">Kanton</span><input data-site="${si}" data-field="canton" value="${esc(site.canton||'BS')}"></label>
           </div>
+          <div class="mini">Hausfunktionen für diesen Standort</div>
+          <div class="auto-grid">
+            <label class="auto-toggle"><input type="checkbox" data-site="${si}" data-auto="nachtwache" ${autoFunctions(site).nachtwache?'checked':''}> Nachtwache</label>
+            <label class="auto-toggle"><input type="checkbox" data-site="${si}" data-auto="pikett" ${autoFunctions(site).pikett?'checked':''}> Haus-Pikett</label>
+            <label class="auto-toggle"><input type="checkbox" data-site="${si}" data-auto="hausdienstplan" ${autoFunctions(site).hausdienstplan?'checked':''}> Haus-Dienstplan</label>
+          </div>
           <div class="actions">
             <button type="button" onclick="window.__orgAddUnit(${si})">+ Gruppe/Bereich</button>
             <button type="button" onclick="window.__orgAddDayUnit(${si})">+ Tageszentrum-Team</button>
@@ -209,7 +239,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
             <div class="unit-row">
               <label><span class="mini">Bereich</span><input data-site="${si}" data-unit="${ui}" data-field="name" value="${esc(u.name)}"></label>
               <label><span class="mini">Typ</span><select data-site="${si}" data-unit="${ui}" data-field="type">
-                ${['wohngruppe','tageszentrum','nachtwache','team','sonstiges'].map(t=>`<option value="${t}" ${u.type===t?'selected':''}>${t}</option>`).join('')}
+                ${['wohngruppe','tageszentrum','team','sonstiges'].map(t=>`<option value="${t}" ${u.type===t?'selected':''}>${t}</option>`).join('')}
               </select></label>
               <label><span class="mini">Planer-Key</span><input data-site="${si}" data-unit="${ui}" data-field="plannerKey" value="${esc(u.plannerKey||u.id)}"></label>
               <button type="button" class="bad" onclick="window.__orgRemoveUnit(${si},${ui})">löschen</button>
@@ -226,6 +256,13 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     document.querySelectorAll('[data-site]:not([data-unit])').forEach(el=>{
       const si=Number(el.dataset.site), f=el.dataset.field;
       if(org.sites[si]){org.sites[si][f]=el.value; if(f==='name')org.sites[si].id=slug(el.value);}
+    });
+    document.querySelectorAll('[data-auto]').forEach(el=>{
+      const si=Number(el.dataset.site), f=el.dataset.auto;
+      if(org.sites[si]){
+        org.sites[si].automaticFunctions=autoFunctions(org.sites[si]);
+        org.sites[si].automaticFunctions[f]=!!el.checked;
+      }
     });
     document.querySelectorAll('[data-unit]').forEach(el=>{
       const si=Number(el.dataset.site), ui=Number(el.dataset.unit), f=el.dataset.field;

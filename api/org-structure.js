@@ -50,14 +50,12 @@ function defaultOrganisation(){
         type:'wohnheim',
         canton:'BS',
         active:true,
-        automaticFunctions:{pikett:true,hausdienstplan:true},
+        automaticFunctions:{nachtwache:true,pikett:true,hausdienstplan:true},
         units:[
           {id:'azoren',name:'Azoren',type:'wohngruppe',plannerKey:'azoren',active:true},
           {id:'bali',name:'Bali',type:'wohngruppe',plannerKey:'bali',active:true},
           {id:'capri',name:'Capri',type:'wohngruppe',plannerKey:'capri',active:false},
-          {id:'delos',name:'Delos',type:'wohngruppe',plannerKey:'delos',active:true},
-          {id:'nachtwache',name:'Nachtwache',type:'nachtwache',plannerKey:'nachtwache',active:true}
-        ]
+          {id:'delos',name:'Delos',type:'wohngruppe',plannerKey:'delos',active:true}        ]
       }
     ],
     createdAt:new Date().toISOString(),
@@ -71,16 +69,30 @@ function ensureOrg(data){
   if(!Array.isArray(data.organisationStructure.sites)) data.organisationStructure.sites=[];
   return data.organisationStructure;
 }
+function defaultAutomaticFunctions(type){
+  type=safe(type)||'wohnheim';
+  if(type==='wohnheim') return {nachtwache:true,pikett:true,hausdienstplan:true};
+  return {nachtwache:false,pikett:false,hausdienstplan:false};
+}
+function sanitizeAutomaticFunctions(site,type){
+  const def=defaultAutomaticFunctions(type);
+  const incoming=site && site.automaticFunctions && typeof site.automaticFunctions==='object' ? site.automaticFunctions : {};
+  return {
+    nachtwache: incoming.nachtwache===undefined ? def.nachtwache : !!incoming.nachtwache,
+    pikett: incoming.pikett===undefined ? def.pikett : !!incoming.pikett,
+    hausdienstplan: incoming.hausdienstplan===undefined ? def.hausdienstplan : !!incoming.hausdienstplan
+  };
+}
 function sanitizeSite(site){
   const name=safe(site.name)||'Standort';
   const id=slug(site.id||name);
   const type=safe(site.type)||'wohnheim';
   const units=Array.isArray(site.units)
-    ? site.units.map(sanitizeUnit).filter(Boolean).filter(u=>!['pikett','hausdienstplan'].includes(u.type))
+    ? site.units.map(sanitizeUnit).filter(Boolean).filter(u=>!['pikett','hausdienstplan','nachtwache'].includes(u.type))
     : [];
   return {
     id,name,type,canton:safe(site.canton)||'BS',active:site.active!==false,
-    automaticFunctions:{pikett:true,hausdienstplan:true},
+    automaticFunctions:sanitizeAutomaticFunctions(site,type),
     units
   };
 }
@@ -88,7 +100,7 @@ function sanitizeUnit(unit){
   const name=safe(unit.name)||'Bereich';
   const id=slug(unit.id||name);
   let type=safe(unit.type)||'bereich';
-  if(type==='pikett' || type==='hausdienstplan') return null;
+  if(type==='pikett' || type==='hausdienstplan' || type==='nachtwache') return null;
   return {id,name,type,plannerKey:safe(unit.plannerKey)||id,active:unit.active!==false};
 }
 
