@@ -150,6 +150,7 @@
       <div class="top-actions">
         <span class="pill blue" id="activeLabel">geladen: Startseite</span>
         <span class="pill green">GitHub Pages</span>
+        <span class="pill blue" title="Planer repariert V12">Haus 1 direkt</span>
         <span class="pill brown">aufgeteilt</span>
         <button type="button" onclick="window.open('wunschportal.html','_blank')">👤 Wunschportal</button>
         <button type="button" onclick="window.open('organisation-admin.html','_blank')">🏢 Organisation verwalten</button>
@@ -455,6 +456,7 @@
 
   function shouldNamespaceFrame(id){
     if(!HOUSE_CONTEXT) return false;
+    if(IS_HAUS_1) return false;
     return id && id !== "overview";
   }
 
