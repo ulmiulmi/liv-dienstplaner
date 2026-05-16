@@ -1,0 +1,5 @@
+QR Inhalt:
+https://liv-dienstplaner.vercel.app/wunschportal.html?app=apk&stamp=ULMIPOINT%3ASTAMP%3ADEFAULT%3AEingang
+
+Kurzcode:
+ULMIPOINT:STAMP:DEFAULT:Eingang
