@@ -1,7 +1,6 @@
 const {allow,send,readBody,fetchStore,findEmployee}=require('./_wishlib');
 
 function safe(v){return String(v||'').trim();}
-function today(){return new Date().toISOString().slice(0,10);}
 function employeeKeyFromEvent(e){return [e.employee?.groupKey||e.group||'', e.employeeId||'', e.employeeName||''].join('|').toLowerCase();}
 function employeeKey(emp){return [emp.groupKey||emp.group||'', emp.id||'', emp.name||''].join('|').toLowerCase();}
 
