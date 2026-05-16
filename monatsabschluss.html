@@ -32,7 +32,9 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   <div class="toolbar">
     <button class="primary" id="loadBtn">Berechnen</button>
     <button class="ok" id="saveDraftBtn">Abschluss speichern</button>
+    <button class="ok" id="saveAllBtn">Alle Abschlüsse erstellen</button>
     <button id="loadDraftBtn">Gespeicherten Abschluss laden</button>
+    <button id="listDraftsBtn">Abschluss-Liste</button>
     <button class="ok" id="csvSummaryBtn">Zusammenfassung CSV</button>
     <button class="ok" id="csvDetailsBtn">Tage CSV</button>
   </div>
@@ -169,7 +171,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     const data=await apiCall(body);
     lastData=data; render(data);
     if(data.allowanceRates) applyRates(data.allowanceRates);
-    status((mode==='save_draft'?'Gespeichert: ':'Berechnet: ')+data.monthKey+' · '+data.employees.length+' Mitarbeiter · '+data.days.length+' Tageszeilen','ok');
+    status((mode==='save_draft'||mode==='save_all_drafts'?'Gespeichert: ':'Berechnet: ')+data.monthKey+' · '+data.employees.length+' Mitarbeiter · '+data.days.length+' Tageszeilen'+(data.savedEmployeeDrafts?' · Einzelabschlüsse: '+data.savedEmployeeDrafts:''),'ok');
   }
   async function loadDraft(){
     status('Gespeicherter Abschluss wird geladen …');
@@ -179,7 +181,23 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     lastData={ok:true,monthKey:d.monthKey,canton:d.canton,holidayProfile:d.holidayProfile,allowanceRates:d.allowanceRates,totals:d.totals,employees:d.employees,days:d.days,holidays:[],updatedAt:d.savedAt,access:data.access};
     if(d.allowanceRates) applyRates(d.allowanceRates);
     render(lastData);
-    status('Gespeicherter Abschluss geladen: '+d.monthKey+' · gespeichert '+new Date(d.savedAt).toLocaleString('de-CH'),'ok');
+    status('Gespeicherter Abschluss geladen: '+d.monthKey+' · '+(data.employeeDrafts?Object.keys(data.employeeDrafts).length:0)+' Mitarbeiter-Abschlüsse · gespeichert '+new Date(d.savedAt).toLocaleString('de-CH'),'ok');
+  }
+  async function saveAll(){
+    const oldGroup=$('groupFilter').value, oldEmp=$('employeeFilter').value;
+    $('groupFilter').value=''; $('employeeFilter').value='';
+    try{
+      await load('save_all_drafts');
+      status('Alle Abschlüsse erstellt und gespeichert: '+lastData.monthKey+' · '+lastData.employees.length+' Mitarbeitende · '+(lastData.savedEmployeeDrafts||0)+' Einzelabschlüsse','ok');
+    }finally{
+      $('groupFilter').value=oldGroup; $('employeeFilter').value=oldEmp;
+    }
+  }
+  async function listDrafts(){
+    status('Abschluss-Liste wird geladen …');
+    const data=await apiCall({mode:'list_drafts',monthKey:$('monthKey').value});
+    const text=(data.months||[]).map(m=>m.monthKey+' · Gesamt: '+(m.monthDraft?'ja':'nein')+' · Mitarbeiter: '+m.employeeCount+(m.savedAt?' · '+new Date(m.savedAt).toLocaleString('de-CH'):'')).join('\n') || 'Noch keine gespeicherten Abschlüsse.';
+    status(text,'ok');
   }
   function n(v){return Number(v||0).toFixed(2)}
   function render(data){
@@ -220,7 +238,9 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.remove('primary'));b.classList.add('primary');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));$('tab-'+b.dataset.tab).classList.add('active')});
   $('loadBtn').onclick=()=>load('calculate').catch(e=>status('Fehler: '+e.message,'bad'));
   $('saveDraftBtn').onclick=()=>load('save_draft').catch(e=>status('Fehler: '+e.message,'bad'));
+  $('saveAllBtn').onclick=()=>saveAll().catch(e=>status('Fehler: '+e.message,'bad'));
   $('loadDraftBtn').onclick=()=>loadDraft().catch(e=>status('Fehler: '+e.message,'bad'));
+  $('listDraftsBtn').onclick=()=>listDrafts().catch(e=>status('Fehler: '+e.message,'bad'));
   $('sessionBtn').onclick=checkSession;
   $('clearFilterBtn').onclick=()=>{$('groupFilter').value='';$('employeeFilter').value='';};
   $('csvSummaryBtn').onclick=csvSummary;

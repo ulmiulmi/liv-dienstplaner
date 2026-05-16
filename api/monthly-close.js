@@ -194,6 +194,7 @@ module.exports=async function handler(req,res){
     if(!data.timeClock.monthlyClose || typeof data.timeClock.monthlyClose!=='object') data.timeClock.monthlyClose={rules:{},drafts:{}};
     if(!data.timeClock.monthlyClose.rules || typeof data.timeClock.monthlyClose.rules!=='object') data.timeClock.monthlyClose.rules={};
     if(!data.timeClock.monthlyClose.drafts || typeof data.timeClock.monthlyClose.drafts!=='object') data.timeClock.monthlyClose.drafts={};
+    if(!data.timeClock.monthlyClose.employeeDrafts || typeof data.timeClock.monthlyClose.employeeDrafts!=='object') data.timeClock.monthlyClose.employeeDrafts={};
 
     const mode=safe(body.mode||'calculate');
 
@@ -213,7 +214,15 @@ module.exports=async function handler(req,res){
 
     if(mode==='load_draft'){
       const draft=data.timeClock.monthlyClose.drafts[monthKey] || null;
-      return send(res,200,{ok:true,mode,monthKey,draft,access,updatedAt:row.updated_at});
+      const employeeDrafts=data.timeClock.monthlyClose.employeeDrafts[monthKey] || {};
+      return send(res,200,{ok:true,mode,monthKey,draft,employeeDrafts,access,updatedAt:row.updated_at});
+    }
+
+    if(mode==='list_drafts'){
+      const drafts=data.timeClock.monthlyClose.drafts || {};
+      const employeeDrafts=data.timeClock.monthlyClose.employeeDrafts || {};
+      const months=Array.from(new Set(Object.keys(drafts).concat(Object.keys(employeeDrafts)))).sort().reverse();
+      return send(res,200,{ok:true,mode,months:months.map(m=>({monthKey:m,monthDraft:!!drafts[m],employeeCount:employeeDrafts[m]?Object.keys(employeeDrafts[m]).length:0,savedAt:drafts[m]?.savedAt||''})),access,updatedAt:row.updated_at});
     }
 
     const allowanceRates=Object.assign(
@@ -223,8 +232,9 @@ module.exports=async function handler(req,res){
     );
 
     let employees=extractEmployeesWithState(data);
-    if(body.group) employees=employees.filter(e=>safe(e.group).toLowerCase()===safe(body.group).toLowerCase());
-    if(body.employeeName) employees=employees.filter(e=>safe(e.name).toLowerCase().includes(safe(body.employeeName).toLowerCase()));
+    const bulkMode = mode === 'save_all_drafts';
+    if(!bulkMode && body.group) employees=employees.filter(e=>safe(e.group).toLowerCase()===safe(body.group).toLowerCase());
+    if(!bulkMode && body.employeeName) employees=employees.filter(e=>safe(e.name).toLowerCase().includes(safe(body.employeeName).toLowerCase()));
     const allEvents=Array.isArray(data.timeClock?.events)?data.timeClock.events:[];
     const days=monthDays(monthKey);
     const [year]=monthKey.split('-').map(Number);
@@ -334,8 +344,9 @@ module.exports=async function handler(req,res){
 
     const result={ok:true,mode,monthKey,canton:'BS',holidayProfile:'CH-BS',ruleset:BASEL_STADT_DEFAULT_RULESET,allowanceRates,holidays:holidayList,totals,employees:employeeSummaries,days:detailRows,access,updatedAt:row.updated_at};
 
-    if(mode==='save_draft'){
+    if(mode==='save_draft' || mode==='save_all_drafts'){
       const now=new Date().toISOString();
+      const status = mode === 'save_all_drafts' ? 'bulk_draft' : 'draft';
       data.timeClock.monthlyClose.drafts[monthKey]={
         monthKey,
         savedAt:now,
@@ -346,10 +357,29 @@ module.exports=async function handler(req,res){
         days:detailRows,
         canton:'BS',
         holidayProfile:'CH-BS',
-        status:'draft'
+        status
       };
+
+      const employeeMap={};
+      for(const emp of employeeSummaries){
+        const key=[emp.group,emp.employeeId,emp.employeeName].join('|').toLowerCase();
+        employeeMap[key]={
+          monthKey,
+          savedAt:now,
+          savedBy:{email:user.email||'',id:user.id||''},
+          allowanceRates,
+          employee:emp,
+          days:detailRows.filter(d=>d.employeeId===emp.employeeId && d.employeeName===emp.employeeName && d.group===emp.group),
+          canton:'BS',
+          holidayProfile:'CH-BS',
+          status
+        };
+      }
+      data.timeClock.monthlyClose.employeeDrafts[monthKey]=employeeMap;
+
       const saved=await saveStore(data);
       result.savedDraft=data.timeClock.monthlyClose.drafts[monthKey];
+      result.savedEmployeeDrafts=Object.keys(employeeMap).length;
       result.updatedAt=saved.updated_at||now;
     }
 
