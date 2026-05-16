@@ -31,7 +31,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     <div class="toolbar">
       <button class="primary" id="loadBtn">Laden</button>
       <button class="ok" id="saveBtn">Speichern</button>
-      <button id="newHouseBtn">+ Wohnheim</button>
+      <button id="newHouseBtn">+ Haus</button>
       <button id="newDayBtn">+ Tageszentrum</button>
       <button id="newOtherBtn">+ Standort</button>
     </div>
@@ -61,12 +61,16 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   const slug=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'default';
   function status(t,k=''){const el=$('status');el.textContent=t;el.className='notice'+(k?' '+k:'')}
   function icon(type){return type==='tageszentrum'?'☀️':type==='verwaltung'?'🗂️':type==='zentrale_dienste'?'⚙️':'🏠'}
-  function typeLabel(t){return ({wohnheim:'Wohnheim',tageszentrum:'Tageszentrum',verwaltung:'Verwaltung',zentrale_dienste:'Zentrale Dienste',sonstiges:'Sonstiges'})[t]||t}
+  function typeLabel(t){return ({wohnheim:'Haus',tageszentrum:'Tageszentrum',verwaltung:'Verwaltung',zentrale_dienste:'Zentrale Dienste',sonstiges:'Sonstiges'})[t]||t}
   function realUnits(site){return (site.units||[]).filter(u=>!['pikett','hausdienstplan'].includes(u.type))}
   function cleanupAutoUnits(){
     (org.sites||[]).forEach(site=>{
       site.units=realUnits(site);
       site.automaticFunctions=Object.assign({pikett:true,hausdienstplan:true},site.automaticFunctions||{});
+      if(site.type==='wohnheim' && /^Wohnheim\s+\d+$/i.test(String(site.name||''))){
+        site.name=String(site.name).replace(/^Wohnheim/i,'Haus');
+        site.id=slug(site.name);
+      }
     });
   }
   function session(){try{const s=JSON.parse(localStorage.getItem(SERVER_TOKEN_KEY)||'{}'); if(s&&s.access_token)return s;}catch(_){} return null}
@@ -78,10 +82,35 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     if(!resp.ok||data.ok===false)throw new Error(data.message||('HTTP '+resp.status));
     return data;
   }
+  function nextHouseNumber(){
+    const nums=(org.sites||[])
+      .filter(s=>s.type==='wohnheim')
+      .map(s=>{
+        const m=String(s.name||'').match(/(?:haus|wohnheim)\s*(\d+)/i);
+        return m?Number(m[1]):0;
+      })
+      .filter(Boolean);
+    let n=1;
+    while(nums.includes(n)) n++;
+    return n;
+  }
   function defaultSite(type){
-    const base=type==='tageszentrum'?'Tageszentrum':type==='zentrale_dienste'?'Zentrale Dienste':type==='verwaltung'?'Verwaltung':'Wohnheim';
-    const n=(org.sites||[]).filter(s=>s.type===type).length+1;
-    return {id:slug(base+' '+n),name:base+' '+n,type:type||'wohnheim',canton:'BS',active:true,units:[]};
+    type=type||'wohnheim';
+    let base='Haus', n=1;
+    if(type==='wohnheim'){ n=nextHouseNumber(); base='Haus'; }
+    else {
+      base=type==='tageszentrum'?'Tageszentrum':type==='zentrale_dienste'?'Zentrale Dienste':type==='verwaltung'?'Verwaltung':'Standort';
+      n=(org.sites||[]).filter(s=>s.type===type).length+1;
+    }
+    return {
+      id:slug(base+' '+n),
+      name:base+' '+n,
+      type,
+      canton:'BS',
+      active:true,
+      automaticFunctions:{pikett:true,hausdienstplan:true},
+      units:[]
+    };
   }
   function defaultUnit(site,type='wohngruppe'){
     const n=(site.units||[]).length+1;
@@ -170,7 +199,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       units:site.units||[],
       selectedAt:new Date().toISOString()
     }));
-    window.open('index.html?site='+encodeURIComponent(site.id),'_blank');
+    window.open('planer.html?site='+encodeURIComponent(site.id),'_blank');
   };
   window.__orgToggle=si=>{const el=$('edit-'+si); if(el)el.classList.toggle('show')};
   window.__orgAddUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; s.units.push(defaultUnit(s,'wohngruppe')); render(); $('edit-'+si)?.classList.add('show')};
