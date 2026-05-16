@@ -72,6 +72,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                polishAppHeader();
                 injectNfcPanel();
                 if (nfcAdapter == null) {
                     updateNfcPanel("", "Dieses Handy meldet kein NFC.", nowText());
@@ -147,6 +148,21 @@ public class MainActivity extends Activity {
 
     private String nowText() {
         return new SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.GERMAN).format(new Date());
+    }
+
+    private void polishAppHeader() {
+        if (webView == null) return;
+
+        String js = "(function(){"
+                + "var links=document.querySelectorAll('a.apk-download');"
+                + "links.forEach(function(a){"
+                + "a.textContent='🔄 Nach Update suchen';"
+                + "a.setAttribute('aria-label','Nach Update suchen');"
+                + "a.title='Neueste App-Version herunterladen';"
+                + "});"
+                + "})();";
+
+        webView.evaluateJavascript(js, null);
     }
 
     private void injectNfcPanel() {
