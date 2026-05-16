@@ -25,10 +25,14 @@ import org.json.JSONObject;
 
 import java.util.Locale;
 
+import com.google.mlkit.vision.barcode.common.Barcode;
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanner;
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions;
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
+
 public class MainActivity extends Activity {
     private static final String START_URL = "https://liv-dienstplaner.vercel.app/wunschportal.html?app=apk";
     private static final String APK_URL = "https://github.com/ulmiulmi/liv-dienstplaner/releases/latest/download/ulmipoint-wunschportal.apk";
-    private static final String DEFAULT_QR_URL = "https://liv-dienstplaner.vercel.app/wunschportal.html?app=apk&stamp=ULMIPOINT%3ASTAMP%3ADEFAULT%3AEingang";
 
     private WebView webView;
     private NfcAdapter nfcAdapter;
@@ -58,7 +62,7 @@ public class MainActivity extends Activity {
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
         settings.setMediaPlaybackRequiresUserGesture(false);
-        settings.setUserAgentString(settings.getUserAgentString() + " ULMIPOINT-Wunschportal-APK TimeClock");
+        settings.setUserAgentString(settings.getUserAgentString() + " ULMIPOINT-Wunschportal-APK TimeClockCamera");
 
         webView.addJavascriptInterface(new NativeBridge(), "ULMI_NATIVE");
         webView.setWebChromeClient(new WebChromeClient());
@@ -85,15 +89,15 @@ public class MainActivity extends Activity {
                 Uri uri = Uri.parse(url);
                 String stamp = uri.getQueryParameter("stamp");
                 if (stamp != null && stamp.trim().length() > 0) {
-                    emitNativeStamp("qr", stamp);
+                    emitNativeStamp("qr-link", stamp);
                 }
 
                 if (nfcAdapter == null) {
-                    updateNativeStatus("Dieses Handy meldet kein NFC. QR-Link funktioniert trotzdem.");
+                    updateNativeStatus("Dieses Handy meldet kein NFC. QR-Kamera funktioniert trotzdem.");
                 } else if (!nfcAdapter.isEnabled()) {
-                    updateNativeStatus("NFC ist ausgeschaltet. QR-Link funktioniert trotzdem.");
+                    updateNativeStatus("NFC ist ausgeschaltet. QR-Kamera funktioniert trotzdem.");
                 } else {
-                    updateNativeStatus(lastNfcId.length() > 0 ? "Letzter NFC-Tag erkannt." : "Bereit für QR-Link oder NFC-Tag.");
+                    updateNativeStatus(lastNfcId.length() > 0 ? "Letzter NFC-Tag erkannt." : "Bereit. QR scannen oder NFC-Tag ans Handy halten.");
                 }
             }
         });
@@ -179,6 +183,31 @@ public class MainActivity extends Activity {
         return sb.toString();
     }
 
+    private void startQrScanNative() {
+        try {
+            GmsBarcodeScannerOptions options =
+                    new GmsBarcodeScannerOptions.Builder()
+                            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+                            .enableAutoZoom()
+                            .build();
+
+            GmsBarcodeScanner scanner = GmsBarcodeScanning.getClient(this, options);
+            scanner.startScan()
+                    .addOnSuccessListener(barcode -> {
+                        String raw = barcode.getRawValue();
+                        if (raw == null || raw.trim().length() == 0) {
+                            updateNativeStatus("QR-Code gelesen, aber ohne Inhalt.");
+                            return;
+                        }
+                        emitNativeStamp("qr", raw);
+                    })
+                    .addOnCanceledListener(() -> updateNativeStatus("QR-Scan abgebrochen."))
+                    .addOnFailureListener(e -> updateNativeStatus("QR-Scan Fehler: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage())));
+        } catch (Exception e) {
+            updateNativeStatus("QR-Scanner konnte nicht geöffnet werden: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+        }
+    }
+
     private void polishAppHeader() {
         if (webView == null) return;
 
@@ -204,7 +233,7 @@ public class MainActivity extends Activity {
                 + "document.head.appendChild(css);"
                 + "var card=document.createElement('section');"
                 + "card.id='ulmiTimeClockCard';"
-                + "card.innerHTML='<h2>⏱️ QR/NFC-Stempeln</h2><div class=\"tcMini\">Ein QR-Code für alle möglich. QR-Code öffnet die App mit Standort-Code. Eigene NFC-Tags bleiben offen.</div><div class=\"tcActions\"><button class=\"primary\" type=\"button\" id=\"ulmiQrDemoBtn\">QR-Link testen</button><button type=\"button\" id=\"ulmiRefreshClockBtn\">Letzte Erfassung laden</button></div><div class=\"tcBox\"><div>Status: <span id=\"ulmiTcStatus\">Bereit</span></div><div style=\"margin-top:6px\">Letzte Erfassung: <span id=\"ulmiTcLast\">-</span></div><div class=\"tcMini\" style=\"margin-top:6px\">Quelle: <span id=\"ulmiTcSource\">QR-Link / NFC / API offen</span></div></div>';"
+                + "card.innerHTML='<h2>⏱️ QR/NFC-Stempeln</h2><div class=\"tcMini\">QR direkt mit Kamera scannen. Eigene NFC-Tags bleiben offen.</div><div class=\"tcActions\"><button class=\"primary\" type=\"button\" id=\"ulmiQrScanBtn\">📷 QR scannen</button><button type=\"button\" id=\"ulmiRefreshClockBtn\">Letzte Erfassung laden</button></div><div class=\"tcBox\"><div>Status: <span id=\"ulmiTcStatus\">Bereit</span></div><div style=\"margin-top:6px\">Letzte Erfassung: <span id=\"ulmiTcLast\">-</span></div><div class=\"tcMini\" style=\"margin-top:6px\">Quelle: <span id=\"ulmiTcSource\">QR / NFC / API offen</span></div></div>';"
                 + "var nav=document.querySelector('.quick-tabs');"
                 + "if(nav&&nav.parentNode){nav.parentNode.insertBefore(card,nav.nextSibling);}else{document.body.insertBefore(card,document.body.firstChild);}"
                 + "function readSession(){try{var s=JSON.parse(localStorage.getItem('polypoint_wunschportal_session_v1')||'{}');return s||{};}catch(e){return {};}}"
@@ -213,9 +242,9 @@ public class MainActivity extends Activity {
                 + "function stamp(source,raw){var lp=loginPayload();if(!lp.identity||!lp.wishCode){setTc('Bitte zuerst im Wunschportal einloggen.','-','');return;}setTc('Stempel wird gespeichert …',raw,source);fetch('/api/time-clock-stamp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({identity:lp.identity,code:lp.wishCode,source:source,token:raw,raw:raw,action:'auto',client:'android-app',apiMode:'prepared'})}).then(function(r){return r.text().then(function(t){var d={};try{d=t?JSON.parse(t):{};}catch(e){d={message:t};}if(!r.ok||d.ok===false)throw new Error(d.message||('HTTP '+r.status));return d;});}).then(function(d){var e=d.event||{};setTc((e.actionLabel||e.action||'gespeichert')+' gespeichert',(e.employeeName||'')+' · '+(e.locationLabel||e.locationId||'Ort')+' · '+(e.timeText||e.at||''),source+' · API: '+((e.api&&e.api.status)||'open'));}).catch(function(e){setTc('Fehler: '+e.message,raw,source);});}"
                 + "window.ULMI_TIME_FROM_NATIVE=function(source,raw){stamp(source,raw);};"
                 + "window.ULMI_TIME_STATUS=function(status){setTc(status,document.getElementById('ulmiTcLast')?.textContent||'-',document.getElementById('ulmiTcSource')?.textContent||'');};"
-                + "document.getElementById('ulmiQrDemoBtn').onclick=function(){stamp('qr','ULMIPOINT:STAMP:DEFAULT:Eingang');};"
+                + "document.getElementById('ulmiQrScanBtn').onclick=function(){if(window.ULMI_NATIVE&&window.ULMI_NATIVE.startQrScan){window.ULMI_NATIVE.startQrScan();}else{setTc('QR-Kamera nur in der Android-App verfügbar.','-','');}};"
                 + "document.getElementById('ulmiRefreshClockBtn').onclick=function(){var lp=loginPayload();if(!lp.identity||!lp.wishCode){setTc('Bitte zuerst einloggen.','-','');return;}fetch('/api/time-clock-list',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({identity:lp.identity,code:lp.wishCode,mode:'self',limit:1})}).then(function(r){return r.json();}).then(function(d){var e=(d.events||[])[0];if(!e){setTc('Noch keine Erfassung.','-','');return;}setTc('Letzte Erfassung geladen',(e.employeeName||'')+' · '+(e.actionLabel||e.action)+' · '+(e.locationLabel||e.locationId||'')+' · '+(e.timeText||e.at),e.source+' · API: '+((e.api&&e.api.status)||'open'));}).catch(function(e){setTc('Fehler: '+e.message,'-','');});};"
-                + "setTc('Bereit. QR-Code öffnen oder NFC-Tag ans Handy halten.','-','QR-Link / NFC');"
+                + "setTc('Bereit. QR scannen oder NFC-Tag ans Handy halten.','-','QR / NFC');"
                 + "})();";
 
         webView.evaluateJavascript(js, null);
@@ -238,15 +267,13 @@ public class MainActivity extends Activity {
 
     public class NativeBridge {
         @JavascriptInterface
-        public void openUpdate() {
-            runOnUiThread(() -> openExternal(Uri.parse(APK_URL)));
+        public void startQrScan() {
+            runOnUiThread(() -> startQrScanNative());
         }
 
         @JavascriptInterface
-        public void openDefaultQr() {
-            runOnUiThread(() -> {
-                if (webView != null) webView.loadUrl(DEFAULT_QR_URL);
-            });
+        public void openUpdate() {
+            runOnUiThread(() -> openExternal(Uri.parse(APK_URL)));
         }
     }
 
