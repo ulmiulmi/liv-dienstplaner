@@ -866,5 +866,34 @@ button.primary{background:var(--navBlue);border-color:var(--navBlue)}button.ok{b
   loadSession(); initControls(); applyInviteParams(); if(isFresh())loadServer();
 })();
 </script>
+
+<script>
+(function(){
+  function isAppMode(){
+    try{
+      var p=new URLSearchParams(location.search);
+      return p.get('app')==='apk' || /ULMIPOINT-Wunschportal-APK/i.test(navigator.userAgent||'');
+    }catch(_){
+      return /ULMIPOINT-Wunschportal-APK/i.test(navigator.userAgent||'');
+    }
+  }
+  function fixAppDownloadButton(){
+    if(!isAppMode()) return;
+    document.querySelectorAll('a.apk-download').forEach(function(a){
+      a.textContent='🔄 Nach Update suchen';
+      a.setAttribute('aria-label','Nach Update suchen');
+      a.title='Neueste App-Version herunterladen';
+    });
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',fixAppDownloadButton);
+  }else{
+    fixAppDownloadButton();
+  }
+  setTimeout(fixAppDownloadButton,500);
+  setTimeout(fixAppDownloadButton,1500);
+})();
+</script>
+
 </body>
 </html>
