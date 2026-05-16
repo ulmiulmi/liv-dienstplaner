@@ -2,10 +2,9 @@ name: Build Wunschportal Android
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'android-wunschportal/**'
-      - '.github/workflows/build-wunschportal-android.yml'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -25,22 +24,28 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Build debug APK
+      - name: Build APK and AAB
         working-directory: android-wunschportal
-        run: gradle :app:assembleDebug --no-daemon
+        run: |
+          gradle :app:assembleDebug --no-daemon
+          gradle :app:bundleRelease --no-daemon
 
-      - name: Build release AAB
-        working-directory: android-wunschportal
-        run: gradle :app:bundleRelease --no-daemon
+      - name: Prepare files
+        run: |
+          mkdir -p release-files
+          cp android-wunschportal/app/build/outputs/apk/debug/app-debug.apk release-files/ulmipoint-wunschportal.apk
+          cp android-wunschportal/app/build/outputs/bundle/release/app-release.aab release-files/ulmipoint-wunschportal.aab
 
-      - name: Upload debug APK
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ULMIPOINT-Wunschportal-Debug-APK
-          path: android-wunschportal/app/build/outputs/apk/debug/app-debug.apk
+          name: ULMIPOINT-Wunschportal-Android
+          path: release-files/*
 
-      - name: Upload release AAB
-        uses: actions/upload-artifact@v4
+      - name: Publish release download
+        uses: softprops/action-gh-release@v2
         with:
-          name: ULMIPOINT-Wunschportal-Release-AAB
-          path: android-wunschportal/app/build/outputs/bundle/release/app-release.aab
+          tag_name: wunschportal-android-latest
+          name: ULMIPOINT Wunschportal Android
+          files: release-files/*
+          make_latest: true
