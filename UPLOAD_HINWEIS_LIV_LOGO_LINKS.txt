@@ -1,8 +1,0 @@
-Hauptdatei angepasst:
-- index.html: oben links wird statt dem Text „ULMIPOINT Adapter“ das LIV-Logo angezeigt.
-- assets/liv-logo-titlebar.jpg: neues Logo-Asset.
-- ULMIPOINT-Logo rechts bleibt unverändert.
-
-Hochladen/ersetzen auf GitHub:
-1. index.html ersetzen
-2. assets/liv-logo-titlebar.jpg in den assets-Ordner hochladen
