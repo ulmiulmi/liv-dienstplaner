@@ -15,7 +15,7 @@ input,select{width:100%;border:1px solid var(--line);border-radius:12px;backgrou
 button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 13px;font-weight:950;cursor:pointer;color:var(--text)}
 button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button.ok{background:#e7f7ef;border-color:#b7e4ca;color:var(--green)}
 .notice{border:1px solid #c9dcff;background:#f7fbff;color:#175cd3;border-radius:14px;padding:10px;font-size:12px;font-weight:850;white-space:pre-wrap}.notice.bad{border-color:#f2a3a3;background:#fffafa;color:#c73636}.notice.ok{border-color:#b7e4ca;background:#e7f7ef;color:#0f8a5f}.notice.warn{border-color:#f3d28f;background:#fffdf5;color:#9a6700}
-.statgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:10px}.stat{border:1px solid var(--line);border-radius:16px;background:#fbfcfe;padding:10px}.stat b{display:block;font-size:24px;letter-spacing:-.05em}.stat span{font-size:11px;color:var(--muted);font-weight:900}
+.statgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px}.stat{border:1px solid var(--line);border-radius:16px;background:#fbfcfe;padding:10px}.stat b{display:block;font-size:24px;letter-spacing:-.05em}.stat span{font-size:11px;color:var(--muted);font-weight:900}
 .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:16px;background:#fff;margin-top:10px;max-height:560px}table{border-collapse:collapse;width:100%;min-width:1120px}th,td{text-align:left;border-bottom:1px solid #edf1f6;padding:9px 10px;font-size:12px;vertical-align:top}th{position:sticky;top:0;background:#f8fafc;font-size:11px;color:#475467;text-transform:uppercase;letter-spacing:.04em}td{font-weight:850}.pill{display:inline-flex;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:950;background:#eef2f7;color:#475467}.pill.ok{background:#e7f7ef;color:#0f8a5f}.pill.warn{background:#fff7e6;color:#9a6700}.pill.bad{background:#ffe7e7;color:#c73636}.pill.blue{background:#eaf2ff;color:#2563eb}.muted{color:var(--muted)}.right{text-align:right}
 .tabs{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.tab{display:none}.tab.active{display:block}
 @media(max-width:900px){.filters{grid-template-columns:1fr 1fr}.statgrid{grid-template-columns:1fr 1fr 1fr}.hero{border-radius:0 0 24px 24px;margin:-14px -14px 10px}}@media(max-width:520px){.filters{grid-template-columns:1fr}.statgrid{grid-template-columns:1fr 1fr}}
@@ -27,7 +27,6 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   <div>
     <div class="eyebrow">ULMIPOINT</div>
     <h1>Monatsabschluss</h1>
-    <div class="mini">Basel-Stadt Feiertagsprofil · Stempelungen · Planstatus · Kontrollhinweise</div>
   </div>
   <div class="toolbar">
     <button class="primary" id="loadBtn">Berechnen</button>
@@ -44,9 +43,17 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     <label><span class="mini">Mitarbeiter</span><input id="employeeFilter" placeholder="Name"></label>
     <label><span class="mini">Kanton</span><input value="Basel-Stadt" readonly></label>
   </div>
+  <h2 style="margin-top:14px">Zulagen-Regeln</h2>
+  <div class="filters">
+    <label><span class="mini">Nachtdienst-Zulage CHF/h</span><input id="rateNight" type="number" min="0" step="0.05" value="0"></label>
+    <label><span class="mini">Samstag-Zulage CHF/h</span><input id="rateSaturday" type="number" min="0" step="0.05" value="0"></label>
+    <label><span class="mini">Sonntag/Feiertag-Zulage CHF/h</span><input id="rateSundayHoliday" type="number" min="0" step="0.05" value="0"></label>
+    <label><span class="mini">Pikett-Zulage CHF/h</span><input id="ratePikett" type="number" min="0" step="0.05" value="0"></label>
+  </div>
   <div class="actions" style="margin-top:10px">
     <button id="sessionBtn">Sitzung prüfen</button>
     <button id="clearFilterBtn">Filter leeren</button>
+    <button id="saveRatesBtn">Zulagen speichern</button>
   </div>
   <div id="status" class="notice" style="margin-top:10px">Noch nicht berechnet.</div>
   <div class="statgrid">
@@ -55,6 +62,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     <div class="stat"><b id="sDiff">0</b><span>Differenz h</span></div>
     <div class="stat"><b id="sNight">0</b><span>Nacht h</span></div>
     <div class="stat"><b id="sSH">0</b><span>So/Feiertag h</span></div>
+    <div class="stat"><b id="sAllowance">0</b><span>Zulagen CHF</span></div>
     <div class="stat"><b id="sWarn">0</b><span>Kontrollen</span></div>
   </div>
 </section>
@@ -68,16 +76,16 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
 <section class="card tab active" id="tab-summary">
   <h2>Mitarbeiter-Zusammenfassung</h2>
   <div class="tablewrap"><table>
-    <thead><tr><th>Mitarbeiter</th><th>Bereich</th><th class="right">Soll</th><th class="right">Ist</th><th class="right">Diff</th><th class="right">Nacht</th><th class="right">So/Feiertag</th><th>Krank/Ferien/Schule/WB</th><th>Kontrolle</th></tr></thead>
-    <tbody id="summaryRows"><tr><td colspan="9" class="muted">Noch nicht berechnet.</td></tr></tbody>
+    <thead><tr><th>Mitarbeiter</th><th>Bereich</th><th class="right">Soll</th><th class="right">Ist</th><th class="right">Diff</th><th class="right">Nacht</th><th class="right">Sa</th><th class="right">So/Feiertag</th><th class="right">Nachtzulage</th><th class="right">Weekend/Feiertag</th><th class="right">Zulagen total</th><th>Krank/Ferien/Schule/WB</th><th>Kontrolle</th></tr></thead>
+    <tbody id="summaryRows"><tr><td colspan="15" class="muted">Noch nicht berechnet.</td></tr></tbody>
   </table></div>
 </section>
 
 <section class="card tab" id="tab-details">
   <h2>Tagesdetails</h2>
   <div class="tablewrap"><table>
-    <thead><tr><th>Datum</th><th>MA</th><th>Bereich</th><th>Plan</th><th>Status</th><th class="right">Soll</th><th class="right">Ist</th><th class="right">Diff</th><th class="right">Nacht</th><th class="right">So/Feiertag</th><th>Kommen</th><th>Gehen</th><th>Kontrolle</th></tr></thead>
-    <tbody id="detailRows"><tr><td colspan="13" class="muted">Noch nicht berechnet.</td></tr></tbody>
+    <thead><tr><th>Datum</th><th>MA</th><th>Bereich</th><th>Plan</th><th>Status</th><th class="right">Soll</th><th class="right">Ist</th><th class="right">Diff</th><th class="right">Nacht</th><th class="right">Sa</th><th class="right">So/Feiertag</th><th class="right">Zulagen CHF</th><th>Kommen</th><th>Gehen</th><th>Kontrolle</th></tr></thead>
+    <tbody id="detailRows"><tr><td colspan="15" class="muted">Noch nicht berechnet.</td></tr></tbody>
   </table></div>
 </section>
 
@@ -93,6 +101,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
 <script>
 (function(){
   const SERVER_TOKEN_KEY='polypoint_server_session_v1';
+  const RATES_KEY='ulmipoint_monthly_allowance_rates_v1';
   let lastData=null;
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -111,10 +120,25 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   function checkSession(){
     try{const s=requireSession();status('Sitzung OK: '+((s.user&&s.user.email)||'eingeloggt'),'ok');return true;}catch(e){status(e.message,'bad');return false;}
   }
+  function num(id){const n=Number($(id).value);return Number.isFinite(n)&&n>0?n:0}
+  function allowanceRates(){return {night:num('rateNight'),saturday:num('rateSaturday'),sundayHoliday:num('rateSundayHoliday'),pikett:num('ratePikett')}}
+  function loadRates(){
+    try{
+      const r=JSON.parse(localStorage.getItem(RATES_KEY)||'{}');
+      if(r.night!=null)$('rateNight').value=r.night;
+      if(r.saturday!=null)$('rateSaturday').value=r.saturday;
+      if(r.sundayHoliday!=null)$('rateSundayHoliday').value=r.sundayHoliday;
+      if(r.pikett!=null)$('ratePikett').value=r.pikett;
+    }catch(_){}
+  }
+  function saveRates(){
+    localStorage.setItem(RATES_KEY,JSON.stringify(allowanceRates()));
+    status('Zulagen-Ansätze lokal gespeichert.','ok');
+  }
   async function load(){
     const s=requireSession();
     status('Monatsabschluss wird berechnet …');
-    const body={monthKey:$('monthKey').value,group:$('groupFilter').value.trim(),employeeName:$('employeeFilter').value.trim()};
+    const body={monthKey:$('monthKey').value,group:$('groupFilter').value.trim(),employeeName:$('employeeFilter').value.trim(),allowanceRates:allowanceRates()};
     const resp=await fetch('/api/monthly-close',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},body:JSON.stringify(body)});
     const txt=await resp.text(); let data={}; try{data=txt?JSON.parse(txt):{};}catch(_){data={message:txt};}
     if(!resp.ok||data.ok===false)throw new Error(data.message||('HTTP '+resp.status));
@@ -123,18 +147,19 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   function n(v){return Number(v||0).toFixed(2)}
   function render(data){
     const t=data.totals||{};
-    $('sSoll').textContent=n(t.plannedHours); $('sIst').textContent=n(t.workedHours); $('sDiff').textContent=n(t.diffHours); $('sNight').textContent=n(t.nightHours); $('sSH').textContent=n(t.sundayHolidayHours); $('sWarn').textContent=t.warnings||0;
+    $('sSoll').textContent=n(t.plannedHours); $('sIst').textContent=n(t.workedHours); $('sDiff').textContent=n(t.diffHours); $('sNight').textContent=n(t.nightHours); $('sSH').textContent=n(t.sundayHolidayHours); $('sAllowance').textContent=n(t.totalAllowance); $('sWarn').textContent=t.warnings||0;
     $('summaryRows').innerHTML=(data.employees||[]).map(e=>'<tr>'+
       '<td><strong>'+esc(e.employeeName)+'</strong><div class="muted">'+esc(e.employeeId)+'</div></td><td>'+esc(e.group)+'</td>'+
-      '<td class="right">'+n(e.plannedHours)+'</td><td class="right">'+n(e.workedHours)+'</td><td class="right">'+n(e.diffHours)+'</td><td class="right">'+n(e.nightHours)+'</td><td class="right">'+n(e.sundayHolidayHours)+'</td>'+
+      '<td class="right">'+n(e.plannedHours)+'</td><td class="right">'+n(e.workedHours)+'</td><td class="right">'+n(e.diffHours)+'</td><td class="right">'+n(e.nightHours)+'</td><td class="right">'+n(e.saturdayHours)+'</td><td class="right">'+n(e.sundayHolidayHours)+'</td>'+
+      '<td class="right">'+n(e.nightAllowance)+'</td><td class="right">'+n((e.saturdayAllowance||0)+(e.sundayHolidayAllowance||0))+'</td><td class="right"><strong>'+n(e.totalAllowance)+'</strong></td>'+
       '<td>KR '+(e.krank||0)+' · FER '+(e.ferien||0)+' · SCH '+(e.schule||0)+' · WB '+(e.weiterbildung||0)+'</td>'+
-      '<td><span class="pill '+((e.warnings||0)?'bad':'ok')+'">'+(e.warnings||0)+' Hinweise</span></td></tr>').join('') || '<tr><td colspan="9" class="muted">Keine Mitarbeiter gefunden.</td></tr>';
+      '<td><span class="pill '+((e.warnings||0)?'bad':'ok')+'">'+(e.warnings||0)+' Hinweise</span></td></tr>').join('') || '<tr><td colspan="15" class="muted">Keine Mitarbeiter gefunden.</td></tr>';
     $('detailRows').innerHTML=(data.days||[]).map(d=>{
       const warn=(d.warnings||[]).join(' · ');
       return '<tr><td>'+esc(d.date+' '+d.weekday)+(d.holiday?'<div class="pill warn">'+esc(d.holiday)+'</div>':'')+'</td><td>'+esc(d.employeeName)+'</td><td>'+esc(d.group)+'</td><td>'+esc(d.planLabel)+'</td><td><span class="pill blue">'+esc(d.status)+'</span></td>'+
-      '<td class="right">'+n(d.plannedHours)+'</td><td class="right">'+n(d.workedHours)+'</td><td class="right">'+n(d.diffHours)+'</td><td class="right">'+n(d.nightHours)+'</td><td class="right">'+n(d.sundayHolidayHours)+'</td>'+
+      '<td class="right">'+n(d.plannedHours)+'</td><td class="right">'+n(d.workedHours)+'</td><td class="right">'+n(d.diffHours)+'</td><td class="right">'+n(d.nightHours)+'</td><td class="right">'+n(d.saturdayHours)+'</td><td class="right">'+n(d.sundayHolidayHours)+'</td><td class="right">'+n(d.totalAllowance)+'</td>'+
       '<td>'+esc(d.firstClock?new Date(d.firstClock).toLocaleString("de-CH"):"")+'</td><td>'+esc(d.lastClock?new Date(d.lastClock).toLocaleString("de-CH"):"")+'</td><td>'+(warn?'<span class="pill bad">'+esc(warn)+'</span>':'<span class="pill ok">OK</span>')+'</td></tr>';
-    }).join('') || '<tr><td colspan="13" class="muted">Keine Tagesdaten.</td></tr>';
+    }).join('') || '<tr><td colspan="15" class="muted">Keine Tagesdaten.</td></tr>';
     $('holidayRows').innerHTML=(data.holidays||[]).map(h=>'<tr><td>'+esc(h.date)+'</td><td>'+esc(h.name)+'</td><td>'+esc(h.code)+'</td><td>'+esc(h.type)+'</td></tr>').join('');
   }
   function csv(rows,head,name){
@@ -145,14 +170,14 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   }
   function csvSummary(){
     if(!lastData)return status('Zuerst berechnen.','warn');
-    csv(lastData.employees.map(e=>[e.employeeName,e.group,e.plannedHours,e.workedHours,e.diffHours,e.nightHours,e.sundayHolidayHours,e.krank,e.ferien,e.schule,e.weiterbildung,e.warnings]),
-      ['Mitarbeiter','Bereich','Soll h','Ist h','Diff h','Nacht h','So/Feiertag h','Krank','Ferien','Schule','Weiterbildung','Hinweise'],
+    csv(lastData.employees.map(e=>[e.employeeName,e.group,e.plannedHours,e.workedHours,e.diffHours,e.nightHours,e.saturdayHours,e.sundayHolidayHours,e.nightAllowance,e.saturdayAllowance,e.sundayHolidayAllowance,e.totalAllowance,e.krank,e.ferien,e.schule,e.weiterbildung,e.warnings]),
+      ['Mitarbeiter','Bereich','Soll h','Ist h','Diff h','Nacht h','Samstag h','So/Feiertag h','Nachtzulage CHF','Samstagzulage CHF','Sonntag/Feiertag Zulage CHF','Zulagen total CHF','Krank','Ferien','Schule','Weiterbildung','Hinweise'],
       'ulmipoint-monatsabschluss-'+lastData.monthKey+'-mitarbeiter.csv');
   }
   function csvDetails(){
     if(!lastData)return status('Zuerst berechnen.','warn');
-    csv(lastData.days.map(d=>[d.date,d.weekday,d.employeeName,d.group,d.code,d.planLabel,d.status,d.holiday,d.plannedHours,d.workedHours,d.diffHours,d.nightHours,d.sundayHolidayHours,d.firstClock,d.lastClock,(d.warnings||[]).join(' | ')]),
-      ['Datum','Wochentag','Mitarbeiter','Bereich','Code','Plan','Status','Feiertag','Soll h','Ist h','Diff h','Nacht h','So/Feiertag h','Kommen','Gehen','Kontrolle'],
+    csv(lastData.days.map(d=>[d.date,d.weekday,d.employeeName,d.group,d.code,d.planLabel,d.status,d.holiday,d.plannedHours,d.workedHours,d.diffHours,d.nightHours,d.saturdayHours,d.sundayHolidayHours,d.nightAllowance,d.saturdayAllowance,d.sundayHolidayAllowance,d.totalAllowance,d.firstClock,d.lastClock,(d.warnings||[]).join(' | ')]),
+      ['Datum','Wochentag','Mitarbeiter','Bereich','Code','Plan','Status','Feiertag','Soll h','Ist h','Diff h','Nacht h','Samstag h','So/Feiertag h','Nachtzulage CHF','Samstagzulage CHF','Sonntag/Feiertag Zulage CHF','Zulagen total CHF','Kommen','Gehen','Kontrolle'],
       'ulmipoint-monatsabschluss-'+lastData.monthKey+'-tage.csv');
   }
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.remove('primary'));b.classList.add('primary');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));$('tab-'+b.dataset.tab).classList.add('active')});
@@ -161,7 +186,9 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   $('clearFilterBtn').onclick=()=>{$('groupFilter').value='';$('employeeFilter').value='';};
   $('csvSummaryBtn').onclick=csvSummary;
   $('csvDetailsBtn').onclick=csvDetails;
+  $('saveRatesBtn').onclick=saveRates;
   $('monthKey').value=monthNow();
+  loadRates();
   checkSession();
 })();
 </script>
