@@ -114,7 +114,9 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   }
   function defaultUnit(site,type='wohngruppe'){
     const n=(site.units||[]).length+1;
-    return {id:'bereich_'+n,name:type==='tageszentrum'?'Team '+n:'Gruppe '+n,type,plannerKey:'',active:true};
+    const name = type==='tageszentrum' ? 'Team '+n : 'Gruppe '+n;
+    const id = slug(name);
+    return {id,name,type,plannerKey:id,active:true};
   }
   function syncBasics(){
     org.organisation=org.organisation||{};

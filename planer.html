@@ -315,6 +315,192 @@
 <script>
 (function(){
   const labels = {"overview": "Startseite", "azoren": "Azoren", "bali": "Bali", "capri": "Capri", "delos": "Delos", "nachtwache": "Nachtwache", "pikett": "Haus-Pikett", "hausdienstplan": "Haus-Dienstplan", "zeiterfassung": "Zeiterfassung", "monatsabschluss": "Monatsabschluss"};
+
+  const EXISTING_PLAN_PAGES = new Set(["azoren","bali","capri","delos","nachtwache","pikett","hausdienstplan","zeiterfassung","monatsabschluss"]);
+  const HOUSE_STORAGE_KEY = "ulmipoint_selected_site_v1";
+  const HOUSE_SHARED_STORAGE_KEYS = new Set([
+    "polypoint_server_config_v2",
+    "polypoint_server_session_v1",
+    "polypoint_server_sync_meta_v1",
+    "polypoint_server_autosave_v1",
+    "polypoint_employee_wishes_v1",
+    "ulmipoint_selected_site_v1"
+  ]);
+
+  function safeJsonParse(value){
+    try{ return JSON.parse(value || "null"); }catch(_){ return null; }
+  }
+  function querySiteId(){
+    try{ return new URLSearchParams(location.search || "").get("site") || ""; }catch(_){ return ""; }
+  }
+  function currentHouseContext(){
+    const stored = safeJsonParse(localStorage.getItem(HOUSE_STORAGE_KEY));
+    const q = querySiteId();
+    if(stored && stored.id) return stored;
+    if(q) return {id:q,name:q.replace(/_/g," "),units:[],type:"wohnheim",canton:"BS"};
+    return null;
+  }
+  const HOUSE_CONTEXT = currentHouseContext();
+  const HOUSE_ID = HOUSE_CONTEXT && HOUSE_CONTEXT.id ? String(HOUSE_CONTEXT.id) : "haus_1";
+  const IS_HAUS_1 = !HOUSE_CONTEXT || HOUSE_ID === "haus_1" || HOUSE_ID === "haus1";
+
+  function realHouseUnits(){
+    const units = HOUSE_CONTEXT && Array.isArray(HOUSE_CONTEXT.units) ? HOUSE_CONTEXT.units : [];
+    return units.filter(u => u && !["pikett","hausdienstplan"].includes(String(u.type || "")));
+  }
+
+  function slugId(value){
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/[^a-z0-9]+/g,"_")
+      .replace(/^_+|_+$/g,"") || "bereich";
+  }
+
+  const UNIT_CONTEXT_BY_PLANNER = {};
+  function plannerIdForUnit(unit){
+    const raw = unit && (unit.plannerKey || unit.id || unit.name);
+    return slugId(raw);
+  }
+
+  function applyHouseContextToLabels(){
+    if(!HOUSE_CONTEXT) return;
+
+    const allowed = new Set(["overview"]);
+    const units = realHouseUnits();
+
+    units.forEach(u => {
+      const id = plannerIdForUnit(u);
+      if(!id) return;
+      labels[id] = u.name || id;
+      allowed.add(id);
+      UNIT_CONTEXT_BY_PLANNER[id] = {
+        id: u.id || id,
+        name: u.name || id,
+        type: u.type || "bereich",
+        plannerKey: id,
+        siteId: HOUSE_ID,
+        siteName: HOUSE_CONTEXT.name || HOUSE_ID
+      };
+    });
+
+    // Hausfunktionen gibt es pro Haus automatisch, aber im eigenen Haus-Speicher.
+    ["pikett","hausdienstplan","zeiterfassung","monatsabschluss"].forEach(id => {
+      if(labels[id]) allowed.add(id);
+    });
+
+    // Haus 1 kann zusätzlich mit den bestehenden festen Bereichen arbeiten,
+    // wenn noch keine Organisationseinheiten gespeichert sind.
+    if(IS_HAUS_1 && !units.length){
+      ["azoren","bali","capri","delos","nachtwache"].forEach(id => allowed.add(id));
+    }
+
+    Object.keys(labels).forEach(id => {
+      if(!allowed.has(id)) delete labels[id];
+    });
+
+    document.querySelectorAll("[data-planner]").forEach(btn => {
+      const id = btn.dataset.planner;
+      if(!labels[id]) btn.remove();
+      else btn.textContent = (id === "overview" ? "🏠 " : "") + labels[id];
+    });
+
+    const tabs = document.querySelector(".tabs");
+    if(tabs){
+      Object.keys(labels).forEach(id => {
+        if(document.querySelector('[data-planner="'+id+'"]')) return;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.planner = id;
+        btn.className = id === "pikett" ? "pikett" : "";
+        btn.setAttribute("aria-pressed","false");
+        btn.textContent = labels[id];
+        tabs.appendChild(btn);
+      });
+    }
+
+    const activeLabelEl = document.getElementById("activeLabel");
+    if(activeLabelEl && HOUSE_CONTEXT && HOUSE_CONTEXT.name){
+      activeLabelEl.textContent = "aktiv: " + HOUSE_CONTEXT.name;
+    }
+  }
+  applyHouseContextToLabels();
+
+  function siteOverviewHtml(){
+    const site = HOUSE_CONTEXT || {name:"Haus 1", id:"haus_1", units:[]};
+    const units = realHouseUnits();
+    const unitChips = units.length ? units.map(u => `<span class="unit-chip">${escapeHtml(u.name || u.id || "Bereich")} <small>${escapeHtml(u.type || "")}</small></span>`).join("") : `<div class="empty-note">Dieses Haus hat noch keine eigenen Gruppen/Bereiche. In der Organisation bearbeiten und Gruppen hinzufügen.</div>`;
+    return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+      :root{--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
+      *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);padding:18px}
+      .hero{background:#fff;border:1px solid var(--line);border-radius:26px;padding:18px;box-shadow:var(--shadow)}
+      .eyebrow{font-size:12px;font-weight:950;color:var(--blue);letter-spacing:.06em;text-transform:uppercase}
+      h1{font-size:clamp(34px,6vw,64px);letter-spacing:-.07em;line-height:.94;margin:4px 0 8px}
+      .mini{font-size:13px;color:var(--muted);font-weight:850}.grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.unit-chip{display:inline-flex;gap:5px;border:1px solid var(--line);background:#fbfcfe;border-radius:999px;padding:8px 10px;font-size:13px;font-weight:900}.auto{background:#fff7e6;color:#9a6700}.empty-note{border:1px dashed #c9dcff;background:#f7fbff;color:#175cd3;border-radius:18px;padding:18px;font-weight:900}.btn{display:inline-flex;margin-top:14px;text-decoration:none;border:1px solid #c9dcff;border-radius:999px;padding:10px 13px;font-weight:950;color:#175cd3;background:#fff}
+    </style></head><body><section class="hero"><div class="eyebrow">ULMIPOINT · ${escapeHtml(site.type || "Haus")}</div><h1>${escapeHtml(site.name || "Haus")}</h1><div class="mini">Eigener Haus-Kontext: ${escapeHtml(site.id || "")}</div><div class="grid">${unitChips}<span class="unit-chip auto">Haus-Pikett <small>automatisch</small></span><span class="unit-chip auto">Haus-Dienstplan <small>automatisch</small></span></div><a class="btn" href="organisation-admin.html" target="_blank">Organisation bearbeiten</a></section></body></html>`;
+  }
+
+  function escapeHtml(value){
+    return String(value == null ? "" : value).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function isDynamicUnitPage(id){
+    return !!UNIT_CONTEXT_BY_PLANNER[id] && !EXISTING_PLAN_PAGES.has(id);
+  }
+
+  function pageSourceForId(id){
+    return isDynamicUnitPage(id) ? "vorlage.html" : (id + ".html");
+  }
+
+  function shouldNamespaceFrame(id){
+    if(!HOUSE_CONTEXT) return false;
+    return id && id !== "overview";
+  }
+
+  function namespacedFrameLoadingHtml(id){
+    return `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:system-ui;margin:0;padding:22px;background:#f6f8fc;color:#172033;font-weight:900}</style></head><body>${escapeHtml(labels[id] || id)} wird für ${escapeHtml(HOUSE_CONTEXT?.name || HOUSE_ID)} geladen …</body></html>`;
+  }
+
+  function injectNamespacedStorage(htmlText, id){
+    const context = UNIT_CONTEXT_BY_PLANNER[id] || {id, name: labels[id] || id, type:"bereich", plannerKey:id, siteId:HOUSE_ID, siteName:HOUSE_CONTEXT?.name || HOUSE_ID};
+    const bootstrap = `<script>
+(function(){
+  window.__ULMI_UNIT_CONTEXT__ = ${JSON.stringify(JSON.stringify(context))};
+  try{ window.__ULMI_UNIT_CONTEXT__ = JSON.parse(window.__ULMI_UNIT_CONTEXT__); }catch(_){}
+  var PREFIX=${JSON.stringify("polypoint_site_" + HOUSE_ID + "__")} + ${JSON.stringify("")};
+  var PAGE=${JSON.stringify(id)};
+  var PAGE_PREFIX=PREFIX + PAGE + "__";
+  var SHARED=${JSON.stringify(Array.from(HOUSE_SHARED_STORAGE_KEYS))};
+  function isShared(k){ return SHARED.indexOf(String(k||"")) >= 0; }
+  var real = window.localStorage;
+  function mapKey(k){ k=String(k||""); return isShared(k) ? k : PAGE_PREFIX + k; }
+  function visibleKeys(){
+    var out=[], seen={};
+    for(var i=0;i<real.length;i++){
+      var k=real.key(i);
+      if(!k) continue;
+      if(k.indexOf(PAGE_PREFIX)===0){ var v=k.slice(PAGE_PREFIX.length); if(!seen[v]){seen[v]=1;out.push(v);} }
+      else if(isShared(k) && !seen[k]){seen[k]=1;out.push(k);}
+    }
+    return out;
+  }
+  var proxy = {
+    getItem:function(k){ return real.getItem(mapKey(k)); },
+    setItem:function(k,v){ return real.setItem(mapKey(k), String(v)); },
+    removeItem:function(k){ return real.removeItem(mapKey(k)); },
+    clear:function(){ visibleKeys().forEach(function(k){ real.removeItem(mapKey(k)); }); },
+    key:function(i){ return visibleKeys()[i] || null; },
+    get length(){ return visibleKeys().length; }
+  };
+  try{ Object.defineProperty(window, "localStorage", {value: proxy, configurable: true}); }catch(e){}
+  try{ var localStorage = proxy; window.__ULMI_SITE_STORAGE_PROXY__ = proxy; }catch(e){}
+})();
+<\\/script>`;
+    return htmlText.replace(/<head[^>]*>/i, match => match + bootstrap);
+  }
+
+
   const ids = Object.keys(labels);
   const frameWrap = document.getElementById('frameWrap');
   const loader = document.getElementById('loader');
@@ -333,7 +519,19 @@
     iframe.className = 'planner-frame';
     iframe.dataset.planner = id;
     iframe.title = labels[id];
-    iframe.src = id + '.html';
+    if(id === "overview" && HOUSE_CONTEXT){
+      iframe.srcdoc = siteOverviewHtml();
+    } else if(shouldNamespaceFrame(id)){
+      iframe.srcdoc = namespacedFrameLoadingHtml(id);
+      fetch(pageSourceForId(id), {cache:'no-store'})
+        .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+        .then(text => { iframe.srcdoc = injectNamespacedStorage(text, id); })
+        .catch(err => {
+          iframe.srcdoc = '<!doctype html><html lang="de"><meta charset="utf-8"><body style="font-family:system-ui;padding:22px;background:#fffafa;color:#c73636;font-weight:900">Planseite konnte nicht geladen werden: ' + escapeHtml(err.message) + '</body></html>';
+        });
+    } else {
+      iframe.src = id + '.html';
+    }
     iframe.addEventListener('load', () => { cleanVisibleLocalButtonsInFrame(iframe); if(activeId === id) loader.style.display = 'none'; });
     frameWrap.appendChild(iframe);
     frames.set(id, iframe);
