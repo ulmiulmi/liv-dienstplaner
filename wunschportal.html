@@ -163,6 +163,35 @@ button.primary{background:var(--navBlue);border-color:var(--navBlue)}button.ok{b
   }
 }
 
+
+/* Wunschportal: Titelbereich zentriert */
+.hero>div:first-child{
+  text-align:center!important;
+}
+.hero h1{
+  margin-left:auto!important;
+  margin-right:auto!important;
+  text-align:center!important;
+}
+.hero>.toolbar,
+.portal-hero-right .toolbar{
+  justify-content:center!important;
+}
+@media(max-width:820px){
+  .hero>div:first-child{
+    text-align:center!important;
+  }
+  .hero h1{
+    text-align:center!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+  .hero>.toolbar,
+  .portal-hero-right .toolbar{
+    justify-content:center!important;
+  }
+}
+
 </style>
 </head>
 <body>
