@@ -152,12 +152,12 @@
         <span class="pill green">GitHub Pages</span>
         <span class="pill brown">aufgeteilt</span>
         <button type="button" onclick="window.open('wunschportal.html','_blank')">👤 Wunschportal</button>
+        <button type="button" onclick="window.open('organisation-admin.html','_blank')">🏢 Organisation verwalten</button>
         <button id="serverSyncBtn" class="server-btn" type="button">☁️ Server</button>
       </div>
     </div>
     <nav class="tabs" aria-label="Bereiche">
       <button type="button" data-planner="overview" class="active  " aria-pressed="true">🏠 Startseite</button>
-      <button type="button" data-planner="organisation" class="  " aria-pressed="false">🏢 Organisation</button>
       <button type="button" data-planner="azoren" class="  " aria-pressed="false">Azoren</button>
       <button type="button" data-planner="bali" class="  " aria-pressed="false">Bali</button>
       <button type="button" data-planner="capri" class="  closed-tab" aria-pressed="false">Capri</button>
@@ -314,7 +314,7 @@
 
 <script>
 (function(){
-  const labels = {"overview": "Startseite", "organisation": "Organisation", "azoren": "Azoren", "bali": "Bali", "capri": "Capri", "delos": "Delos", "nachtwache": "Nachtwache", "pikett": "Haus-Pikett", "hausdienstplan": "Haus-Dienstplan", "zeiterfassung": "Zeiterfassung", "monatsabschluss": "Monatsabschluss"};
+  const labels = {"overview": "Startseite", "azoren": "Azoren", "bali": "Bali", "capri": "Capri", "delos": "Delos", "nachtwache": "Nachtwache", "pikett": "Haus-Pikett", "hausdienstplan": "Haus-Dienstplan", "zeiterfassung": "Zeiterfassung", "monatsabschluss": "Monatsabschluss"};
   const ids = Object.keys(labels);
   const frameWrap = document.getElementById('frameWrap');
   const loader = document.getElementById('loader');
