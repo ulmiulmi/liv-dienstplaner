@@ -14,6 +14,9 @@
   h1{font-size:32px;line-height:1.04;margin:0;letter-spacing:-.05em;white-space:nowrap}
 
   .brand{grid-column:1;display:flex;align-items:center;min-width:0}
+
+  .liv-logo{display:block;height:64px;width:auto;max-width:min(360px,34vw);object-fit:contain;background:#fff;border-radius:8px}
+  @media(max-width:740px){.liv-logo{height:44px;max-width:min(210px,42vw)}}
   .brand-logo{grid-column:3;grid-row:1;justify-self:end;align-self:stretch;display:block;height:96px;width:auto;max-width:min(440px,38vw);border-radius:17px;background:#08101a;box-shadow:0 8px 18px rgba(16,24,40,.10);object-fit:contain}
   .brand-copy{min-width:0}
   .visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
