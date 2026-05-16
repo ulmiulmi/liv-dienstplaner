@@ -2106,13 +2106,9 @@
     if(document.getElementById('ulmiSiteContextBadge'))return;
     var badge=document.createElement('span');
     badge.id='ulmiSiteContextBadge';
-    badge.innerHTML='🏠 aktiv: '+String(site.name).replace(/[<>&"]/g,function(m){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[m]})+' <button type="button" id="ulmiClearSiteBtn">wechseln</button>';
+    badge.innerHTML='🏠 aktiv: '+String(site.name).replace(/[<>&"]/g,function(m){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[m]});
     var host=document.querySelector('.status-row')||document.querySelector('.top-actions')||document.querySelector('.hero-actions')||document.querySelector('header')||document.body;
     host.appendChild(badge);
-    var btn=document.getElementById('ulmiClearSiteBtn');
-    if(btn)btn.onclick=function(){
-      window.open('organisation-admin.html','_blank');
-    };
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureSiteBadge);
   else ensureSiteBadge();

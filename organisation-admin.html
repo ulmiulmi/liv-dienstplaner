@@ -22,9 +22,28 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
 .edit-panel{display:none;border:1px solid #c9dcff;background:#f7fbff;border-radius:18px;padding:10px}.edit-panel.show{display:block}.edit-grid{display:grid;grid-template-columns:1fr 150px 110px;gap:8px;margin-bottom:8px}.unit-row{display:grid;grid-template-columns:1fr 150px 150px auto;gap:8px;align-items:center;margin-top:6px}
 .empty{border:1px dashed #c9dcff;background:#f7fbff;border-radius:24px;padding:24px;text-align:center;color:#175cd3;font-weight:900}
 @media(max-width:760px){.app{padding:10px}.hero{border-radius:0 0 24px 24px;margin:-10px -10px 10px}.edit-grid,.unit-row{grid-template-columns:1fr}.site-head{display:block}.actions{margin-top:8px}}
+
+.lock{position:fixed;inset:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px}
+.lock-card{max-width:520px;width:100%;background:#fff;border:1px solid var(--line);border-radius:28px;padding:18px;box-shadow:var(--shadow)}
+.lock-card h1{font-size:42px;margin:0 0 10px}
 </style>
 </head>
 <body>
+<div id="orgLock" class="lock">
+  <div class="lock-card">
+    <div class="eyebrow">ULMIPOINT Verwaltung</div>
+    <h1>Admin-Zugriff</h1>
+    <div class="mini">Organisation verwalten ist geschützt.</div>
+    <div style="margin-top:12px">
+      <label><span class="mini">Admin-Passwort</span><input id="orgAdminPassword" type="password" autocomplete="current-password" placeholder="Admin-Passwort"></label>
+    </div>
+    <div class="actions" style="margin-top:12px">
+      <button class="primary" id="orgAdminLoginBtn" type="button">Freischalten</button>
+      <button type="button" onclick="location.href='index.html'">Zurück</button>
+    </div>
+    <div id="orgAdminLoginStatus" class="notice" style="margin-top:12px">Bitte Admin-Passwort eingeben.</div>
+  </div>
+</div>
 <div class="app">
   <section class="hero">
     <div><div class="eyebrow">ULMIPOINT Verwaltung</div><h1>Organisation</h1></div>
@@ -55,6 +74,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
 <script>
 (function(){
   const SERVER_TOKEN_KEY='polypoint_server_session_v1';
+  const ORG_ADMIN_TOKEN_KEY='ulmipoint_org_admin_token_v1';
   let org={organisation:{id:'liv',name:'LIV – Leben in Vielfalt'},payrollProfileDefault:'CH_BS_PERSONALRECHT_DEFAULT',sites:[]};
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -77,10 +97,33 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   function requireSession(){const s=session(); if(!s||!s.access_token)throw new Error('Bitte im Hauptplaner über ☁️ Server einloggen.'); if(s.expires_at&&s.expires_at<Date.now()+30000)throw new Error('Server-Sitzung ist abgelaufen. Bitte neu einloggen.'); return s}
   async function api(body){
     const s=requireSession();
-    const resp=await fetch('/api/org-structure',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},body:JSON.stringify(body)});
+    const resp=await fetch('/api/org-structure',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},body:JSON.stringify(Object.assign({},body,{orgAdminToken:localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||''}))});
     const txt=await resp.text(); let data={}; try{data=txt?JSON.parse(txt):{};}catch(_){data={message:txt};}
     if(!resp.ok||data.ok===false)throw new Error(data.message||('HTTP '+resp.status));
     return data;
+  }
+  function lockStatus(t,k=''){const el=$('orgAdminLoginStatus'); if(el){el.textContent=t; el.className='notice'+(k?' '+k:'');}}
+  function unlockOrgAdmin(){const el=$('orgLock'); if(el)el.style.display='none';}
+  async function orgAdminLogin(){
+    const pw=$('orgAdminPassword').value;
+    lockStatus('Admin-Zugriff wird geprüft …');
+    const resp=await fetch('/api/org-admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'login',password:pw})});
+    const txt=await resp.text(); let data={}; try{data=txt?JSON.parse(txt):{};}catch(_){data={message:txt};}
+    if(!resp.ok||data.ok===false)throw new Error(data.message||('HTTP '+resp.status));
+    localStorage.setItem(ORG_ADMIN_TOKEN_KEY,data.token);
+    unlockOrgAdmin();
+    status('Admin-Zugriff aktiv. Organisation kann gespeichert werden.','ok');
+    await load();
+  }
+  async function checkOrgAdmin(){
+    const tok=localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||'';
+    if(!tok) return false;
+    try{
+      const resp=await fetch('/api/org-admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'check',token:tok})});
+      const data=await resp.json();
+      if(data.ok&&data.authenticated){unlockOrgAdmin();return true;}
+    }catch(_){}
+    return false;
   }
   function nextHouseNumber(){
     const nums=(org.sites||[])
@@ -214,7 +257,12 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   $('newHouseBtn').onclick=()=>addSite('wohnheim'); $('newDayBtn').onclick=()=>addSite('tageszentrum'); $('newOtherBtn').onclick=()=>addSite('sonstiges');
   $('loadBtn').onclick=()=>load().catch(e=>status('Fehler: '+e.message,'bad')); $('saveBtn').onclick=()=>save().catch(e=>status('Fehler: '+e.message,'bad'));
   $('orgName').oninput=syncBasics; $('payrollProfile').oninput=syncBasics;
-  render(); load().catch(e=>status('Fehler: '+e.message,'bad'));
+  render();
+  const loginBtn=$('orgAdminLoginBtn');
+  if(loginBtn) loginBtn.onclick=()=>orgAdminLogin().catch(e=>lockStatus('Fehler: '+e.message,'bad'));
+  const pwInput=$('orgAdminPassword');
+  if(pwInput) pwInput.addEventListener('keydown',e=>{if(e.key==='Enter')orgAdminLogin().catch(err=>lockStatus('Fehler: '+err.message,'bad'));});
+  checkOrgAdmin().then(ok=>{ if(ok) load().catch(e=>status('Fehler: '+e.message,'bad')); });
 })();
 </script>
 </body>

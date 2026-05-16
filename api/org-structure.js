@@ -8,6 +8,14 @@ function normEmail(v){return safe(v).toLowerCase();}
 function slug(v){return safe(v).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'default';}
 function normalizeRole(v){v=safe(v).toLowerCase(); if(['admin','administrator','leitung'].includes(v))return 'admin'; if(['planner','planer','planung'].includes(v))return 'planner'; if(['employee','mitarbeiter','ma'].includes(v))return 'employee'; return v;}
 function roleStore(data){const roles=(data&&typeof data==='object')?(data.accessRoles||data.roles||{}):{}; return roles&&typeof roles==='object'?roles:{};}
+function validOrgAdminSession(data,tok){
+  tok=safe(tok);
+  const sessions=data?.organisationAdmin?.sessions || {};
+  const s=sessions[tok];
+  if(!s) return false;
+  if(s.expiresAt && new Date(s.expiresAt).getTime() < Date.now()) return false;
+  return true;
+}
 
 async function verifySupabaseUser(req){
   const auth=safe(req.headers.authorization || req.headers.Authorization);
@@ -94,6 +102,9 @@ module.exports=async function handler(req,res){
     const data=row.data||{};
     const user=await verifySupabaseUser(req);
     const access=assertAdminAccess(data,user);
+    if(!validOrgAdminSession(data, body.orgAdminToken)){
+      return send(res,401,{ok:false,message:'Organisation nur mit Admin-Passwort.'});
+    }
     const org=ensureOrg(data);
 
     if(mode==='load'){
