@@ -42,14 +42,13 @@ function defaultOrganisation(){
         type:'wohnheim',
         canton:'BS',
         active:true,
+        automaticFunctions:{pikett:true,hausdienstplan:true},
         units:[
           {id:'azoren',name:'Azoren',type:'wohngruppe',plannerKey:'azoren',active:true},
           {id:'bali',name:'Bali',type:'wohngruppe',plannerKey:'bali',active:true},
           {id:'capri',name:'Capri',type:'wohngruppe',plannerKey:'capri',active:false},
           {id:'delos',name:'Delos',type:'wohngruppe',plannerKey:'delos',active:true},
-          {id:'nachtwache',name:'Nachtwache',type:'nachtwache',plannerKey:'nachtwache',active:true},
-          {id:'haus_pikett',name:'Haus-Pikett',type:'pikett',plannerKey:'pikett',active:true},
-          {id:'haus_dienstplan',name:'Haus-Dienstplan',type:'hausdienstplan',plannerKey:'hausdienstplan',active:true}
+          {id:'nachtwache',name:'Nachtwache',type:'nachtwache',plannerKey:'nachtwache',active:true}
         ]
       }
     ],
@@ -68,13 +67,21 @@ function sanitizeSite(site){
   const name=safe(site.name)||'Standort';
   const id=slug(site.id||name);
   const type=safe(site.type)||'wohnheim';
-  const units=Array.isArray(site.units)?site.units.map(sanitizeUnit).filter(Boolean):[];
-  return {id,name,type,canton:safe(site.canton)||'BS',active:site.active!==false,units};
+  const units=Array.isArray(site.units)
+    ? site.units.map(sanitizeUnit).filter(Boolean).filter(u=>!['pikett','hausdienstplan'].includes(u.type))
+    : [];
+  return {
+    id,name,type,canton:safe(site.canton)||'BS',active:site.active!==false,
+    automaticFunctions:{pikett:true,hausdienstplan:true},
+    units
+  };
 }
 function sanitizeUnit(unit){
   const name=safe(unit.name)||'Bereich';
   const id=slug(unit.id||name);
-  return {id,name,type:safe(unit.type)||'bereich',plannerKey:safe(unit.plannerKey)||id,active:unit.active!==false};
+  let type=safe(unit.type)||'bereich';
+  if(type==='pikett' || type==='hausdienstplan') return null;
+  return {id,name,type,plannerKey:safe(unit.plannerKey)||id,active:unit.active!==false};
 }
 
 module.exports=async function handler(req,res){

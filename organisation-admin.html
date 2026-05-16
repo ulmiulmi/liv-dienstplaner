@@ -62,6 +62,13 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   function status(t,k=''){const el=$('status');el.textContent=t;el.className='notice'+(k?' '+k:'')}
   function icon(type){return type==='tageszentrum'?'☀️':type==='verwaltung'?'🗂️':type==='zentrale_dienste'?'⚙️':'🏠'}
   function typeLabel(t){return ({wohnheim:'Wohnheim',tageszentrum:'Tageszentrum',verwaltung:'Verwaltung',zentrale_dienste:'Zentrale Dienste',sonstiges:'Sonstiges'})[t]||t}
+  function realUnits(site){return (site.units||[]).filter(u=>!['pikett','hausdienstplan'].includes(u.type))}
+  function cleanupAutoUnits(){
+    (org.sites||[]).forEach(site=>{
+      site.units=realUnits(site);
+      site.automaticFunctions=Object.assign({pikett:true,hausdienstplan:true},site.automaticFunctions||{});
+    });
+  }
   function session(){try{const s=JSON.parse(localStorage.getItem(SERVER_TOKEN_KEY)||'{}'); if(s&&s.access_token)return s;}catch(_){} return null}
   function requireSession(){const s=session(); if(!s||!s.access_token)throw new Error('Bitte im Hauptplaner über ☁️ Server einloggen.'); if(s.expires_at&&s.expires_at<Date.now()+30000)throw new Error('Server-Sitzung ist abgelaufen. Bitte neu einloggen.'); return s}
   async function api(body){
@@ -87,6 +94,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     org.payrollProfileDefault=$('payrollProfile').value.trim()||'CH_BS_PERSONALRECHT_DEFAULT';
   }
   function render(){
+    cleanupAutoUnits();
     $('orgName').value=org.organisation?.name||'LIV – Leben in Vielfalt';
     $('payrollProfile').value=org.payrollProfileDefault||'CH_BS_PERSONALRECHT_DEFAULT';
     $('countPill').textContent=(org.sites||[]).length+' Standorte';
@@ -97,16 +105,19 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
             <div class="icon">${icon(site.type)}</div>
             <div>
               <h3>${esc(site.name)}</h3>
-              <div><span class="pill green">${esc(typeLabel(site.type))}</span> <span class="pill">${esc(site.canton||'BS')}</span> <span class="pill yellow">${(site.units||[]).length} Bereiche</span></div>
+              <div><span class="pill green">${esc(typeLabel(site.type))}</span> <span class="pill">${esc(site.canton||'BS')}</span> <span class="pill yellow">${realUnits(site).length} Bereiche</span></div>
             </div>
           </div>
           <div class="actions">
+            <button type="button" class="primary" onclick="window.__orgOpenSite(${si})">öffnen</button>
             <button type="button" onclick="window.__orgToggle(${si})">bearbeiten</button>
             <button type="button" class="bad" onclick="window.__orgRemoveSite(${si})">löschen</button>
           </div>
         </div>
         <div class="units">
-          ${(site.units||[]).map((u,ui)=>`<span class="unit-chip">${esc(u.name)} <small>${esc(u.type)}</small><button onclick="window.__orgRemoveUnit(${si},${ui})">×</button></span>`).join('') || '<span class="mini">Noch keine Bereiche</span>'}
+          ${realUnits(site).map((u,ui)=>`<span class="unit-chip">${esc(u.name)} <small>${esc(u.type)}</small><button onclick="window.__orgRemoveUnit(${si},${ui})">×</button></span>`).join('') || '<span class="mini">Noch keine Bereiche</span>'}
+          <span class="unit-chip">Haus-Pikett <small>automatisch</small></span>
+          <span class="unit-chip">Haus-Dienstplan <small>automatisch</small></span>
         </div>
         <div class="edit-panel" id="edit-${si}">
           <div class="edit-grid">
@@ -120,11 +131,11 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
             <button type="button" onclick="window.__orgAddUnit(${si})">+ Gruppe/Bereich</button>
             <button type="button" onclick="window.__orgAddDayUnit(${si})">+ Tageszentrum-Team</button>
           </div>
-          ${(site.units||[]).map((u,ui)=>`
+          ${realUnits(site).map((u,ui)=>`
             <div class="unit-row">
               <label><span class="mini">Bereich</span><input data-site="${si}" data-unit="${ui}" data-field="name" value="${esc(u.name)}"></label>
               <label><span class="mini">Typ</span><select data-site="${si}" data-unit="${ui}" data-field="type">
-                ${['wohngruppe','tageszentrum','nachtwache','pikett','hausdienstplan','team','sonstiges'].map(t=>`<option value="${t}" ${u.type===t?'selected':''}>${t}</option>`).join('')}
+                ${['wohngruppe','tageszentrum','nachtwache','team','sonstiges'].map(t=>`<option value="${t}" ${u.type===t?'selected':''}>${t}</option>`).join('')}
               </select></label>
               <label><span class="mini">Planer-Key</span><input data-site="${si}" data-unit="${ui}" data-field="plannerKey" value="${esc(u.plannerKey||u.id)}"></label>
               <button type="button" class="bad" onclick="window.__orgRemoveUnit(${si},${ui})">löschen</button>
@@ -136,6 +147,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     document.querySelectorAll('[data-site]').forEach(el=>{el.oninput=syncFromInputs;el.onchange=syncFromInputs;});
   }
   function syncFromInputs(){
+    cleanupAutoUnits();
     syncBasics();
     document.querySelectorAll('[data-site]:not([data-unit])').forEach(el=>{
       const si=Number(el.dataset.site), f=el.dataset.field;
@@ -146,13 +158,27 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       if(org.sites[si]&&org.sites[si].units[ui]){org.sites[si].units[ui][f]=el.value; if(f==='name')org.sites[si].units[ui].id=slug(el.value);}
     });
   }
+  window.__orgOpenSite=si=>{
+    syncFromInputs();
+    const site=org.sites[si];
+    if(!site)return;
+    localStorage.setItem('ulmipoint_selected_site_v1',JSON.stringify({
+      id:site.id,
+      name:site.name,
+      type:site.type,
+      canton:site.canton||'BS',
+      units:site.units||[],
+      selectedAt:new Date().toISOString()
+    }));
+    window.open('index.html?site='+encodeURIComponent(site.id),'_blank');
+  };
   window.__orgToggle=si=>{const el=$('edit-'+si); if(el)el.classList.toggle('show')};
   window.__orgAddUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; s.units.push(defaultUnit(s,'wohngruppe')); render(); $('edit-'+si)?.classList.add('show')};
   window.__orgAddDayUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; s.units.push(defaultUnit(s,'tageszentrum')); render(); $('edit-'+si)?.classList.add('show')};
   window.__orgRemoveUnit=(si,ui)=>{syncFromInputs(); if(org.sites[si])org.sites[si].units.splice(ui,1); render();};
   window.__orgRemoveSite=si=>{syncFromInputs(); if(confirm('Standort wirklich löschen?')){org.sites.splice(si,1); render();}};
   async function load(){status('Organisation wird geladen …'); const data=await api({mode:'load'}); org=data.organisationStructure||org; render(); status('Organisation geladen.','ok');}
-  async function save(){syncFromInputs(); status('Organisation wird gespeichert …'); const data=await api({mode:'save',organisationStructure:org}); org=data.organisationStructure||org; render(); status('Organisation gespeichert.','ok');}
+  async function save(){syncFromInputs(); cleanupAutoUnits(); status('Organisation wird gespeichert …'); const data=await api({mode:'save',organisationStructure:org}); org=data.organisationStructure||org; render(); status('Organisation gespeichert.','ok');}
   function addSite(type){syncFromInputs(); org.sites=org.sites||[]; org.sites.push(defaultSite(type)); render();}
   $('newHouseBtn').onclick=()=>addSite('wohnheim'); $('newDayBtn').onclick=()=>addSite('tageszentrum'); $('newOtherBtn').onclick=()=>addSite('sonstiges');
   $('loadBtn').onclick=()=>load().catch(e=>status('Fehler: '+e.message,'bad')); $('saveBtn').onclick=()=>save().catch(e=>status('Fehler: '+e.message,'bad'));

@@ -1891,5 +1891,33 @@
 
 })();
 </script>
+
+<style>
+#ulmiSiteContextBadge{display:inline-flex;align-items:center;gap:7px;border:1px solid #c9dcff;background:#f7fbff;color:#175cd3;border-radius:999px;padding:7px 10px;font-weight:950;font-size:12px}
+#ulmiSiteContextBadge button{border:1px solid #c9dcff;background:#fff;color:#175cd3;border-radius:999px;padding:3px 7px;font-size:11px;font-weight:950}
+</style>
+<script>
+(function(){
+  function safeParse(v){try{return JSON.parse(v||'null')}catch(_){return null}}
+  function siteFromStorage(){return safeParse(localStorage.getItem('ulmipoint_selected_site_v1'))}
+  function ensureSiteBadge(){
+    var site=siteFromStorage();
+    if(!site||!site.name)return;
+    if(document.getElementById('ulmiSiteContextBadge'))return;
+    var badge=document.createElement('span');
+    badge.id='ulmiSiteContextBadge';
+    badge.innerHTML='🏠 aktiv: '+String(site.name).replace(/[<>&"]/g,function(m){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[m]})+' <button type="button" id="ulmiClearSiteBtn">wechseln</button>';
+    var host=document.querySelector('.status-row')||document.querySelector('.top-actions')||document.querySelector('.hero-actions')||document.querySelector('header')||document.body;
+    host.appendChild(badge);
+    var btn=document.getElementById('ulmiClearSiteBtn');
+    if(btn)btn.onclick=function(){
+      window.open('organisation-admin.html','_blank');
+    };
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureSiteBadge);
+  else ensureSiteBadge();
+})();
+</script>
+
 </body>
 </html>
