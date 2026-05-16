@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Haus-Dienstplan</title>
+<title></title>
 <style>
   :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--brown:#7c2d12;--red:#c73636;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
   *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);color:var(--text)}
@@ -15,7 +15,7 @@
 <div class="wrap">
   <div class="head">
     <div class="title">
-      <h1>Haus-Dienstplan</h1>
+      <h1></h1>
     </div>
     <div class="actions hidden-print">
       <button class="primary" onclick="reloadAll(true)">neu laden</button>
@@ -180,7 +180,7 @@ function renderSources(){
   q('sourceGrid').innerHTML=groups.map(g=>{const i=loaded[g.id]||{};const st=i.state||{};const emp=Array.isArray(st.employees)?st.employees.length:0;const saved=st.savedAt?new Date(st.savedAt).toLocaleString('de-CH'):'';return `<div class="source"><b>${esc(g.name)}</b><small>${i.found?`${emp} Mitarbeitende · ${profileLabel(i.profile)}${saved?' · '+esc(saved):''}`:'kein Speicher auf diesem Gerät gefunden'}</small></div>`}).join('');
   const missing=groups.filter(g=>!(loaded[g.id]?.found));
   const warn=q('warnBox');
-  if(missing.length){warn.style.display='block';warn.textContent='Nicht gefunden: '+missing.map(g=>g.name).join(', ')+'. Der Haus-Dienstplan liest nur gespeicherte Gruppenstände von diesem Gerät.';}else{warn.style.display='none';warn.textContent='';}
+  if(missing.length){warn.style.display='block';warn.textContent='Nicht gefunden: '+missing.map(g=>g.name).join(', ')+'. Der  liest nur gespeicherte Gruppenstände von diesem Gerät.';}else{warn.style.display='none';warn.textContent='';}
 }
 function renderSummary(normalRows,nightRows){
   const allNormal=rowsFor(NORMAL_GROUPS);const allNight=rowsFor([NIGHT_GROUP]);
@@ -191,7 +191,7 @@ function renderSummary(normalRows,nightRows){
   q('normalCount').textContent=`${normalRows} Mitarbeitende · ${MONTHS[selectedMonth-1]} ${selectedYear}`;
   q('nightCount').textContent=`${nightRows} Mitarbeitende · separat`;
 }
-function renderAll(){renderSources();const n=renderTable('normalTable',NORMAL_GROUPS,'Keine Hausgruppen-Daten gefunden. Bitte Gruppenpläne speichern und hier neu laden.');const nw=renderTable('nightTable',[NIGHT_GROUP],'Keine Nachtwache-Daten gefunden.');renderSummary(n,nw);document.title=`Haus-Dienstplan · ${MONTHS[selectedMonth-1]} ${selectedYear} · V${VERSION}`;}
+function renderAll(){renderSources();const n=renderTable('normalTable',NORMAL_GROUPS,'Keine Hausgruppen-Daten gefunden. Bitte Gruppenpläne speichern und hier neu laden.');const nw=renderTable('nightTable',[NIGHT_GROUP],'Keine Nachtwache-Daten gefunden.');renderSummary(n,nw);document.title=` · ${MONTHS[selectedMonth-1]} ${selectedYear} · V${VERSION}`;}
 function planText(){
   const rows=[['Bereich','Funktion','Name','Gruppe','Prozent']];
   for(let d=1;d<=daysInMonth(selectedYear,selectedMonth);d++)rows[0].push(String(d));
@@ -202,8 +202,7 @@ function copyPlanText(){navigator.clipboard?.writeText(planText()).then(()=>{q('
 function downloadCSV(){const csv=planText().replace(/\t/g,';');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`haus-dienstplan_${monthKey()}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 function openPrintPDFPage(){window.print()}
 
-
-// Zentraler Export-Dialog: Haus-Dienstplan-Sicherung aller sichtbaren Gruppenstände
+// Zentraler Export-Dialog: -Sicherung aller sichtbaren Gruppenstände
 function hausBackupDownload(name,content,type){
   const blob=new Blob([content],{type:type||'application/json;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
@@ -242,7 +241,6 @@ window.downloadCSV=downloadCSV;
 window.openPrintPDFPage=openPrintPDFPage;
 window.exportBackup=exportBackup;
 window.importBackup=importBackup;
-
 
 window.addEventListener('storage',()=>reloadAll(false));
 initSelectors();reloadAll(false);
