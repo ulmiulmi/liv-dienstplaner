@@ -27,9 +27,12 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   <div>
     <div class="eyebrow">ULMIPOINT</div>
     <h1>Monatsabschluss</h1>
+    
   </div>
   <div class="toolbar">
     <button class="primary" id="loadBtn">Berechnen</button>
+    <button class="ok" id="saveDraftBtn">Abschluss speichern</button>
+    <button id="loadDraftBtn">Gespeicherten Abschluss laden</button>
     <button class="ok" id="csvSummaryBtn">Zusammenfassung CSV</button>
     <button class="ok" id="csvDetailsBtn">Tage CSV</button>
   </div>
@@ -44,6 +47,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     <label><span class="mini">Kanton</span><input value="Basel-Stadt" readonly></label>
   </div>
   <h2 style="margin-top:14px">Zulagen-Regeln</h2>
+  <div class="mini">Ansätze pro Stunde. Die Stunden werden automatisch aus Stempelung + Basel-Stadt-Kalender berechnet.</div>
   <div class="filters">
     <label><span class="mini">Nachtdienst-Zulage CHF/h</span><input id="rateNight" type="number" min="0" step="0.05" value="0"></label>
     <label><span class="mini">Samstag-Zulage CHF/h</span><input id="rateSaturday" type="number" min="0" step="0.05" value="0"></label>
@@ -53,7 +57,8 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   <div class="actions" style="margin-top:10px">
     <button id="sessionBtn">Sitzung prüfen</button>
     <button id="clearFilterBtn">Filter leeren</button>
-    <button id="saveRatesBtn">Zulagen speichern</button>
+    <button id="loadRatesBtn">Zulagen vom Server laden</button>
+    <button id="saveRatesBtn">Zulagen auf Server speichern</button>
   </div>
   <div id="status" class="notice" style="margin-top:10px">Noch nicht berechnet.</div>
   <div class="statgrid">
@@ -131,18 +136,50 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       if(r.pikett!=null)$('ratePikett').value=r.pikett;
     }catch(_){}
   }
-  function saveRates(){
-    localStorage.setItem(RATES_KEY,JSON.stringify(allowanceRates()));
-    status('Zulagen-Ansätze lokal gespeichert.','ok');
-  }
-  async function load(){
+  async function apiCall(body){
     const s=requireSession();
-    status('Monatsabschluss wird berechnet …');
-    const body={monthKey:$('monthKey').value,group:$('groupFilter').value.trim(),employeeName:$('employeeFilter').value.trim(),allowanceRates:allowanceRates()};
     const resp=await fetch('/api/monthly-close',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},body:JSON.stringify(body)});
     const txt=await resp.text(); let data={}; try{data=txt?JSON.parse(txt):{};}catch(_){data={message:txt};}
     if(!resp.ok||data.ok===false)throw new Error(data.message||('HTTP '+resp.status));
-    lastData=data; render(data); status('Berechnet: '+data.monthKey+' · '+data.employees.length+' Mitarbeiter · '+data.days.length+' Tageszeilen','ok');
+    return data;
+  }
+  function applyRates(r){
+    r=r||{};
+    if(r.night!=null)$('rateNight').value=r.night;
+    if(r.saturday!=null)$('rateSaturday').value=r.saturday;
+    if(r.sundayHoliday!=null)$('rateSundayHoliday').value=r.sundayHoliday;
+    if(r.pikett!=null)$('ratePikett').value=r.pikett;
+    localStorage.setItem(RATES_KEY,JSON.stringify(allowanceRates()));
+  }
+  async function loadRatesServer(){
+    status('Zulagen-Regeln werden geladen …');
+    const data=await apiCall({mode:'load_rules',monthKey:$('monthKey').value});
+    applyRates(data.rules&&data.rules.allowanceRates);
+    status('Zulagen-Regeln vom Server geladen.','ok');
+  }
+  async function saveRates(){
+    status('Zulagen-Regeln werden gespeichert …');
+    const data=await apiCall({mode:'save_rules',monthKey:$('monthKey').value,allowanceRates:allowanceRates()});
+    applyRates(data.rules&&data.rules.allowanceRates);
+    status('Zulagen-Regeln auf Server gespeichert.','ok');
+  }
+  async function load(mode='calculate'){
+    status(mode==='save_draft'?'Monatsabschluss wird gespeichert …':'Monatsabschluss wird berechnet …');
+    const body={mode,monthKey:$('monthKey').value,group:$('groupFilter').value.trim(),employeeName:$('employeeFilter').value.trim(),allowanceRates:allowanceRates()};
+    const data=await apiCall(body);
+    lastData=data; render(data);
+    if(data.allowanceRates) applyRates(data.allowanceRates);
+    status((mode==='save_draft'?'Gespeichert: ':'Berechnet: ')+data.monthKey+' · '+data.employees.length+' Mitarbeiter · '+data.days.length+' Tageszeilen','ok');
+  }
+  async function loadDraft(){
+    status('Gespeicherter Abschluss wird geladen …');
+    const data=await apiCall({mode:'load_draft',monthKey:$('monthKey').value});
+    if(!data.draft){ status('Für diesen Monat ist noch kein Abschluss gespeichert.','warn'); return; }
+    const d=data.draft;
+    lastData={ok:true,monthKey:d.monthKey,canton:d.canton,holidayProfile:d.holidayProfile,allowanceRates:d.allowanceRates,totals:d.totals,employees:d.employees,days:d.days,holidays:[],updatedAt:d.savedAt,access:data.access};
+    if(d.allowanceRates) applyRates(d.allowanceRates);
+    render(lastData);
+    status('Gespeicherter Abschluss geladen: '+d.monthKey+' · gespeichert '+new Date(d.savedAt).toLocaleString('de-CH'),'ok');
   }
   function n(v){return Number(v||0).toFixed(2)}
   function render(data){
@@ -181,12 +218,15 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       'ulmipoint-monatsabschluss-'+lastData.monthKey+'-tage.csv');
   }
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.remove('primary'));b.classList.add('primary');document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));$('tab-'+b.dataset.tab).classList.add('active')});
-  $('loadBtn').onclick=()=>load().catch(e=>status('Fehler: '+e.message,'bad'));
+  $('loadBtn').onclick=()=>load('calculate').catch(e=>status('Fehler: '+e.message,'bad'));
+  $('saveDraftBtn').onclick=()=>load('save_draft').catch(e=>status('Fehler: '+e.message,'bad'));
+  $('loadDraftBtn').onclick=()=>loadDraft().catch(e=>status('Fehler: '+e.message,'bad'));
   $('sessionBtn').onclick=checkSession;
   $('clearFilterBtn').onclick=()=>{$('groupFilter').value='';$('employeeFilter').value='';};
   $('csvSummaryBtn').onclick=csvSummary;
   $('csvDetailsBtn').onclick=csvDetails;
-  $('saveRatesBtn').onclick=saveRates;
+  $('saveRatesBtn').onclick=()=>saveRates().catch(e=>status('Fehler: '+e.message,'bad'));
+  $('loadRatesBtn').onclick=()=>loadRatesServer().catch(e=>status('Fehler: '+e.message,'bad'));
   $('monthKey').value=monthNow();
   loadRates();
   checkSession();

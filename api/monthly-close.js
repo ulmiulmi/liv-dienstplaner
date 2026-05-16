@@ -1,4 +1,4 @@
-const {allow,send,readBody,fetchStore}=require('./_wishlib');
+const {allow,send,readBody,fetchStore,saveStore}=require('./_wishlib');
 const {BASEL_STADT_DEFAULT_RULESET, baselStadtHolidays, isBaselStadtHoliday, isSunday}=require('./_timeClockRules');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.ULMIPOINT_SUPABASE_URL || process.env.POLYPOINT_SUPABASE_URL;
@@ -134,6 +134,18 @@ function nightMinutes(start,end){
   }
   return min;
 }
+function saturdayMinutes(start,end){
+  if(!start||!end)return 0;
+  let min=0; const cur=new Date(start.getTime());
+  while(cur<end){
+    const next=new Date(Math.min(end.getTime(), cur.getTime()+15*60000));
+    const day=dateOnly(cur);
+    const d=new Date(day+'T12:00:00Z');
+    if(d.getUTCDay()===6 && !isBaselStadtHoliday(day)) min+=minutesBetween(cur,next);
+    cur.setTime(next.getTime());
+  }
+  return min;
+}
 function sundayHolidayMinutes(start,end){
   if(!start||!end)return 0;
   let min=0; const cur=new Date(start.getTime());
@@ -144,6 +156,19 @@ function sundayHolidayMinutes(start,end){
     cur.setTime(next.getTime());
   }
   return min;
+}
+function rateNumber(v){
+  const n=Number(v);
+  return Number.isFinite(n)?Math.max(0,n):0;
+}
+function allowanceRatesFromBody(body){
+  const r=body&&body.allowanceRates&&typeof body.allowanceRates==='object'?body.allowanceRates:{};
+  return {
+    night: rateNumber(r.night),
+    saturday: rateNumber(r.saturday),
+    sundayHoliday: rateNumber(r.sundayHoliday),
+    pikett: rateNumber(r.pikett)
+  };
 }
 
 function monthDays(monthKey){
@@ -165,6 +190,38 @@ module.exports=async function handler(req,res){
     const user=await verifySupabaseUser(req);
     const access=assertAdminAccess(data,user);
 
+    if(!data.timeClock || typeof data.timeClock!=='object') data.timeClock={version:'1.0',events:[],locations:{},api:{mode:'prepared'}};
+    if(!data.timeClock.monthlyClose || typeof data.timeClock.monthlyClose!=='object') data.timeClock.monthlyClose={rules:{},drafts:{}};
+    if(!data.timeClock.monthlyClose.rules || typeof data.timeClock.monthlyClose.rules!=='object') data.timeClock.monthlyClose.rules={};
+    if(!data.timeClock.monthlyClose.drafts || typeof data.timeClock.monthlyClose.drafts!=='object') data.timeClock.monthlyClose.drafts={};
+
+    const mode=safe(body.mode||'calculate');
+
+    if(mode==='load_rules'){
+      const rules=data.timeClock.monthlyClose.rules || {};
+      return send(res,200,{ok:true,mode,rules,access,updatedAt:row.updated_at});
+    }
+
+    if(mode==='save_rules'){
+      const next=allowanceRatesFromBody(body);
+      data.timeClock.monthlyClose.rules.allowanceRates=next;
+      data.timeClock.monthlyClose.rules.updatedAt=new Date().toISOString();
+      data.timeClock.monthlyClose.rules.updatedBy={email:user.email||'',id:user.id||''};
+      const saved=await saveStore(data);
+      return send(res,200,{ok:true,mode,rules:data.timeClock.monthlyClose.rules,access,updatedAt:saved.updated_at||data.timeClock.monthlyClose.rules.updatedAt});
+    }
+
+    if(mode==='load_draft'){
+      const draft=data.timeClock.monthlyClose.drafts[monthKey] || null;
+      return send(res,200,{ok:true,mode,monthKey,draft,access,updatedAt:row.updated_at});
+    }
+
+    const allowanceRates=Object.assign(
+      {},
+      data.timeClock.monthlyClose.rules.allowanceRates || {},
+      body.allowanceRates ? allowanceRatesFromBody(body) : {}
+    );
+
     let employees=extractEmployeesWithState(data);
     if(body.group) employees=employees.filter(e=>safe(e.group).toLowerCase()===safe(body.group).toLowerCase());
     if(body.employeeName) employees=employees.filter(e=>safe(e.name).toLowerCase().includes(safe(body.employeeName).toLowerCase()));
@@ -178,7 +235,7 @@ module.exports=async function handler(req,res){
 
     for(const emp of employees){
       const pairs=pairEventsForEmployee(allEvents,emp);
-      const sum={employeeId:emp.id,employeeName:emp.name,group:emp.group,plannedMinutes:0,workedMinutes:0,diffMinutes:0,nightMinutes:0,sundayHolidayMinutes:0,krank:0,ferien:0,schule:0,weiterbildung:0,frei:0,dienstTage:0,warnings:0};
+      const sum={employeeId:emp.id,employeeName:emp.name,group:emp.group,plannedMinutes:0,workedMinutes:0,diffMinutes:0,nightMinutes:0,saturdayMinutes:0,sundayHolidayMinutes:0,nightAllowance:0,saturdayAllowance:0,sundayHolidayAllowance:0,totalAllowance:0,krank:0,ferien:0,schule:0,weiterbildung:0,frei:0,dienstTage:0,warnings:0};
 
       for(const date of days){
         const st=emp.state; const entry=planEntryForEmployee(st,emp,date); const code=safe(entry?.code).toUpperCase();
@@ -186,7 +243,7 @@ module.exports=async function handler(req,res){
         const planned= status==='dienst' ? plannedMinutes(st,entry) : 0;
         const holiday=isBaselStadtHoliday(date); const sunday=isSunday(date);
         const dayPairs=pairsStartingOnDate(pairs,date);
-        let worked=0, night=0, sh=0, first='', last='';
+        let worked=0, night=0, sat=0, sh=0, first='', last='';
         const warnings=[];
 
         dayPairs.forEach(p=>{
@@ -195,7 +252,7 @@ module.exports=async function handler(req,res){
           if(p.end) last=p.end.toISOString();
           if(p.start && p.end){
             const wm=minutesBetween(p.start,p.end);
-            worked+=wm; night+=nightMinutes(p.start,p.end); sh+=sundayHolidayMinutes(p.start,p.end);
+            worked+=wm; night+=nightMinutes(p.start,p.end); sat+=saturdayMinutes(p.start,p.end); sh+=sundayHolidayMinutes(p.start,p.end);
           }
         });
 
@@ -213,7 +270,14 @@ module.exports=async function handler(req,res){
         }
         if(dayPairs.some(p=>p.start&&p.end&&p.end<p.start)) warnings.push('Gehen vor Kommen');
 
-        sum.workedMinutes+=worked; sum.nightMinutes+=night; sum.sundayHolidayMinutes+=sh; sum.warnings+=warnings.length;
+        const nightAllowance=minutesToHours(night)*allowanceRates.night;
+        const saturdayAllowance=minutesToHours(sat)*allowanceRates.saturday;
+        const sundayHolidayAllowance=minutesToHours(sh)*allowanceRates.sundayHoliday;
+        const totalAllowance=nightAllowance+saturdayAllowance+sundayHolidayAllowance;
+
+        sum.workedMinutes+=worked; sum.nightMinutes+=night; sum.saturdayMinutes+=sat; sum.sundayHolidayMinutes+=sh;
+        sum.nightAllowance+=nightAllowance; sum.saturdayAllowance+=saturdayAllowance; sum.sundayHolidayAllowance+=sundayHolidayAllowance; sum.totalAllowance+=totalAllowance;
+        sum.warnings+=warnings.length;
 
         detailRows.push({
           date,
@@ -226,7 +290,12 @@ module.exports=async function handler(req,res){
           workedHours:minutesToHours(worked),
           diffHours:minutesToHours(worked-planned),
           nightHours:minutesToHours(night),
+          saturdayHours:minutesToHours(sat),
           sundayHolidayHours:minutesToHours(sh),
+          nightAllowance:Math.round(nightAllowance*100)/100,
+          saturdayAllowance:Math.round(saturdayAllowance*100)/100,
+          sundayHolidayAllowance:Math.round(sundayHolidayAllowance*100)/100,
+          totalAllowance:Math.round(totalAllowance*100)/100,
           firstClock:first, lastClock:last,
           warnings
         });
@@ -237,12 +306,17 @@ module.exports=async function handler(req,res){
         workedHours:minutesToHours(sum.workedMinutes),
         diffHours:minutesToHours(sum.diffMinutes),
         nightHours:minutesToHours(sum.nightMinutes),
-        sundayHolidayHours:minutesToHours(sum.sundayHolidayMinutes)
+        saturdayHours:minutesToHours(sum.saturdayMinutes),
+        sundayHolidayHours:minutesToHours(sum.sundayHolidayMinutes),
+        nightAllowance:Math.round(sum.nightAllowance*100)/100,
+        saturdayAllowance:Math.round(sum.saturdayAllowance*100)/100,
+        sundayHolidayAllowance:Math.round(sum.sundayHolidayAllowance*100)/100,
+        totalAllowance:Math.round(sum.totalAllowance*100)/100
       }));
     }
 
     const totals=employeeSummaries.reduce((a,e)=>{
-      ['plannedMinutes','workedMinutes','diffMinutes','nightMinutes','sundayHolidayMinutes','krank','ferien','schule','weiterbildung','frei','dienstTage','warnings'].forEach(k=>a[k]=(a[k]||0)+(e[k]||0));
+      ['plannedMinutes','workedMinutes','diffMinutes','nightMinutes','saturdayMinutes','sundayHolidayMinutes','nightAllowance','saturdayAllowance','sundayHolidayAllowance','totalAllowance','krank','ferien','schule','weiterbildung','frei','dienstTage','warnings'].forEach(k=>a[k]=(a[k]||0)+(e[k]||0));
       return a;
     },{});
     Object.assign(totals,{
@@ -250,10 +324,36 @@ module.exports=async function handler(req,res){
       workedHours:minutesToHours(totals.workedMinutes||0),
       diffHours:minutesToHours(totals.diffMinutes||0),
       nightHours:minutesToHours(totals.nightMinutes||0),
-      sundayHolidayHours:minutesToHours(totals.sundayHolidayMinutes||0)
+      saturdayHours:minutesToHours(totals.saturdayMinutes||0),
+      sundayHolidayHours:minutesToHours(totals.sundayHolidayMinutes||0),
+      nightAllowance:Math.round((totals.nightAllowance||0)*100)/100,
+      saturdayAllowance:Math.round((totals.saturdayAllowance||0)*100)/100,
+      sundayHolidayAllowance:Math.round((totals.sundayHolidayAllowance||0)*100)/100,
+      totalAllowance:Math.round((totals.totalAllowance||0)*100)/100
     });
 
-    return send(res,200,{ok:true,monthKey,canton:'BS',holidayProfile:'CH-BS',ruleset:BASEL_STADT_DEFAULT_RULESET,holidays:holidayList,totals,employees:employeeSummaries,days:detailRows,access,updatedAt:row.updated_at});
+    const result={ok:true,mode,monthKey,canton:'BS',holidayProfile:'CH-BS',ruleset:BASEL_STADT_DEFAULT_RULESET,allowanceRates,holidays:holidayList,totals,employees:employeeSummaries,days:detailRows,access,updatedAt:row.updated_at};
+
+    if(mode==='save_draft'){
+      const now=new Date().toISOString();
+      data.timeClock.monthlyClose.drafts[monthKey]={
+        monthKey,
+        savedAt:now,
+        savedBy:{email:user.email||'',id:user.id||''},
+        allowanceRates,
+        totals,
+        employees:employeeSummaries,
+        days:detailRows,
+        canton:'BS',
+        holidayProfile:'CH-BS',
+        status:'draft'
+      };
+      const saved=await saveStore(data);
+      result.savedDraft=data.timeClock.monthlyClose.drafts[monthKey];
+      result.updatedAt=saved.updated_at||now;
+    }
+
+    return send(res,200,result);
   }catch(err){
     return send(res,400,{ok:false,message:err.message||String(err)});
   }

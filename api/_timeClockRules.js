@@ -75,6 +75,8 @@ const BASEL_STADT_DEFAULT_RULESET = {
     nightWindowStart: '20:00',
     nightWindowEnd: '06:00',
     nightWindowEditable: true,
+    saturdayAllowanceEditable: true,
+    sundayHolidayAllowanceEditable: true,
     pikettEditable: true,
     ratesEditable: true
   }
