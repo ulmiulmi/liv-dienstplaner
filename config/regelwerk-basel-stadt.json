@@ -1,0 +1,57 @@
+{
+  "id": "CH_BS_PERSONALRECHT_DEFAULT",
+  "canton": "BS",
+  "cantonName": "Basel-Stadt",
+  "holidayProfile": "CH-BS",
+  "sundayAndHolidayEquivalent": true,
+  "holidays": [
+    "Neujahrstag, 1. Januar",
+    "Karfreitag",
+    "Ostermontag",
+    "Tag der Arbeit, 1. Mai",
+    "Auffahrt",
+    "Pfingstmontag",
+    "Bundesfeiertag, 1. August",
+    "Weihnachtstag, 25. Dezember",
+    "Stephanstag, 26. Dezember"
+  ],
+  "statusCodes": {
+    "sick": [
+      "KR"
+    ],
+    "vacation": [
+      "FER"
+    ],
+    "school": [
+      "SCH",
+      "SCHF"
+    ],
+    "training": [
+      "WB",
+      "WB%"
+    ],
+    "compensation": [
+      "KGL",
+      "KF"
+    ],
+    "free": [
+      "FR"
+    ]
+  },
+  "controlRules": {
+    "plannedDutyRequiresClockIn": true,
+    "plannedDutyRequiresClockOut": true,
+    "absenceNormallyRequiresNoStamp": true,
+    "warnIfStampedOnSickVacationSchool": true,
+    "warnIfClockOutBeforeClockIn": true,
+    "warnIfMissingBreak": true
+  },
+  "allowanceBasis": {
+    "holidayHoursUseBaselStadtCalendar": true,
+    "sundayHoursUseCalendarSunday": true,
+    "sundayAndHolidayDoNotDoubleCount": true,
+    "nightWindowEditable": true,
+    "pikettEditable": true,
+    "ratesEditable": true
+  }
+}
