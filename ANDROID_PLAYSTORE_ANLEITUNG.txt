@@ -1,0 +1,29 @@
+ULMIPOINT Wunschportal Android Paket
+
+Dieses Paket baut:
+- Debug-APK zum Testen auf Android-Geräten
+- Release-AAB für Google Play Console
+
+Upload:
+1. ZIP entpacken.
+2. Ordner android-wunschportal ins Repo hochladen.
+3. Datei .github/workflows/build-wunschportal-android.yml ins Repo hochladen.
+4. Commit changes.
+
+Build:
+GitHub -> Actions -> Build Wunschportal Android -> Run workflow
+
+Artifacts:
+- ULMIPOINT-Wunschportal-Debug-APK
+- ULMIPOINT-Wunschportal-Release-AAB
+
+Optional signierte Release-AAB:
+GitHub -> Settings -> Secrets and variables -> Actions
+Diese Secrets anlegen:
+- ANDROID_KEYSTORE_BASE64
+- ANDROID_KEYSTORE_PASSWORD
+- ANDROID_KEY_ALIAS
+- ANDROID_KEY_PASSWORD
+
+Ohne diese Secrets wird die Release-AAB als unsignierter Build erzeugt.
+Für Gerätetest reicht die Debug-APK.
