@@ -550,6 +550,64 @@
     return "vorlage.html?" + p.toString();
   }
 
+  function dynamicPageUrl(id){
+    const ctx = UNIT_CONTEXT_BY_PLANNER[id] || {
+      id:id,
+      name:labels[id] || id,
+      type:(id==="pikett"||id==="hausdienstplan"||id==="nachtwache") ? "hausfunktion" : "bereich",
+      plannerKey:id,
+      siteId:HOUSE_ID,
+      siteName:HOUSE_CONTEXT?.name || HOUSE_ID
+    };
+    const p = new URLSearchParams();
+    p.set("siteId", ctx.siteId || HOUSE_ID);
+    p.set("siteName", ctx.siteName || HOUSE_CONTEXT?.name || HOUSE_ID);
+    p.set("unitId", ctx.id || id);
+    p.set("unitName", ctx.name || labels[id] || id);
+    p.set("unitType", ctx.type || "bereich");
+    p.set("plannerKey", id);
+    if(id==="pikett"||id==="hausdienstplan"||id==="nachtwache"){
+      p.set("mode","hausfunktion");
+    }
+    return "vorlage.html?" + p.toString();
+  }
+
+  function dynamicHouseUrl(){
+    const site = HOUSE_CONTEXT || {id:HOUSE_ID,name:HOUSE_ID,type:"wohnheim",canton:"BS",units:[]};
+    const p = new URLSearchParams();
+    p.set("siteId", site.id || HOUSE_ID);
+    p.set("siteName", site.name || HOUSE_ID);
+    p.set("siteType", site.type || "wohnheim");
+    p.set("canton", site.canton || "BS");
+    try{ p.set("units", JSON.stringify(realHouseUnits().slice(0,4))); }catch(_){}
+    try{ p.set("auto", JSON.stringify(site.automaticFunctions || {})); }catch(_){}
+    return "haus.html?" + p.toString();
+  }
+
+  function genericPageUrl(id){
+    const isFunc = id==="pikett" || id==="hausdienstplan" || id==="nachtwache";
+    const ctx = UNIT_CONTEXT_BY_PLANNER[id] || {
+      id:id,
+      name:labels[id] || id,
+      type:isFunc ? "hausfunktion" : "bereich",
+      plannerKey:id,
+      siteId:HOUSE_ID,
+      siteName:HOUSE_CONTEXT?.name || HOUSE_ID
+    };
+    const p = new URLSearchParams();
+    p.set("siteId", ctx.siteId || HOUSE_ID);
+    p.set("siteName", ctx.siteName || HOUSE_CONTEXT?.name || HOUSE_ID);
+    p.set("unitId", ctx.id || id);
+    p.set("unitName", ctx.name || labels[id] || id);
+    p.set("unitType", ctx.type || "bereich");
+    p.set("plannerKey", id);
+    if(isFunc){
+      p.set("functionType", id);
+      return "hausfunktion.html?" + p.toString();
+    }
+    return "bereich.html?" + p.toString();
+  }
+
   function shouldNamespaceFrame(id){
     if(!HOUSE_CONTEXT) return false;
     if(IS_HAUS_1) return false;
@@ -618,17 +676,9 @@
     iframe.dataset.planner = id;
     iframe.title = labels[id];
     if(id === "overview" && HOUSE_CONTEXT && !IS_HAUS_1){
-      iframe.srcdoc = siteOverviewHtml();
-    } else if(isDynamicUnitPage(id)){
-      iframe.src = dynamicUnitUrl(id);
-    } else if(shouldNamespaceFrame(id)){
-      iframe.srcdoc = namespacedFrameLoadingHtml(id);
-      fetch(pageSourceForId(id), {cache:'no-store'})
-        .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-        .then(text => { iframe.srcdoc = injectNamespacedStorage(text, id); })
-        .catch(err => {
-          iframe.srcdoc = '<!doctype html><html lang="de"><meta charset="utf-8"><body style="font-family:system-ui;padding:22px;background:#fffafa;color:#c73636;font-weight:900">Planseite konnte nicht geladen werden: ' + escapeHtml(err.message) + '</body></html>';
-        });
+      iframe.src = dynamicHouseUrl();
+    } else if(HOUSE_CONTEXT && !IS_HAUS_1){
+      iframe.src = genericPageUrl(id);
     } else {
       iframe.src = id + '.html';
     }
@@ -694,8 +744,9 @@
     setTimeout(() => { if(activeId === id) loader.style.display = 'none'; }, 900);
   }
 
-  document.querySelectorAll('[data-planner]').forEach(btn => {
-    btn.addEventListener('click', () => loadPlanner(btn.dataset.planner));
+  document.addEventListener('click', event => {
+    const btn = event.target.closest && event.target.closest('[data-planner]');
+    if(btn) loadPlanner(btn.dataset.planner);
   });
 
   window.addEventListener('message', event => {
