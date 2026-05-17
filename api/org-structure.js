@@ -186,9 +186,19 @@ module.exports=async function handler(req,res){
     const mode=safe(body.mode||'load');
     const row=await fetchStore();
     const data=row.data||{};
-    const user=await verifySupabaseUser(req);
-    const access=assertAdminAccess(data,user);
     const org=ensureOrg(data);
+    const orgAdminOk=validOrgAdminSession(data, body.orgAdminToken);
+
+    let user=null;
+    let access=null;
+    try{
+      user=await verifySupabaseUser(req);
+      access=assertAdminAccess(data,user);
+    }catch(authErr){
+      if(!orgAdminOk) throw authErr;
+      access={ok:true,email:'org-admin',role:'geschaeftsleitung',configured:Object.keys(roleStore(data)).length,siteIds:['*'],unitIds:['*'],canManageOrganisation:true,orgAdminOnly:true};
+      user={id:'org-admin',email:'org-admin'};
+    }
 
     // Lesen darf mit normaler Admin-/Planer-Server-Sitzung erfolgen.
     // Speichern bleibt zusätzlich mit dem Admin-Passwort-Token geschützt.
@@ -202,7 +212,7 @@ module.exports=async function handler(req,res){
     if(!access.canManageOrganisation){
       return send(res,403,{ok:false,message:'Organisation verwalten ist nur für Geschäftsleitung freigegeben.'});
     }
-    if(!validOrgAdminSession(data, body.orgAdminToken)){
+    if(!orgAdminOk){
       return send(res,401,{ok:false,message:'Organisation speichern nur mit Admin-Passwort.'});
     }
 

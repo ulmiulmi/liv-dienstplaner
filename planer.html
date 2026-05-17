@@ -334,6 +334,8 @@
   const ORG_DRAFT_KEY = "ulmipoint_org_structure_draft_v1";
   const HOUSE_ACCESS_SESSION_PREFIX = "ulmipoint_house_access_ok_v1__";
   const ACCESS_KEY = "ulmipoint_current_access_v1";
+  const ORG_ADMIN_TOKEN_KEY = "ulmipoint_org_admin_token_v1";
+  const SUPER_ADMIN_KEY = "ulmipoint_super_admin_v1";
   const PLANNER_LAST_TARGET_KEY = "ulmipoint_planner_last_target_v1";
 
   function safeJsonParse(value){
@@ -403,7 +405,17 @@
   }
 
 
+
+  function superAdminActive(){
+    try{
+      const s=safeJsonParse(localStorage.getItem(SUPER_ADMIN_KEY));
+      if(s&&s.active&&(!s.expiresAt||new Date(s.expiresAt).getTime()>Date.now()+30000)) return s;
+    }catch(_){}
+    return null;
+  }
+
   function currentAccess(){
+    if(superAdminActive()) return {role:"geschaeftsleitung",siteIds:["*"],unitIds:["*"],canManageOrganisation:true,superAdmin:true};
     return safeJsonParse(localStorage.getItem(ACCESS_KEY)) || {role:"geschaeftsleitung",siteIds:["*"],unitIds:["*"],canManageOrganisation:true};
   }
   function canAccessUnit(unit){
@@ -509,6 +521,7 @@
     return HOUSE_ACCESS_SESSION_PREFIX + HOUSE_ID;
   }
   function houseUnlocked(){
+    if(superAdminActive()) return true;
     const a = houseAccessSettings();
     if(!a.enabled || !a.pinHash) return true;
     try{return sessionStorage.getItem(houseAccessKey()) === a.pinHash;}catch(_){return false;}
@@ -728,13 +741,16 @@
     if(!q) return false;
     if(HOUSE_CONTEXT && Array.isArray(HOUSE_CONTEXT.units) && HOUSE_CONTEXT.units.length) return false;
     const s = serverSession();
-    if(!s) return false;
+    const adminTok = localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||'';
+    if(!s && !adminTok) return false;
 
     try{
+      const headers={'Content-Type':'application/json'};
+      if(s&&s.access_token) headers.Authorization='Bearer '+s.access_token;
       const resp = await fetch('/api/org-structure', {
         method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},
-        body:JSON.stringify({mode:'load'})
+        headers,
+        body:JSON.stringify({mode:'load',orgAdminToken:adminTok})
       });
       const txt = await resp.text();
       let data = {};
@@ -742,7 +758,7 @@
       if(!resp.ok || data.ok===false || !data.organisationStructure) return false;
 
       saveOrgDraft(data.organisationStructure, data.updatedAt);
-      if(data.access) localStorage.setItem(ACCESS_KEY, JSON.stringify(data.access));
+      if(data.access && !superAdminActive()) localStorage.setItem(ACCESS_KEY, JSON.stringify(data.access));
       const sites = Array.isArray(data.organisationStructure.sites) ? data.organisationStructure.sites : [];
       const found = sites.find(site => String(site.id) === String(q));
       if(found && Array.isArray(found.units) && found.units.length){

@@ -101,6 +101,8 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
 (function(){
   const SERVER_TOKEN_KEY='polypoint_server_session_v1';
   const ORG_ADMIN_TOKEN_KEY='ulmipoint_org_admin_token_v1';
+  const SUPER_ADMIN_KEY='ulmipoint_super_admin_v1';
+  const ACCESS_KEY='ulmipoint_current_access_v1';
   let org={organisation:{id:'liv',name:'LIV – Leben in Vielfalt'},payrollProfileDefault:'CH_BS_PERSONALRECHT_DEFAULT',sites:[]};
   let accessRoles={};
   const ORG_DRAFT_KEY='ulmipoint_org_structure_draft_v1';
@@ -148,10 +150,15 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   function session(){try{const s=JSON.parse(localStorage.getItem(SERVER_TOKEN_KEY)||'{}'); if(s&&s.access_token)return s;}catch(_){} return null}
   function requireSession(){const s=session(); if(!s||!s.access_token)throw new Error('Bitte im Hauptplaner über ☁️ Server einloggen.'); if(s.expires_at&&s.expires_at<Date.now()+30000)throw new Error('Server-Sitzung ist abgelaufen. Bitte neu einloggen.'); return s}
   async function api(body){
-    const s=requireSession();
-    const resp=await fetch('/api/org-structure',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},body:JSON.stringify(Object.assign({},body,{orgAdminToken:localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||''}))});
+    const s=session();
+    const headers={'Content-Type':'application/json'};
+    if(s&&s.access_token&&(!s.expires_at||s.expires_at>Date.now()+30000)){
+      headers.Authorization='Bearer '+s.access_token;
+    }
+    const resp=await fetch('/api/org-structure',{method:'POST',headers,body:JSON.stringify(Object.assign({},body,{orgAdminToken:localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||''}))});
     const txt=await resp.text(); let data={}; try{data=txt?JSON.parse(txt):{};}catch(_){data={message:txt};}
     if(!resp.ok||data.ok===false)throw new Error(data.message||('HTTP '+resp.status));
+    if(data.access) localStorage.setItem('ulmipoint_current_access_v1',JSON.stringify(data.access));
     return data;
   }
 
@@ -261,15 +268,32 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     return data.access;
   }
 
+
+  function setSuperAdminSession(data){
+    const expiresAt=data&&data.expiresAt?data.expiresAt:new Date(Date.now()+8*60*60*1000).toISOString();
+    const access={ok:true,email:'org-admin',role:'geschaeftsleitung',configured:0,siteIds:['*'],unitIds:['*'],canManageOrganisation:true,superAdmin:true,expiresAt};
+    try{
+      localStorage.setItem(SUPER_ADMIN_KEY,JSON.stringify({active:true,token:localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||'',expiresAt,createdAt:new Date().toISOString()}));
+      localStorage.setItem(ACCESS_KEY,JSON.stringify(access));
+    }catch(_){}
+    return access;
+  }
+  function superAdminActive(){
+    try{
+      const s=JSON.parse(localStorage.getItem(SUPER_ADMIN_KEY)||'null');
+      if(s&&s.active&&(!s.expiresAt||new Date(s.expiresAt).getTime()>Date.now()+30000)) return s;
+    }catch(_){}
+    return null;
+  }
+
   async function orgAdminLogin(){
     const pw=$('orgAdminPassword').value;
-    lockStatus('Geschäftsleitung wird geprüft …');
-    await requireGeschaeftsleitung();
     lockStatus('Admin-Passwort wird geprüft …');
     const resp=await fetch('/api/org-admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'login',password:pw})});
     const txt=await resp.text(); let data={}; try{data=txt?JSON.parse(txt):{};}catch(_){data={message:txt};}
     if(!resp.ok||data.ok===false)throw new Error(data.message||('HTTP '+resp.status));
     localStorage.setItem(ORG_ADMIN_TOKEN_KEY,data.token);
+    setSuperAdminSession(data);
     unlockOrgAdmin();
     status('Admin-Zugriff aktiv. Organisation kann gespeichert werden.','ok');
     await load();
@@ -281,7 +305,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       const resp=await fetch('/api/org-admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'check',token:tok})});
       const data=await resp.json();
       if(data.ok&&data.authenticated){
-        try{await requireGeschaeftsleitung();}catch(e){lockStatus(e.message,'bad'); return false;}
+        setSuperAdminSession({expiresAt:data.expiresAt||''});
         unlockOrgAdmin();return true;
       }
     }catch(_){}
@@ -584,10 +608,12 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   $('loadBtn').onclick=()=>load().catch(e=>status('Fehler: '+e.message,'bad')); $('saveBtn').onclick=()=>save().catch(e=>status('Fehler: '+e.message,'bad'));
   $('orgName').oninput=syncBasics; $('payrollProfile').oninput=syncBasics;
   render();
-  requireGeschaeftsleitung().then(()=>{
+  if(superAdminActive()){
+    lockStatus('Super-Admin aktiv. Admin-Passwort ist bereits gültig.','ok');
+  } else requireGeschaeftsleitung().then(()=>{
     lockStatus('Geschäftsleitung bestätigt. Bitte Admin-Passwort eingeben.','ok');
-  }).catch(e=>{
-    lockStatus(e.message,'bad');
+  }).catch(()=>{
+    lockStatus('Bitte Admin-Passwort eingeben. Server-/Rollenprüfung erfolgt danach, falls verfügbar.');
   });
   const loginBtn=$('orgAdminLoginBtn');
   if(loginBtn) loginBtn.onclick=()=>orgAdminLogin().catch(e=>lockStatus('Fehler: '+e.message,'bad'));
