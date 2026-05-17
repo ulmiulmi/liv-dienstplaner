@@ -99,6 +99,8 @@ select{width:100%;border:1px solid var(--line);border-radius:13px;background:#ff
   const LAST_KEY = 'ulmipoint_planner_last_target_v1';
   const ORG_DRAFT_KEY = 'ulmipoint_org_structure_draft_v1';
   const SITE_KEY = 'ulmipoint_selected_site_v1';
+  const ACCESS_KEY = 'ulmipoint_current_access_v1';
+  const SERVER_TOKEN_KEY = 'polypoint_server_session_v1';
 
   const $ = id => document.getElementById(id);
 
@@ -123,12 +125,63 @@ select{width:100%;border:1px solid var(--line);border-radius:13px;background:#ff
     const draft = safeJson(localStorage.getItem(ORG_DRAFT_KEY), null);
     return draft && draft.organisationStructure ? draft.organisationStructure : null;
   }
+  function serverSession(){
+    try{
+      const s = JSON.parse(localStorage.getItem(SERVER_TOKEN_KEY)||'{}');
+      if(s && s.access_token && (!s.expires_at || s.expires_at > Date.now()+30000)) return s;
+    }catch(_){}
+    return null;
+  }
+  function saveOrgDraft(org, updatedAt){
+    if(!org || !Array.isArray(org.sites)) return false;
+    localStorage.setItem(ORG_DRAFT_KEY, JSON.stringify({
+      organisationStructure: org,
+      savedAt: new Date().toISOString(),
+      serverUpdatedAt: updatedAt || ''
+    }));
+    return true;
+  }
+  async function loadOrgFromServerIfPossible(){
+    const s = serverSession();
+    if(!s) return false;
+    try{
+      const resp = await fetch('/api/org-structure', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},
+        body:JSON.stringify({mode:'load'})
+      });
+      const txt = await resp.text();
+      let data = {};
+      try{ data = txt ? JSON.parse(txt) : {}; }catch(_){ data = {message:txt}; }
+      if(!resp.ok || data.ok===false || !data.organisationStructure) return false;
+      saveOrgDraft(data.organisationStructure, data.updatedAt);
+      if(data.access) localStorage.setItem(ACCESS_KEY, JSON.stringify(data.access));
+      fillSelect();
+      return true;
+    }catch(_){
+      return false;
+    }
+  }
+
+  function currentAccess(){
+    return safeJson(localStorage.getItem(ACCESS_KEY), null) || {role:'geschaeftsleitung',siteIds:['*'],unitIds:['*'],canManageOrganisation:true};
+  }
+  function canSeeSite(site){
+    const a=currentAccess();
+    if(a.role==='geschaeftsleitung') return true;
+    if(a.role==='leitung') return Array.isArray(a.siteIds) && a.siteIds.includes(site.id);
+    if(a.role==='tko'){
+      const units=realUnits(site);
+      return units.some(u=>Array.isArray(a.unitIds) && a.unitIds.includes(site.id+'::'+(u.plannerKey||u.id)));
+    }
+    return false;
+  }
   function buildOptions(){
     const options = [];
     const org = getOrg();
     const sites = org && Array.isArray(org.sites) ? org.sites : [];
 
-    sites.forEach(site=>{
+    sites.filter(canSeeSite).forEach(site=>{
       if(!site || !site.id) return;
       options.push(option(
         (site.name||site.id) + ' · Startseite',
@@ -197,6 +250,7 @@ select{width:100%;border:1px solid var(--line);border-radius:13px;background:#ff
   };
 
   fillSelect();
+  loadOrgFromServerIfPossible();
 })();
 </script>
 </body>

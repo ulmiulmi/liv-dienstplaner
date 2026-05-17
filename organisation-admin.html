@@ -28,7 +28,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
 .lock-card h1{font-size:42px;margin:0 0 10px}
 .auto-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:10px 0}
 .auto-toggle{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:14px;padding:9px;font-weight:950;font-size:12px}
-.auto-toggle input{width:auto}
+.auto-toggle input{width:auto}.role-row{display:grid;grid-template-columns:1.3fr 160px 1fr 1fr auto;gap:8px;align-items:end;margin-top:8px}.role-row button{margin-bottom:0}.role-help{border:1px solid #c9dcff;background:#f7fbff;color:#175cd3;border-radius:14px;padding:9px;font-size:12px;font-weight:850;margin-top:8px}@media(max-width:900px){.role-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -79,6 +79,16 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     </div>
     <div id="status" class="notice" style="margin-top:10px">Noch nicht geladen.</div>
   </section>
+  <section class="card" id="accessCard">
+    <div class="toolbar" style="justify-content:space-between;margin-bottom:8px">
+      <h2 style="margin:0">Zugriffsrechte</h2>
+      <button type="button" id="addRoleBtn">+ Benutzerrecht</button>
+    </div>
+    <div class="role-help">
+      Geschäftsleitung sieht alles und darf Organisation verwalten. Leitung sieht zugeteilte Häuser komplett. TKO sieht nur zugeteilte Gruppen.
+    </div>
+    <div id="roleRows"></div>
+  </section>
   <section class="card">
     <div class="toolbar" style="justify-content:space-between;margin-bottom:10px">
       <h2 style="margin:0">Häuser und Bereiche</h2>
@@ -92,6 +102,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   const SERVER_TOKEN_KEY='polypoint_server_session_v1';
   const ORG_ADMIN_TOKEN_KEY='ulmipoint_org_admin_token_v1';
   let org={organisation:{id:'liv',name:'LIV – Leben in Vielfalt'},payrollProfileDefault:'CH_BS_PERSONALRECHT_DEFAULT',sites:[]};
+  let accessRoles={};
   const ORG_DRAFT_KEY='ulmipoint_org_structure_draft_v1';
   let autoSaveTimer=null;
   let autoSaving=false;
@@ -206,7 +217,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       syncFromInputs();
       cleanupAutoUnits();
       saveDraftLocal();
-      const data=await api({mode:'save',organisationStructure:org});
+      const data=await api({mode:'save',organisationStructure:Object.assign({},org,{accessRoles})});
       org=data.organisationStructure||org;
       saveDraftLocal();
       status('Automatisch gespeichert: '+reason,'ok');
@@ -273,6 +284,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       canton:'BS',
       active:true,
       automaticFunctions:defaultAutoFunctions(type),
+      access:{enabled:false,pinHash:'',updatedAt:''},
       units:[]
     };
   }
@@ -288,6 +300,71 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     org.organisation.id=slug(org.organisation.name);
     org.payrollProfileDefault=$('payrollProfile').value.trim()||'CH_BS_PERSONALRECHT_DEFAULT';
   }
+
+  function roleLabel(role){
+    return ({geschaeftsleitung:'Geschäftsleitung',leitung:'Leitung',tko:'TKO'})[role]||role;
+  }
+  function roleOptions(selected){
+    return ['geschaeftsleitung','leitung','tko'].map(r=>`<option value="${r}" ${selected===r?'selected':''}>${roleLabel(r)}</option>`).join('');
+  }
+  function siteOptions(selected){
+    const ids=Array.isArray(selected)?selected:[];
+    return (org.sites||[]).map(s=>`<option value="${esc(s.id)}" ${ids.includes(s.id)?'selected':''}>${esc(s.name)}</option>`).join('');
+  }
+  function unitOptions(selected){
+    const ids=Array.isArray(selected)?selected:[];
+    let opts='';
+    (org.sites||[]).forEach(site=>{
+      realUnits(site).forEach(u=>{
+        const key=site.id+'::'+(u.plannerKey||u.id);
+        opts+=`<option value="${esc(key)}" ${ids.includes(key)?'selected':''}>${esc(site.name)} · ${esc(u.name)}</option>`;
+      });
+    });
+    return opts;
+  }
+  function renderRoles(){
+    const rows=$('roleRows');
+    if(!rows) return;
+    const entries=Object.entries(accessRoles||{});
+    rows.innerHTML=entries.map(([email,r],idx)=>`
+      <div class="role-row">
+        <label><span class="mini">E-Mail</span><input data-role-index="${idx}" data-role-field="email" value="${esc(email)}"></label>
+        <label><span class="mini">Rolle</span><select data-role-index="${idx}" data-role-field="role">${roleOptions(r.role||'tko')}</select></label>
+        <label><span class="mini">Häuser für Leitung</span><select data-role-index="${idx}" data-role-field="siteIds" multiple size="3">${siteOptions(r.siteIds||[])}</select></label>
+        <label><span class="mini">Gruppen für TKO</span><select data-role-index="${idx}" data-role-field="unitIds" multiple size="3">${unitOptions(r.unitIds||[])}</select></label>
+        <button type="button" class="bad" onclick="window.__removeRole(${idx})">löschen</button>
+      </div>
+    `).join('') || '<div class="empty">Noch keine Benutzerrechte erfasst.</div>';
+    rows.querySelectorAll('[data-role-index]').forEach(el=>{
+      el.onchange=()=>{syncRolesFromInputs();scheduleAutoSave('Zugriffsrechte geändert');};
+      el.oninput=()=>{syncRolesFromInputs();saveDraftLocal();};
+    });
+  }
+  function syncRolesFromInputs(){
+    const entries=Object.entries(accessRoles||{}).map(([email,r])=>({email,role:r.role||'tko',siteIds:r.siteIds||[],unitIds:r.unitIds||[]}));
+    document.querySelectorAll('[data-role-index]').forEach(el=>{
+      const i=Number(el.dataset.roleIndex), f=el.dataset.roleField;
+      if(!entries[i]) return;
+      if(f==='siteIds' || f==='unitIds') entries[i][f]=Array.from(el.selectedOptions||[]).map(o=>o.value).filter(Boolean);
+      else entries[i][f]=el.value.trim();
+    });
+    const next={};
+    entries.forEach(r=>{
+      const email=String(r.email||'').trim().toLowerCase();
+      if(!email) return;
+      next[email]={role:r.role||'tko',siteIds:r.siteIds||[],unitIds:r.unitIds||[]};
+    });
+    accessRoles=next;
+  }
+  window.__removeRole=idx=>{
+    syncRolesFromInputs();
+    const entries=Object.entries(accessRoles||{});
+    entries.splice(idx,1);
+    accessRoles=Object.fromEntries(entries);
+    renderRoles();
+    scheduleAutoSave('Benutzerrecht entfernt');
+  };
+
   function render(){
     cleanupAutoUnits();
     $('orgName').value=org.organisation?.name||'LIV – Leben in Vielfalt';
@@ -327,6 +404,14 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
             <label class="auto-toggle"><input type="checkbox" data-site="${si}" data-auto="pikett" ${autoFunctions(site).pikett?'checked':''}> Haus-Pikett</label>
             <label class="auto-toggle"><input type="checkbox" data-site="${si}" data-auto="hausdienstplan" ${autoFunctions(site).hausdienstplan?'checked':''}> Haus-Dienstplan</label>
           </div>
+          <div class="access-box">
+            <h4>Haus-Schutz</h4>
+            <div class="access-grid">
+              <label class="access-toggle"><input type="checkbox" data-site="${si}" data-access-enabled ${accessSettings(site).enabled?'checked':''}> PIN beim Öffnen verlangen</label>
+              <label><span class="mini">Neuer PIN / neues Passwort</span><input type="password" data-site="${si}" data-access-pin placeholder="${accessSettings(site).pinHash?'PIN ist gesetzt':'noch kein PIN gesetzt'}" autocomplete="new-password"></label>
+            </div>
+            <div class="mini">Der PIN gilt nur für diesen Standort. Leer lassen = bestehenden PIN behalten.</div>
+          </div>
           <div class="actions">
             <button type="button" onclick="window.__orgAddUnit(${si})">+ Gruppe/Bereich</button>
             <button type="button" onclick="window.__orgAddDayUnit(${si})">+ Tageszentrum-Team</button>
@@ -344,11 +429,34 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
         </div>
       </article>
     `).join('') || '<div class="empty">Noch keine Häuser oder Tageszentren erstellt.</div>';
-    document.querySelectorAll('[data-site]').forEach(el=>{el.oninput=()=>{syncFromInputs();saveDraftLocal();};el.onchange=()=>{syncFromInputs();scheduleAutoSave('Änderung');};});
+    renderRoles();
+    document.querySelectorAll('[data-site]').forEach(el=>{
+      el.oninput=()=>{syncFromInputs();saveDraftLocal();};
+      el.onchange=async()=>{
+        if(el.dataset.accessPin!==undefined){
+          const si=Number(el.dataset.site);
+          const pin=el.value.trim();
+          if(pin && org.sites[si]){
+            org.sites[si].access=accessSettings(org.sites[si]);
+            org.sites[si].access.pinHash=await hashPin(pin);
+            org.sites[si].access.enabled=true;
+            org.sites[si].access.updatedAt=new Date().toISOString();
+            el.value='';
+            render();
+            $('edit-'+si)?.classList.add('show');
+            scheduleAutoSave('Haus-PIN gesetzt');
+            return;
+          }
+        }
+        syncFromInputs();
+        scheduleAutoSave('Änderung');
+      };
+    });
   }
   function syncFromInputs(){
     cleanupAutoUnits();
     syncBasics();
+    syncRolesFromInputs();
     document.querySelectorAll('[data-site]:not([data-unit])').forEach(el=>{
       const si=Number(el.dataset.site), f=el.dataset.field;
       if(org.sites[si]){org.sites[si][f]=el.value; if(f==='name')org.sites[si].id=slug(el.value);}
@@ -358,6 +466,13 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       if(org.sites[si]){
         org.sites[si].automaticFunctions=autoFunctions(org.sites[si]);
         org.sites[si].automaticFunctions[f]=!!el.checked;
+      }
+    });
+    document.querySelectorAll('[data-access-enabled]').forEach(el=>{
+      const si=Number(el.dataset.site);
+      if(org.sites[si]){
+        org.sites[si].access=accessSettings(org.sites[si]);
+        org.sites[si].access.enabled=!!el.checked;
       }
     });
     document.querySelectorAll('[data-unit]').forEach(el=>{
@@ -382,6 +497,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       type:fresh.type,
       canton:fresh.canton||'BS',
       automaticFunctions:autoFunctions(fresh),
+      access:accessSettings(fresh),
       units:realUnits(fresh),
       selectedAt:new Date().toISOString()
     }));
@@ -396,6 +512,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     status('Organisation wird geladen …');
     try{
       const data=await api({mode:'load'});
+      accessRoles=data.accessRoles||accessRoles||{};
       const serverOrg=data.organisationStructure||org;
 
       if(localDraftIsSaferThanServer(serverOrg)){
@@ -425,7 +542,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     preventAccidentalEmptySave();
     saveDraftLocal();
     status('Organisation wird gespeichert …');
-    const data=await api({mode:'save',organisationStructure:org});
+    const data=await api({mode:'save',organisationStructure:Object.assign({},org,{accessRoles})});
     org=data.organisationStructure||org;
     saveDraftLocal();
     render();
@@ -433,6 +550,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   }
   function addSite(type){syncFromInputs(); org.sites=org.sites||[]; org.sites.push(defaultSite(type)); render(); scheduleAutoSave(type==='wohnheim'?'Haus hinzugefügt':type==='tageszentrum'?'Tageszentrum hinzugefügt':'Standort hinzugefügt');}
   $('newHouseBtn').onclick=()=>addSite('wohnheim'); $('newDayBtn').onclick=()=>addSite('tageszentrum'); $('newOtherBtn').onclick=()=>addSite('sonstiges');
+  $('addRoleBtn').onclick=()=>{syncRolesFromInputs(); const email='benutzer'+(Object.keys(accessRoles).length+1)+'@liv.ch'; accessRoles[email]={role:'tko',siteIds:[],unitIds:[]}; renderRoles(); scheduleAutoSave('Benutzerrecht hinzugefügt');};
   $('loadBtn').onclick=()=>load().catch(e=>status('Fehler: '+e.message,'bad')); $('saveBtn').onclick=()=>save().catch(e=>status('Fehler: '+e.message,'bad'));
   $('orgName').oninput=syncBasics; $('payrollProfile').oninput=syncBasics;
   render();

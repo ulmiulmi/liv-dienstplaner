@@ -6,7 +6,15 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 function safe(v){return String(v||'').trim();}
 function normEmail(v){return safe(v).toLowerCase();}
 function slug(v){return safe(v).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'default';}
-function normalizeRole(v){v=safe(v).toLowerCase(); if(['admin','administrator','leitung'].includes(v))return 'admin'; if(['planner','planer','planung'].includes(v))return 'planner'; if(['employee','mitarbeiter','ma'].includes(v))return 'employee'; return v;}
+function normalizeRole(v){
+  v=safe(v).toLowerCase();
+  if(['admin','administrator','gl','geschaeftsleitung','geschäftsleitung','business','leitung_gl'].includes(v))return 'geschaeftsleitung';
+  if(['leitung','hausleitung','site_lead','house_lead'].includes(v))return 'leitung';
+  if(['tko','teamkoordination','teamkoordinator','teamkoordination'].includes(v))return 'tko';
+  if(['planner','planer','planung'].includes(v))return 'leitung';
+  if(['employee','mitarbeiter','ma'].includes(v))return 'employee';
+  return v;
+}
 function roleStore(data){const roles=(data&&typeof data==='object')?(data.accessRoles||data.roles||{}):{}; return roles&&typeof roles==='object'?roles:{};}
 function validOrgAdminSession(data,tok){
   tok=safe(tok);
@@ -31,11 +39,21 @@ function assertAdminAccess(data,user){
   const email=normEmail(user.email);
   const roles=roleStore(data);
   const configured=Object.keys(roles).length;
-  if(!configured) return {ok:true,email,role:'transition',configured};
+  if(!configured) return {ok:true,email,role:'geschaeftsleitung',configured,siteIds:['*'],unitIds:['*'],canManageOrganisation:true};
   const entry=roles[email];
   const role=normalizeRole(typeof entry==='string'?entry:entry?.role);
-  if(role==='admin' || role==='planner') return {ok:true,email,role,configured};
-  throw new Error('Keine Admin-/Planer-Rolle für '+(email||'diese Sitzung')+'.');
+  if(['geschaeftsleitung','leitung','tko'].includes(role)){
+    return {
+      ok:true,
+      email,
+      role,
+      configured,
+      siteIds:Array.isArray(entry?.siteIds)?entry.siteIds:[],
+      unitIds:Array.isArray(entry?.unitIds)?entry.unitIds:[],
+      canManageOrganisation:role==='geschaeftsleitung'
+    };
+  }
+  throw new Error('Keine Berechtigung für '+(email||'diese Sitzung')+'.');
 }
 
 function defaultOrganisation(){
@@ -55,7 +73,8 @@ function defaultOrganisation(){
           {id:'azoren',name:'Azoren',type:'wohngruppe',plannerKey:'azoren',active:true},
           {id:'bali',name:'Bali',type:'wohngruppe',plannerKey:'bali',active:true},
           {id:'capri',name:'Capri',type:'wohngruppe',plannerKey:'capri',active:false},
-          {id:'delos',name:'Delos',type:'wohngruppe',plannerKey:'delos',active:true}        ]
+          {id:'delos',name:'Delos',type:'wohngruppe',plannerKey:'delos',active:true}
+        ]
       }
     ],
     createdAt:new Date().toISOString(),
@@ -83,6 +102,14 @@ function sanitizeAutomaticFunctions(site,type){
     hausdienstplan: incoming.hausdienstplan===undefined ? def.hausdienstplan : !!incoming.hausdienstplan
   };
 }
+function sanitizeAccess(site){
+  const a=site&&site.access&&typeof site.access==='object'?site.access:{};
+  return {
+    enabled:!!a.enabled,
+    pinHash:safe(a.pinHash),
+    updatedAt:safe(a.updatedAt)
+  };
+}
 function sanitizeSite(site){
   const name=safe(site.name)||'Standort';
   const id=slug(site.id||name);
@@ -93,8 +120,26 @@ function sanitizeSite(site){
   return {
     id,name,type,canton:safe(site.canton)||'BS',active:site.active!==false,
     automaticFunctions:sanitizeAutomaticFunctions(site,type),
+    access:sanitizeAccess(site),
     units
   };
+}
+function sanitizeAccessRoles(input){
+  const out={};
+  const src=input&&typeof input==='object'?input:{};
+  Object.entries(src).forEach(([email,entry])=>{
+    const key=normEmail(email);
+    if(!key) return;
+    const e=typeof entry==='string'?{role:entry}:entry||{};
+    const role=normalizeRole(e.role);
+    if(!['geschaeftsleitung','leitung','tko'].includes(role)) return;
+    out[key]={
+      role,
+      siteIds:Array.isArray(e.siteIds)?e.siteIds.map(safe).filter(Boolean):[],
+      unitIds:Array.isArray(e.unitIds)?e.unitIds.map(safe).filter(Boolean):[]
+    };
+  });
+  return out;
 }
 function sanitizeUnit(unit){
   const name=safe(unit.name)||'Bereich';
@@ -114,13 +159,21 @@ module.exports=async function handler(req,res){
     const data=row.data||{};
     const user=await verifySupabaseUser(req);
     const access=assertAdminAccess(data,user);
-    if(!validOrgAdminSession(data, body.orgAdminToken)){
-      return send(res,401,{ok:false,message:'Organisation nur mit Admin-Passwort.'});
-    }
     const org=ensureOrg(data);
 
+    // Lesen darf mit normaler Admin-/Planer-Server-Sitzung erfolgen.
+    // Speichern bleibt zusätzlich mit dem Admin-Passwort-Token geschützt.
     if(mode==='load'){
-      return send(res,200,{ok:true,mode,organisationStructure:org,access,updatedAt:row.updated_at});
+      const payload={ok:true,mode,organisationStructure:org,access,updatedAt:row.updated_at};
+      if(access.canManageOrganisation) payload.accessRoles=roleStore(data);
+      return send(res,200,payload);
+    }
+
+    if(!access.canManageOrganisation){
+      return send(res,403,{ok:false,message:'Organisation verwalten ist nur für Geschäftsleitung freigegeben.'});
+    }
+    if(!validOrgAdminSession(data, body.orgAdminToken)){
+      return send(res,401,{ok:false,message:'Organisation speichern nur mit Admin-Passwort.'});
     }
 
     if(mode==='save'){
@@ -138,6 +191,9 @@ module.exports=async function handler(req,res){
         updatedAt:new Date().toISOString(),
         updatedBy:{email:user.email||'',id:user.id||''}
       };
+      if(incoming.accessRoles && typeof incoming.accessRoles==='object'){
+        data.accessRoles=sanitizeAccessRoles(incoming.accessRoles);
+      }
       data.organisationStructure=next;
       data.activity=[{
         id:'act_org_'+Date.now(),
