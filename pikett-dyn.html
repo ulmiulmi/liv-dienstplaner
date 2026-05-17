@@ -911,7 +911,7 @@ window.addEventListener('DOMContentLoaded',init);
 
     document.querySelectorAll('h1').forEach(h=>{
       const t=h.textContent||'';
-      if(t.match(/Haus\-Pikett/i) || t.match(/^(Azoren|Bali|Capri|Delos|Gruppe)$/i)) h.textContent=name;
+      if(t.match(/Azoren|Bali|Capri|Delos|Gruppe|Nachtwache|Haus-Pikett|Haus-Dienstplan/i)) h.textContent=name;
     });
 
     document.querySelectorAll('.eyebrow').forEach(e=>{
@@ -928,8 +928,7 @@ window.addEventListener('DOMContentLoaded',init);
       if(n.nodeValue){
         n.nodeValue=n.nodeValue
           .replace(/\bAzoren\b/g,name)
-          .replace(/\bAZOREN\b/g,name.toUpperCase())
-          .replace(/\bHaus\-Pikett\b/g,name);
+          .replace(/\bAZOREN\b/g,name.toUpperCase());
       }
     });
   }

@@ -6424,44 +6424,6 @@ function openPrintPDFPage(){
 })();
 <\/script>
 
-<script>
-(function(){
-  function applyDynamicLabels(){
-    const dyn=window.__ULMI_DYNAMIC_CONTEXT__||{};
-    const name=dyn.unitName||'Nachtwache';
-    const site=dyn.siteName||'';
-    document.title='ULMIPOINT '+name;
-
-    document.querySelectorAll('h1').forEach(h=>{
-      const t=h.textContent||'';
-      if(t.match(/Nachtwache/i) || t.match(/^(Azoren|Bali|Capri|Delos|Gruppe)$/i)) h.textContent=name;
-    });
-
-    document.querySelectorAll('.eyebrow').forEach(e=>{
-      const t=e.textContent||'';
-      if(t.match(/POLYPOINT|ULMIPOINT|AZOREN|BALI|CAPRI|DELOS/i)){
-        e.textContent=site?('ULMIPOINT · '+site):'ULMIPOINT';
-      }
-    });
-
-    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-    const nodes=[];
-    while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n=>{
-      if(n.nodeValue){
-        n.nodeValue=n.nodeValue
-          .replace(/\bAzoren\b/g,name)
-          .replace(/\bAZOREN\b/g,name.toUpperCase())
-          .replace(/\bNachtwache\b/g,name);
-      }
-    });
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',applyDynamicLabels);
-  else applyDynamicLabels();
-  setTimeout(applyDynamicLabels,250);
-  setTimeout(applyDynamicLabels,1200);
-})();
-</script>
 </body></html>`;
   const win=window.open('','_blank');
   if(!win){toast('Popup blockiert – bitte Popups erlauben','bad');return;}
@@ -6544,6 +6506,43 @@ window.exportBackup=exportBackup;
 window.importBackup=importBackup;
 
 window.addEventListener('load',init);
+</script>
+<script>
+(function(){
+  function applyDynamicLabels(){
+    const dyn=window.__ULMI_DYNAMIC_CONTEXT__||{};
+    const name=dyn.unitName||'Nachtwache';
+    const site=dyn.siteName||'';
+    document.title='ULMIPOINT '+name;
+
+    document.querySelectorAll('h1').forEach(h=>{
+      const t=h.textContent||'';
+      if(t.match(/Azoren|Bali|Capri|Delos|Gruppe|Nachtwache|Haus-Pikett|Haus-Dienstplan/i)) h.textContent=name;
+    });
+
+    document.querySelectorAll('.eyebrow').forEach(e=>{
+      const t=e.textContent||'';
+      if(t.match(/POLYPOINT|ULMIPOINT|AZOREN|BALI|CAPRI|DELOS/i)){
+        e.textContent=site?('ULMIPOINT · '+site):'ULMIPOINT';
+      }
+    });
+
+    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+    const nodes=[];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(n=>{
+      if(n.nodeValue){
+        n.nodeValue=n.nodeValue
+          .replace(/\bAzoren\b/g,name)
+          .replace(/\bAZOREN\b/g,name.toUpperCase());
+      }
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',applyDynamicLabels);
+  else applyDynamicLabels();
+  setTimeout(applyDynamicLabels,250);
+  setTimeout(applyDynamicLabels,1200);
+})();
 </script>
 </body>
 </html>
