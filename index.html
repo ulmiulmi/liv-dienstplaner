@@ -64,16 +64,16 @@ select{width:100%;border:1px solid var(--line);border-radius:13px;background:#ff
       <h2>Planung</h2>
       <div class="mini">Für berechtigte Planerinnen und Planer.</div>
       <div class="actions">
-        <button class="btn warn" id="plannerChooseBtn" type="button">Planer auswählen</button>
-        <button class="btn warn" id="plannerDirectBtn" type="button">Letzte Auswahl öffnen</button>
+        <button class="btn warn" id="plannerChooseBtn" type="button">Haus auswählen</button>
+        <button class="btn warn" id="plannerDirectBtn" type="button">Letztes Haus öffnen</button>
       </div>
       <div class="planner-picker" id="plannerPicker">
         <label>
-          <span class="field-label">Browser-Speicher</span>
+          <span class="field-label">Haus / Standort</span>
           <select id="plannerSelect"></select>
         </label>
         <div class="actions" style="margin-top:10px">
-          <button class="btn warn" id="plannerOpenBtn" type="button">Auswahl öffnen</button>
+          <button class="btn warn" id="plannerOpenBtn" type="button">Startseite öffnen</button>
           <span class="pill" id="plannerHint">wird lokal gemerkt</span>
         </div>
       </div>
@@ -125,39 +125,23 @@ select{width:100%;border:1px solid var(--line);border-radius:13px;background:#ff
   }
   function buildOptions(){
     const options = [];
-    const last = safeJson(localStorage.getItem(LAST_KEY), null);
-    if(last && last.href){
-      options.push(option('Letzte Auswahl: ' + (last.siteName||last.siteId||'Haus') + ' · ' + (last.label||last.plannerId||'Startseite'), last.href, null, null));
-    }
-
     const org = getOrg();
     const sites = org && Array.isArray(org.sites) ? org.sites : [];
 
     sites.forEach(site=>{
       if(!site || !site.id) return;
-      const siteHref = 'planer.html?site=' + encodeURIComponent(site.id) + '#overview';
-      options.push(option((site.name||site.id) + ' · Startseite', siteHref, site, 'overview'));
-
-      realUnits(site).slice(0,4).forEach(unit=>{
-        const id = slug(unit.plannerKey || unit.id || unit.name);
-        options.push(option((site.name||site.id) + ' · ' + (unit.name||id), 'planer.html?site=' + encodeURIComponent(site.id) + '#' + encodeURIComponent(id), site, id));
-      });
-
-      const auto = Object.assign(site.type==='wohnheim'?{nachtwache:true,pikett:true,hausdienstplan:true}:{nachtwache:false,pikett:false,hausdienstplan:false}, site.automaticFunctions||{});
-      if(auto.nachtwache) options.push(option((site.name||site.id) + ' · Nachtwache', 'planer.html?site=' + encodeURIComponent(site.id) + '#nachtwache', site, 'nachtwache'));
-      if(auto.pikett) options.push(option((site.name||site.id) + ' · Haus-Pikett', 'planer.html?site=' + encodeURIComponent(site.id) + '#pikett', site, 'pikett'));
-      if(auto.hausdienstplan) options.push(option((site.name||site.id) + ' · Haus-Dienstplan', 'planer.html?site=' + encodeURIComponent(site.id) + '#hausdienstplan', site, 'hausdienstplan'));
-      options.push(option((site.name||site.id) + ' · Zeiterfassung', 'planer.html?site=' + encodeURIComponent(site.id) + '#zeiterfassung', site, 'zeiterfassung'));
-      options.push(option((site.name||site.id) + ' · Monatsabschluss', 'planer.html?site=' + encodeURIComponent(site.id) + '#monatsabschluss', site, 'monatsabschluss'));
+      options.push(option(
+        (site.name||site.id) + ' · Startseite',
+        'planer.html?site=' + encodeURIComponent(site.id) + '#overview',
+        site,
+        'overview'
+      ));
     });
 
     if(!options.length){
-      options.push(option('Planer öffnen · Startseite', 'planer.html#overview', null, 'overview'));
-      options.push(option('Haus 1 · Azoren', 'planer.html#azoren', null, 'azoren'));
-      options.push(option('Haus 1 · Bali', 'planer.html#bali', null, 'bali'));
-      options.push(option('Haus 1 · Capri', 'planer.html#capri', null, 'capri'));
-      options.push(option('Haus 1 · Delos', 'planer.html#delos', null, 'delos'));
+      options.push(option('Haus 1 · Startseite', 'planer.html#overview', null, 'overview'));
     }
+
     return options;
   }
 
