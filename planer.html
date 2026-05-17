@@ -585,7 +585,7 @@
   }
 
   function genericPageUrl(id){
-    const isFunc = id==="pikett" || id==="hausdienstplan" || id==="nachtwache";
+    const isFunc = id==="pikett" || id==="hausdienstplan" || id==="nachtwache" || id==="zeiterfassung" || id==="monatsabschluss";
     const ctx = UNIT_CONTEXT_BY_PLANNER[id] || {
       id:id,
       name:labels[id] || id,
@@ -601,10 +601,14 @@
     p.set("unitName", ctx.name || labels[id] || id);
     p.set("unitType", ctx.type || "bereich");
     p.set("plannerKey", id);
-    if(isFunc){
-      p.set("functionType", id);
-      return "hausfunktion.html?" + p.toString();
-    }
+    if(isFunc) p.set("functionType", id);
+
+    if(id==="nachtwache") return "nachtwache-dyn.html?" + p.toString();
+    if(id==="pikett") return "pikett-dyn.html?" + p.toString();
+    if(id==="hausdienstplan") return "hausdienstplan-dyn.html?" + p.toString();
+    if(id==="zeiterfassung") return "zeiterfassung-dyn.html?" + p.toString();
+    if(id==="monatsabschluss") return "monatsabschluss-dyn.html?" + p.toString();
+
     return "bereich.html?" + p.toString();
   }
 
@@ -677,16 +681,8 @@
     iframe.title = labels[id];
     if(id === "overview" && HOUSE_CONTEXT && !IS_HAUS_1){
       iframe.src = dynamicHouseUrl();
-    } else if(HOUSE_CONTEXT && !IS_HAUS_1 && isDynamicUnitPage(id)){
+    } else if(HOUSE_CONTEXT && !IS_HAUS_1){
       iframe.src = genericPageUrl(id);
-    } else if(HOUSE_CONTEXT && !IS_HAUS_1 && EXISTING_PLAN_PAGES.has(id)){
-      iframe.srcdoc = namespacedFrameLoadingHtml(id);
-      fetch(id + '.html', {cache:'no-store'})
-        .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-        .then(text => { iframe.srcdoc = injectNamespacedStorage(text, id); })
-        .catch(err => {
-          iframe.srcdoc = '<!doctype html><html lang="de"><meta charset="utf-8"><body style="font-family:system-ui;padding:22px;background:#fffafa;color:#c73636;font-weight:900">Planseite konnte nicht geladen werden: ' + escapeHtml(err.message) + '</body></html>';
-        });
     } else {
       iframe.src = id + '.html';
     }

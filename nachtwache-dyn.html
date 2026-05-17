@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ULMIPOINT Bereich</title>
+<title>ULMIPOINT Nachtwache</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--purple:#6f42c1;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -129,14 +129,14 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 
 <div id="startupStorageBackdrop" class="clear-modal-backdrop no-print">
   <div class="clear-modal" role="dialog" aria-modal="true" aria-labelledby="startupStorageTitle">
-    <h2 id="startupStorageTitle">Speicher für Azoren gefunden</h2>
-    <div class="mini">Du öffnest jetzt den Bereich <b>Azoren</b>. Du kannst den gespeicherten Plan laden oder nur die Stammdaten übernehmen. Bei „Frischer Plan“ bleiben Mitarbeitende, Regeln und Sollstunden erhalten; alte Dienste werden nicht geladen.</div>
+    <h2 id="startupStorageTitle">Speicher für Nachtwache gefunden</h2>
+    <div class="mini">Du öffnest jetzt den Bereich <b>Nachtwache</b>. Du kannst den gespeicherten Plan laden oder nur die Stammdaten übernehmen. Bei „Frischer Plan“ bleiben Mitarbeitende, Regeln und Sollstunden erhalten; alte Dienste werden nicht geladen.</div>
     <div id="startupStorageInfo" class="issue yellow" style="margin-top:12px"></div>
     <div class="clear-modal-actions" style="justify-content:flex-start">
       <button class="primary" onclick="chooseStartupStorage('load')">Speicher dieses Geräts laden</button>
       <button onclick="chooseStartupStorage('ignore')">Frischer Plan ohne alte Dienste</button>
     </div>
-    <div class="clear-danger-note">Azoren speichert getrennt von den anderen Wohnbereichen. Die frühere PC/Handy-Auswahl wird nicht mehr angezeigt; alte Stände bleiben über „Daten retten“ auffindbar.</div>
+    <div class="clear-danger-note">Nachtwache speichert getrennt von den anderen Wohnbereichen. Die frühere PC/Handy-Auswahl wird nicht mehr angezeigt; alte Stände bleiben über „Daten retten“ auffindbar.</div>
   </div>
 </div>
 
@@ -149,7 +149,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 
 <main class="app">
   <section class="hero no-print">
-    <div><div class="eyebrow">POLYPOINT Adapter · AZOREN</div><h1>Azoren · V13.0.203</h1></div>
+    <div><div class="eyebrow">POLYPOINT Adapter · NACHTWACHE</div><h1>Nachtwache · V13.0.203</h1></div>
     <div class="toolbar"><button class="primary" onclick="saveState(true)">Speichern</button><button onclick="loadState(true,{allowFallback:false})">Laden</button><button class="okbtn" onclick="rescueBestStoredState(true)">Daten retten</button><button onclick="makePlan(true)">Monat planen</button><button onclick="fixCurrentMonth()">Monat sperren</button><button onclick="unfixCurrentMonth()">Monat freigeben</button></div>
   </section>
   <nav class="tabs no-print">
@@ -240,7 +240,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
     <details class="control-accordion"><summary>Klare Befehle an die KI</summary><div class="cmd-box">Diese Befehle sind die Planungsanweisung. Planung, Kontrolle und Korrektur sollen dieselben Befehle verwenden.</div><div id="aiCommandList" class="commandgrid"></div></details>
     <div class="toolbar control-actions"><button class="primary" onclick="renderRules(); renderChecks()">Kontrolle aktualisieren</button><button onclick="makePlan(true); renderRules(); renderChecks()">Neu berechnen & kontrollieren</button></div><div id="planningPhaseLog" class="issue green" style="display:none;margin-top:10px"></div><div class="control-results-title"><span>Prüfung & Konflikte</span><span class="mini">Ergebnis der aktuellen Kontrolle</span></div><div id="issueList" style="margin-top:12px"></div></article></section>
 
-  <section id="system" class="view"><article class="card"><div class="section"><h2>Speicher & System</h2><span class="pill blue">Azoren · V13.0.203</span></div><div class="toolbar"><button onclick="tryMigrateV12()">alte Daten suchen</button><button class="okbtn" onclick="rescueBestStoredState(true)">Daten retten</button><button class="danger" onclick="clearV13Storage()">Speicher dieses Geräts löschen</button></div><div id="systemInfo" class="issue green" style="margin-top:12px"></div>
+  <section id="system" class="view"><article class="card"><div class="section"><h2>Speicher & System</h2><span class="pill blue">Nachtwache · V13.0.203</span></div><div class="toolbar"><button onclick="tryMigrateV12()">alte Daten suchen</button><button class="okbtn" onclick="rescueBestStoredState(true)">Daten retten</button><button class="danger" onclick="clearV13Storage()">Speicher dieses Geräts löschen</button></div><div id="systemInfo" class="issue green" style="margin-top:12px"></div>
     <details open style="margin-top:12px"><summary><b>OpenAI API direkt ohne Server</b></summary>
       <div class="issue yellow" style="margin-top:10px"><b>Hinweis</b><div>Der API-Key wird lokal im Browser gespeichert und im Sicherung mit exportiert. Diese Datei und Sicherungs deshalb privat halten.</div></div>
       <div class="formgrid">
@@ -265,19 +265,19 @@ const ULMI_DYNAMIC_CONTEXT=(function(){
       .normalize('NFKD')
       .replace(/[\u0300-\u036f]/g,'')
       .replace(/[^a-z0-9]+/g,'_')
-      .replace(/^_+|_+$/g,'')||'gruppe';
+      .replace(/^_+|_+$/g,'')||'nachtwache';
   }
   const siteId=param('siteId','haus');
   const siteName=param('siteName','Haus');
-  const unitId=param('unitId','gruppe');
-  const unitName=param('unitName','Gruppe');
+  const unitId=param('unitId','nachtwache');
+  const unitName=param('unitName','Nachtwache');
   const plannerKey=param('plannerKey',unitId);
-  const functionType=param('functionType','gruppe');
-  return {siteId,siteName,unitId,unitName,plannerKey,functionType,slug,kind:'bereich'};
+  const functionType=param('functionType','nachtwache');
+  return {siteId,siteName,unitId,unitName,plannerKey,functionType,slug,kind:'hausfunktion'};
 })();
 window.__ULMI_DYNAMIC_CONTEXT__=ULMI_DYNAMIC_CONTEXT;
 const PLANER_GROUP_ID=ULMI_DYNAMIC_CONTEXT.slug(ULMI_DYNAMIC_CONTEXT.siteId)+'__'+ULMI_DYNAMIC_CONTEXT.slug(ULMI_DYNAMIC_CONTEXT.plannerKey||ULMI_DYNAMIC_CONTEXT.unitId||ULMI_DYNAMIC_CONTEXT.functionType);
-const PLANER_GROUP_NAME=ULMI_DYNAMIC_CONTEXT.unitName||'Gruppe';
+const PLANER_GROUP_NAME=ULMI_DYNAMIC_CONTEXT.unitName||'Nachtwache';
 const PLANER_VERSION='13.0.187';
 const APP_KEY=`polypoint_ki_planer_v13_clean__${PLANER_GROUP_ID}`;
 const LEGACY_SHARED_APP_KEY='polypoint_ki_planer_v13_clean';
@@ -6428,13 +6428,13 @@ function openPrintPDFPage(){
 (function(){
   function applyDynamicLabels(){
     const dyn=window.__ULMI_DYNAMIC_CONTEXT__||{};
-    const name=dyn.unitName||'Gruppe';
+    const name=dyn.unitName||'Nachtwache';
     const site=dyn.siteName||'';
     document.title='ULMIPOINT '+name;
 
     document.querySelectorAll('h1').forEach(h=>{
       const t=h.textContent||'';
-      if(t.match(/Azoren/i) || t.match(/^(Azoren|Bali|Capri|Delos|Gruppe)$/i)) h.textContent=name;
+      if(t.match(/Nachtwache/i) || t.match(/^(Azoren|Bali|Capri|Delos|Gruppe)$/i)) h.textContent=name;
     });
 
     document.querySelectorAll('.eyebrow').forEach(e=>{
@@ -6452,7 +6452,7 @@ function openPrintPDFPage(){
         n.nodeValue=n.nodeValue
           .replace(/\bAzoren\b/g,name)
           .replace(/\bAZOREN\b/g,name.toUpperCase())
-          .replace(/\bAzoren\b/g,name);
+          .replace(/\bNachtwache\b/g,name);
       }
     });
   }
