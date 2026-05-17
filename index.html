@@ -79,7 +79,7 @@ select{width:100%;border:1px solid var(--line);border-radius:13px;background:#ff
       </div>
     </article>
 
-    <article class="card">
+    <article class="card" id="adminCard">
       <h2>Verwaltung</h2>
       <div class="mini">Organisation, Häuser, Tageszentren und Bereiche verwalten.</div>
       <div class="actions">
@@ -156,6 +156,7 @@ select{width:100%;border:1px solid var(--line);border-radius:13px;background:#ff
       if(!resp.ok || data.ok===false || !data.organisationStructure) return false;
       saveOrgDraft(data.organisationStructure, data.updatedAt);
       if(data.access) localStorage.setItem(ACCESS_KEY, JSON.stringify(data.access));
+      updateAdminCardVisibility();
       fillSelect();
       return true;
     }catch(_){
@@ -163,6 +164,16 @@ select{width:100%;border:1px solid var(--line);border-radius:13px;background:#ff
     }
   }
 
+  function updateAdminCardVisibility(){
+    const card=$('adminCard');
+    if(!card) return;
+    const a=safeJson(localStorage.getItem(ACCESS_KEY), null);
+    if(a && a.canManageOrganisation===false && a.role!=='geschaeftsleitung'){
+      card.style.display='none';
+    }else{
+      card.style.display='';
+    }
+  }
   function currentAccess(){
     return safeJson(localStorage.getItem(ACCESS_KEY), null) || {role:'geschaeftsleitung',siteIds:['*'],unitIds:['*'],canManageOrganisation:true};
   }
@@ -250,6 +261,7 @@ select{width:100%;border:1px solid var(--line);border-radius:13px;background:#ff
   };
 
   fillSelect();
+  updateAdminCardVisibility();
   loadOrgFromServerIfPossible();
 })();
 </script>

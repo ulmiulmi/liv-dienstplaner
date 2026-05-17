@@ -149,6 +149,35 @@ function sanitizeUnit(unit){
   return {id,name,type,plannerKey:safe(unit.plannerKey)||id,active:unit.active!==false};
 }
 
+
+function filterOrgForAccess(org,access){
+  if(!org || !Array.isArray(org.sites)) return org;
+  if(access.role==='geschaeftsleitung') return org;
+
+  const clone=JSON.parse(JSON.stringify(org));
+  if(access.role==='leitung'){
+    const allowed=new Set(Array.isArray(access.siteIds)?access.siteIds:[]);
+    clone.sites=clone.sites.filter(s=>allowed.has(s.id));
+    return clone;
+  }
+
+  if(access.role==='tko'){
+    const allowedUnits=new Set(Array.isArray(access.unitIds)?access.unitIds:[]);
+    clone.sites=clone.sites.map(site=>{
+      const units=(site.units||[]).filter(u=>allowedUnits.has(site.id+'::'+(u.plannerKey||u.id)));
+      if(!units.length) return null;
+      return Object.assign({},site,{
+        automaticFunctions:{nachtwache:false,pikett:false,hausdienstplan:false},
+        units
+      });
+    }).filter(Boolean);
+    return clone;
+  }
+
+  clone.sites=[];
+  return clone;
+}
+
 module.exports=async function handler(req,res){
   if(allow(req,res))return;
   if(req.method!=='POST')return send(res,405,{ok:false,message:'Nur POST erlaubt.'});
@@ -164,7 +193,8 @@ module.exports=async function handler(req,res){
     // Lesen darf mit normaler Admin-/Planer-Server-Sitzung erfolgen.
     // Speichern bleibt zusätzlich mit dem Admin-Passwort-Token geschützt.
     if(mode==='load'){
-      const payload={ok:true,mode,organisationStructure:org,access,updatedAt:row.updated_at};
+      const visibleOrg=filterOrgForAccess(org,access);
+      const payload={ok:true,mode,organisationStructure:visibleOrg,access,updatedAt:row.updated_at};
       if(access.canManageOrganisation) payload.accessRoles=roleStore(data);
       return send(res,200,payload);
     }
