@@ -1,3 +1,0 @@
-Diese Version setzt im Wunschportal das ULMIPOINT-Logo ganz nach oben als breiten Banner.
-Hochladen/ersetzen: wunschportal.html
-Optional: assets/ulmipoint-titlebar.png bleibt unverändert.
