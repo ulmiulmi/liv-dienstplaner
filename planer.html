@@ -318,6 +318,7 @@
 
   const EXISTING_PLAN_PAGES = new Set(["azoren","bali","capri","delos","nachtwache","pikett","hausdienstplan","zeiterfassung","monatsabschluss"]);
   const HOUSE_STORAGE_KEY = "ulmipoint_selected_site_v1";
+  const PLANNER_LAST_TARGET_KEY = "ulmipoint_planner_last_target_v1";
   const HOUSE_SHARED_STORAGE_KEYS = new Set([
     "polypoint_server_config_v2",
     "polypoint_server_session_v1",
@@ -744,6 +745,16 @@
     frame.classList.add('active');
     setActiveButton(id);
     activeLabel.textContent = 'geladen: ' + labels[id];
+    try{
+      localStorage.setItem(PLANNER_LAST_TARGET_KEY, JSON.stringify({
+        siteId: HOUSE_ID,
+        siteName: (HOUSE_CONTEXT && HOUSE_CONTEXT.name) || HOUSE_ID,
+        plannerId: id,
+        label: labels[id] || id,
+        href: 'planer.html?site=' + encodeURIComponent(HOUSE_ID) + '#' + encodeURIComponent(id),
+        savedAt: new Date().toISOString()
+      }));
+    }catch(_){}
     if(pushHash && location.hash.replace('#','') !== id) history.replaceState(null, '', '#' + id);
     setTimeout(() => { if(activeId === id) loader.style.display = 'none'; }, 900);
   }
