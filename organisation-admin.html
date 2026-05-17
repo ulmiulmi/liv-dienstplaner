@@ -79,6 +79,9 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   const SERVER_TOKEN_KEY='polypoint_server_session_v1';
   const ORG_ADMIN_TOKEN_KEY='ulmipoint_org_admin_token_v1';
   let org={organisation:{id:'liv',name:'LIV – Leben in Vielfalt'},payrollProfileDefault:'CH_BS_PERSONALRECHT_DEFAULT',sites:[]};
+  const ORG_DRAFT_KEY='ulmipoint_org_structure_draft_v1';
+  let autoSaveTimer=null;
+  let autoSaving=false;
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const slug=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'default';
@@ -126,6 +129,47 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     const txt=await resp.text(); let data={}; try{data=txt?JSON.parse(txt):{};}catch(_){data={message:txt};}
     if(!resp.ok||data.ok===false)throw new Error(data.message||('HTTP '+resp.status));
     return data;
+  }
+
+  function saveDraftLocal(){
+    try{
+      cleanupAutoUnits();
+      localStorage.setItem(ORG_DRAFT_KEY,JSON.stringify({
+        organisationStructure:org,
+        savedAt:new Date().toISOString()
+      }));
+    }catch(_){}
+  }
+  function loadDraftLocal(){
+    try{
+      const d=JSON.parse(localStorage.getItem(ORG_DRAFT_KEY)||'null');
+      if(d&&d.organisationStructure&&Array.isArray(d.organisationStructure.sites)) return d;
+    }catch(_){}
+    return null;
+  }
+  async function saveQuiet(reason='Änderung'){
+    if(autoSaving) return;
+    autoSaving=true;
+    try{
+      syncFromInputs();
+      cleanupAutoUnits();
+      saveDraftLocal();
+      const data=await api({mode:'save',organisationStructure:org});
+      org=data.organisationStructure||org;
+      saveDraftLocal();
+      status('Automatisch gespeichert: '+reason,'ok');
+    }catch(e){
+      saveDraftLocal();
+      status('Lokal gesichert, Server-Speichern fehlgeschlagen: '+e.message,'bad');
+      throw e;
+    }finally{
+      autoSaving=false;
+    }
+  }
+  function scheduleAutoSave(reason='Änderung'){
+    saveDraftLocal();
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer=setTimeout(()=>saveQuiet(reason).catch(()=>{}),700);
   }
   function lockStatus(t,k=''){const el=$('orgAdminLoginStatus'); if(el){el.textContent=t; el.className='notice'+(k?' '+k:'');}}
   function unlockOrgAdmin(){const el=$('orgLock'); if(el)el.style.display='none';}
@@ -248,7 +292,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
         </div>
       </article>
     `).join('') || '<div class="empty">Noch keine Häuser oder Tageszentren erstellt.</div>';
-    document.querySelectorAll('[data-site]').forEach(el=>{el.oninput=syncFromInputs;el.onchange=syncFromInputs;});
+    document.querySelectorAll('[data-site]').forEach(el=>{el.oninput=()=>{syncFromInputs();saveDraftLocal();};el.onchange=()=>{syncFromInputs();scheduleAutoSave('Änderung');};});
   }
   function syncFromInputs(){
     cleanupAutoUnits();
@@ -269,28 +313,64 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       if(org.sites[si]&&org.sites[si].units[ui]){org.sites[si].units[ui][f]=el.value; if(f==='name')org.sites[si].units[ui].id=slug(el.value);}
     });
   }
-  window.__orgOpenSite=si=>{
+  window.__orgOpenSite=async si=>{
     syncFromInputs();
     const site=org.sites[si];
     if(!site)return;
+    try{
+      status('Organisation wird vor dem Öffnen gespeichert …');
+      await saveQuiet('vor Öffnen gespeichert');
+    }catch(e){
+      status('Konnte nicht auf Server speichern. Haus wird nur lokal geöffnet: '+e.message,'bad');
+    }
+    const fresh=org.sites.find(s=>s.id===site.id)||site;
     localStorage.setItem('ulmipoint_selected_site_v1',JSON.stringify({
-      id:site.id,
-      name:site.name,
-      type:site.type,
-      canton:site.canton||'BS',
-      units:site.units||[],
+      id:fresh.id,
+      name:fresh.name,
+      type:fresh.type,
+      canton:fresh.canton||'BS',
+      automaticFunctions:autoFunctions(fresh),
+      units:realUnits(fresh),
       selectedAt:new Date().toISOString()
     }));
-    location.href='planer.html?site='+encodeURIComponent(site.id);
+    location.href='planer.html?site='+encodeURIComponent(fresh.id);
   };
   window.__orgToggle=si=>{const el=$('edit-'+si); if(el)el.classList.toggle('show')};
-  window.__orgAddUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; if(realUnits(s).length>=4){status('Pro Haus sind maximal 4 Gruppen/Räume vorgesehen.','bad'); return;} s.units.push(defaultUnit(s,'wohngruppe')); render(); $('edit-'+si)?.classList.add('show')};
-  window.__orgAddDayUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; if(realUnits(s).length>=4){status('Pro Haus sind maximal 4 Gruppen/Räume vorgesehen.','bad'); return;} s.units.push(defaultUnit(s,'tageszentrum')); render(); $('edit-'+si)?.classList.add('show')};
-  window.__orgRemoveUnit=(si,ui)=>{syncFromInputs(); if(org.sites[si])org.sites[si].units.splice(ui,1); render();};
-  window.__orgRemoveSite=si=>{syncFromInputs(); if(confirm('Standort wirklich löschen?')){org.sites.splice(si,1); render();}};
-  async function load(){status('Organisation wird geladen …'); const data=await api({mode:'load'}); org=data.organisationStructure||org; render(); status('Organisation geladen.','ok');}
-  async function save(){syncFromInputs(); cleanupAutoUnits(); status('Organisation wird gespeichert …'); const data=await api({mode:'save',organisationStructure:org}); org=data.organisationStructure||org; render(); status('Organisation gespeichert.','ok');}
-  function addSite(type){syncFromInputs(); org.sites=org.sites||[]; org.sites.push(defaultSite(type)); render();}
+  window.__orgAddUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; if(realUnits(s).length>=4){status('Pro Haus sind maximal 4 Gruppen/Räume vorgesehen.','bad'); return;} s.units.push(defaultUnit(s,'wohngruppe')); render(); $('edit-'+si)?.classList.add('show'); scheduleAutoSave('Gruppe/Bereich hinzugefügt')};
+  window.__orgAddDayUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; if(realUnits(s).length>=4){status('Pro Haus sind maximal 4 Gruppen/Räume vorgesehen.','bad'); return;} s.units.push(defaultUnit(s,'tageszentrum')); render(); $('edit-'+si)?.classList.add('show'); scheduleAutoSave('Team hinzugefügt')};
+  window.__orgRemoveUnit=(si,ui)=>{syncFromInputs(); if(org.sites[si])org.sites[si].units.splice(ui,1); render(); scheduleAutoSave('Bereich entfernt')};
+  window.__orgRemoveSite=si=>{syncFromInputs(); if(confirm('Standort wirklich löschen?')){org.sites.splice(si,1); render(); scheduleAutoSave('Standort entfernt')}};
+  async function load(){
+    status('Organisation wird geladen …');
+    try{
+      const data=await api({mode:'load'});
+      org=data.organisationStructure||org;
+      saveDraftLocal();
+      render();
+      status('Organisation geladen.','ok');
+    }catch(e){
+      const draft=loadDraftLocal();
+      if(draft){
+        org=draft.organisationStructure;
+        render();
+        status('Server konnte nicht geladen werden. Lokaler Entwurf wurde wiederhergestellt: '+(draft.savedAt?new Date(draft.savedAt).toLocaleString('de-CH'):''),'bad');
+        return;
+      }
+      throw e;
+    }
+  }
+  async function save(){
+    syncFromInputs();
+    cleanupAutoUnits();
+    saveDraftLocal();
+    status('Organisation wird gespeichert …');
+    const data=await api({mode:'save',organisationStructure:org});
+    org=data.organisationStructure||org;
+    saveDraftLocal();
+    render();
+    status('Organisation gespeichert.','ok');
+  }
+  function addSite(type){syncFromInputs(); org.sites=org.sites||[]; org.sites.push(defaultSite(type)); render(); scheduleAutoSave(type==='wohnheim'?'Haus hinzugefügt':type==='tageszentrum'?'Tageszentrum hinzugefügt':'Standort hinzugefügt');}
   $('newHouseBtn').onclick=()=>addSite('wohnheim'); $('newDayBtn').onclick=()=>addSite('tageszentrum'); $('newOtherBtn').onclick=()=>addSite('sonstiges');
   $('loadBtn').onclick=()=>load().catch(e=>status('Fehler: '+e.message,'bad')); $('saveBtn').onclick=()=>save().catch(e=>status('Fehler: '+e.message,'bad'));
   $('orgName').oninput=syncBasics; $('payrollProfile').oninput=syncBasics;
