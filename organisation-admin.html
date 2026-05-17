@@ -128,6 +128,15 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       hausdienstplan:a.hausdienstplan===undefined?def.hausdienstplan:!!a.hausdienstplan
     };
   }
+
+  function accessSettings(site){
+    const a = site && site.access && typeof site.access === 'object' ? site.access : {};
+    return {
+      enabled: !!a.enabled,
+      pinHash: String(a.pinHash || ''),
+      updatedAt: String(a.updatedAt || '')
+    };
+  }
   function realUnits(site){return (site.units||[]).filter(u=>!['pikett','hausdienstplan','nachtwache'].includes(u.type))}
   function autoFunctionChips(site){
     const a=autoFunctions(site);
