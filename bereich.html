@@ -6421,46 +6421,7 @@ function openPrintPDFPage(){
   const obs=new MutationObserver(schedulePlanHeight);
   obs.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
 })();
-</script>
-
-
-<script>
-(function(){
-  function applyDynamicTitle(){
-    const dyn = window.__ULMI_DYNAMIC_CONTEXT__ || {};
-    const name = dyn.unitName || 'Gruppe';
-    const site = dyn.siteName || '';
-    document.title = 'ULMIPOINT ' + name;
-
-    document.querySelectorAll('h1').forEach(h=>{
-      if((h.textContent||'').match(/Azoren/i)) h.textContent = name;
-    });
-
-    document.querySelectorAll('.eyebrow').forEach(e=>{
-      if((e.textContent||'').match(/POLYPOINT|ULMIPOINT|AZOREN/i)){
-        e.textContent = site ? ('ULMIPOINT · ' + site) : 'ULMIPOINT';
-      }
-    });
-
-    document.querySelectorAll('.pill').forEach(p=>{
-      if((p.textContent||'').match(/Azoren/i)){
-        p.textContent = p.textContent.replace(/Azoren/gi, name);
-      }
-    });
-
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    const nodes = [];
-    while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n=>{
-      if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/\bAzoren\b/g, name).replace(/\bAZOREN\b/g, name.toUpperCase());
-    });
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyDynamicTitle);
-  else applyDynamicTitle();
-  setTimeout(applyDynamicTitle, 250);
-  setTimeout(applyDynamicTitle, 1200);
-})();
-</script>
+<\/script>
 
 </body></html>`;
   const win=window.open('','_blank');
@@ -6545,5 +6506,44 @@ window.importBackup=importBackup;
 
 window.addEventListener('load',init);
 </script>
+
+<script>
+(function(){
+  function applyDynamicTitle(){
+    const dyn = window.__ULMI_DYNAMIC_CONTEXT__ || {};
+    const name = dyn.unitName || 'Gruppe';
+    const site = dyn.siteName || '';
+    document.title = 'ULMIPOINT ' + name;
+
+    document.querySelectorAll('h1').forEach(h=>{
+      if((h.textContent||'').match(/Azoren/i)) h.textContent = name;
+    });
+
+    document.querySelectorAll('.eyebrow').forEach(e=>{
+      if((e.textContent||'').match(/POLYPOINT|ULMIPOINT|AZOREN/i)){
+        e.textContent = site ? ('ULMIPOINT · ' + site) : 'ULMIPOINT';
+      }
+    });
+
+    document.querySelectorAll('.pill').forEach(p=>{
+      if((p.textContent||'').match(/Azoren/i)){
+        p.textContent = p.textContent.replace(/Azoren/gi, name);
+      }
+    });
+
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(n=>{
+      if(n.nodeValue) n.nodeValue = n.nodeValue.replace(/\bAzoren\b/g, name).replace(/\bAZOREN\b/g, name.toUpperCase());
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyDynamicTitle);
+  else applyDynamicTitle();
+  setTimeout(applyDynamicTitle, 250);
+  setTimeout(applyDynamicTitle, 1200);
+})();
+</script>
+
 </body>
 </html>
