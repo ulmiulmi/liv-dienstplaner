@@ -281,7 +281,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       units:site.units||[],
       selectedAt:new Date().toISOString()
     }));
-    window.open('planer.html?site='+encodeURIComponent(site.id),'_blank');
+    location.href='planer.html?site='+encodeURIComponent(site.id);
   };
   window.__orgToggle=si=>{const el=$('edit-'+si); if(el)el.classList.toggle('show')};
   window.__orgAddUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; if(realUnits(s).length>=4){status('Pro Haus sind maximal 4 Gruppen/Räume vorgesehen.','bad'); return;} s.units.push(defaultUnit(s,'wohngruppe')); render(); $('edit-'+si)?.classList.add('show')};

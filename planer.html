@@ -152,7 +152,7 @@
         <span class="pill green">GitHub Pages</span>
         <span class="pill brown">aufgeteilt</span>
         <button type="button" onclick="window.open('wunschportal.html','_blank')">👤 Wunschportal</button>
-        <button type="button" onclick="window.open('organisation-admin.html','_blank')">🏢 Organisation verwalten</button>
+        <button type="button" onclick="location.href='organisation-admin.html'">🏢 Organisation verwalten</button>
         <button id="serverSyncBtn" class="server-btn" type="button">☁️ Server</button>
       </div>
     </div>
@@ -514,7 +514,7 @@
           <div class="house-actions">
             ${showPikett ? '<button class="action pikett" data-target="pikett">Haus-Pikett</button>' : ''}
             ${showHausdienstplan ? '<button class="action plan" data-target="hausdienstplan">Haus-Dienstplan</button>' : ''}
-            <a class="action org" href="organisation-admin.html" target="_blank">Organisation bearbeiten</a>
+            <a class="action org" href="organisation-admin.html">Organisation bearbeiten</a>
           </div>
         </section>
       </main>
