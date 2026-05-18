@@ -438,10 +438,23 @@
     return !!currentAccess().canManageOrganisation || currentAccess().role==="geschaeftsleitung";
   }
 
+  function forceHouseFunctionLabels(){
+    labels.pikett = labels.pikett || "Haus-Pikett";
+    labels.hausdienstplan = labels.hausdienstplan || "Haus-Dienstplan";
+    labels.nachtwache = labels.nachtwache || "Nachtwache";
+  }
   function applyHouseContextToLabels(){
+    forceHouseFunctionLabels();
     if(!HOUSE_CONTEXT) return;
 
     const allowed = new Set(["overview"]);
+    if(superAdminActive()){
+      allowed.add("pikett");
+      allowed.add("hausdienstplan");
+      allowed.add("nachtwache");
+      allowed.add("zeiterfassung");
+      allowed.add("monatsabschluss");
+    }
     const units = realHouseUnits();
 
     units.filter(canAccessUnit).forEach(u => {
@@ -2320,6 +2333,53 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureSiteBadge);
   else ensureSiteBadge();
+})();
+</script>
+
+
+<script>
+(function(){
+  function superAdmin(){
+    try{
+      const tok=localStorage.getItem('ulmipoint_org_admin_token_v1')||'';
+      const s=JSON.parse(localStorage.getItem('ulmipoint_super_admin_v1')||'null');
+      return !!(tok || (s&&s.active&&(!s.expiresAt||new Date(s.expiresAt).getTime()>Date.now()+30000)));
+    }catch(_){return false;}
+  }
+  function hideGates(){
+    if(!superAdmin()) return;
+    ['adminRoleGate','houseAccessGate'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){
+        el.classList.add('hidden');
+        el.classList.remove('show');
+        el.setAttribute('aria-hidden','true');
+        el.style.display='none';
+        el.style.pointerEvents='none';
+      }
+    });
+  }
+  function fileInputs(){ return Array.from(document.querySelectorAll('input[type="file"]')); }
+  function openImport(){
+    const inputs=fileInputs();
+    const inp=inputs.find(i=>{
+      const h=((i.id||'')+' '+(i.name||'')+' '+(i.accept||'')+' '+(i.className||'')).toLowerCase();
+      return h.includes('import')||h.includes('backup')||h.includes('restore')||h.includes('json');
+    }) || inputs[0];
+    if(inp){ inp.click(); return true; }
+    return false;
+  }
+  document.addEventListener('click',e=>{
+    const b=e.target&&e.target.closest?e.target.closest('button,a,label'):null;
+    if(!b) return;
+    const t=((b.textContent||'')+' '+(b.id||'')+' '+(b.className||'')+' '+(b.getAttribute('onclick')||'')).toLowerCase();
+    if(t.includes('import')||t.includes('sicherung laden')||t.includes('backup laden')||t.includes('datei auswählen')){
+      setTimeout(openImport,0);
+    }
+  },true);
+  window.__ulmipointForceImportDialog=openImport;
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',hideGates); else hideGates();
+  setTimeout(hideGates,300); setTimeout(hideGates,1200);
 })();
 </script>
 
