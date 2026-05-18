@@ -118,22 +118,9 @@
   .server-role-box{grid-column:1/-1}
   @media(max-width:740px){.role-form{grid-template-columns:1fr}.role-card{padding:14px;border-radius:20px}.role-card h2{font-size:20px}}
 
-.house-access-backdrop{position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.58);display:none;align-items:center;justify-content:center;padding:18px}.house-access-backdrop.show{display:flex}.house-access-card{width:min(440px,100%);background:#fff;border:1px solid #d9e2ef;border-radius:24px;box-shadow:0 24px 80px rgba(15,23,42,.32);padding:18px}.house-access-card h2{margin:0 0 6px;font-size:24px;letter-spacing:-.04em}.house-access-card .mini{font-size:12px;color:#667085;font-weight:850;line-height:1.35}.house-access-card input{width:100%;border:1px solid #d9e2ef;border-radius:14px;background:#fff;padding:11px;font-weight:950;color:#172033;margin-top:10px}.house-access-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.house-access-actions button{border:1px solid #d9e2ef;background:#fff;border-radius:999px;padding:10px 14px;font-weight:950;cursor:pointer}.house-access-actions .primary{background:#2563eb;border-color:#2563eb;color:#fff}.house-access-status{margin-top:10px;font-size:12px;font-weight:900;color:#c73636;min-height:16px}
 </style>
 </head>
 <body>
-<div class="house-access-backdrop" id="houseAccessGate">
-  <div class="house-access-card">
-    <h2 id="houseAccessTitle">Haus geschützt</h2>
-    <div class="mini">Für diesen Standort ist ein zusätzlicher PIN nötig.</div>
-    <input id="houseAccessPin" type="password" placeholder="PIN / Passwort" autocomplete="current-password">
-    <div class="house-access-actions">
-      <button type="button" class="primary" id="houseAccessUnlockBtn">Freigeben</button>
-      <button type="button" id="houseAccessBackBtn">Zur Startseite</button>
-    </div>
-    <div class="house-access-status" id="houseAccessStatus"></div>
-  </div>
-</div>
 
 <div id="adminRoleGate" class="role-gate" aria-hidden="false">
   <div class="role-card" role="dialog" aria-modal="true" aria-labelledby="adminRoleGateTitle">
@@ -332,10 +319,6 @@
   const EXISTING_PLAN_PAGES = new Set(["azoren","bali","capri","delos","nachtwache","pikett","hausdienstplan","zeiterfassung","monatsabschluss"]);
   const HOUSE_STORAGE_KEY = "ulmipoint_selected_site_v1";
   const ORG_DRAFT_KEY = "ulmipoint_org_structure_draft_v1";
-  const HOUSE_ACCESS_SESSION_PREFIX = "ulmipoint_house_access_ok_v1__";
-  const ACCESS_KEY = "ulmipoint_current_access_v1";
-  const ORG_ADMIN_TOKEN_KEY = "ulmipoint_org_admin_token_v1";
-  const SUPER_ADMIN_KEY = "ulmipoint_super_admin_v1";
   const PLANNER_LAST_TARGET_KEY = "ulmipoint_planner_last_target_v1";
 
   function safeJsonParse(value){
@@ -404,60 +387,13 @@
     return slugId(raw);
   }
 
-
-
-  function superAdminActive(){
-    try{
-      const s=safeJsonParse(localStorage.getItem(SUPER_ADMIN_KEY));
-      if(s&&s.active&&(!s.expiresAt||new Date(s.expiresAt).getTime()>Date.now()+30000)) return s;
-    }catch(_){}
-    return null;
-  }
-
-  function currentAccess(){
-    if(superAdminActive()) return {role:"geschaeftsleitung",siteIds:["*"],unitIds:["*"],canManageOrganisation:true,superAdmin:true};
-    return safeJsonParse(localStorage.getItem(ACCESS_KEY)) || {role:"geschaeftsleitung",siteIds:["*"],unitIds:["*"],canManageOrganisation:true};
-  }
-  function canAccessUnit(unit){
-    const a=currentAccess();
-    if(a.role==="geschaeftsleitung") return true;
-    if(a.role==="leitung") return Array.isArray(a.siteIds) && a.siteIds.includes(HOUSE_ID);
-    if(a.role==="tko"){
-      const key=HOUSE_ID+"::"+plannerIdForUnit(unit);
-      return Array.isArray(a.unitIds) && a.unitIds.includes(key);
-    }
-    return false;
-  }
-  function canAccessHouseFunction(){
-    const a=currentAccess();
-    if(a.role==="geschaeftsleitung") return true;
-    if(a.role==="leitung") return Array.isArray(a.siteIds) && a.siteIds.includes(HOUSE_ID);
-    return false;
-  }
-  function canAccessOrganisation(){
-    return !!currentAccess().canManageOrganisation || currentAccess().role==="geschaeftsleitung";
-  }
-
-  function forceHouseFunctionLabels(){
-    labels.pikett = labels.pikett || "Haus-Pikett";
-    labels.hausdienstplan = labels.hausdienstplan || "Haus-Dienstplan";
-    labels.nachtwache = labels.nachtwache || "Nachtwache";
-  }
   function applyHouseContextToLabels(){
-    forceHouseFunctionLabels();
     if(!HOUSE_CONTEXT) return;
 
     const allowed = new Set(["overview"]);
-    if(superAdminActive()){
-      allowed.add("pikett");
-      allowed.add("hausdienstplan");
-      allowed.add("nachtwache");
-      allowed.add("zeiterfassung");
-      allowed.add("monatsabschluss");
-    }
     const units = realHouseUnits();
 
-    units.filter(canAccessUnit).forEach(u => {
+    units.forEach(u => {
       const id = plannerIdForUnit(u);
       if(!id) return;
       labels[id] = u.name || id;
@@ -473,16 +409,14 @@
     });
 
     // Hausfunktionen sind je nach Standorttyp optional.
-    if(canAccessHouseFunction() && autoFunctionEnabled("nachtwache") && labels.nachtwache) allowed.add("nachtwache");
-    if(canAccessHouseFunction() && autoFunctionEnabled("pikett") && labels.pikett) allowed.add("pikett");
-    if(canAccessHouseFunction() && autoFunctionEnabled("hausdienstplan") && labels.hausdienstplan) allowed.add("hausdienstplan");
+    if(autoFunctionEnabled("nachtwache") && labels.nachtwache) allowed.add("nachtwache");
+    if(autoFunctionEnabled("pikett") && labels.pikett) allowed.add("pikett");
+    if(autoFunctionEnabled("hausdienstplan") && labels.hausdienstplan) allowed.add("hausdienstplan");
 
     // Zeiterfassung und Monatsabschluss bleiben für berechtigte Planung verfügbar.
-    if(canAccessHouseFunction()){
-      ["zeiterfassung","monatsabschluss"].forEach(id => {
-        if(labels[id]) allowed.add(id);
-      });
-    }
+    ["zeiterfassung","monatsabschluss"].forEach(id => {
+      if(labels[id]) allowed.add(id);
+    });
 
     // Haus 1 kann zusätzlich mit den bestehenden festen Bereichen arbeiten,
     // wenn noch keine Organisationseinheiten gespeichert sind.
@@ -520,56 +454,6 @@
     }
   }
   applyHouseContextToLabels();
-
-  function houseAccessSettings(){
-    const a = HOUSE_CONTEXT && HOUSE_CONTEXT.access && typeof HOUSE_CONTEXT.access === "object" ? HOUSE_CONTEXT.access : {};
-    return {enabled:!!a.enabled, pinHash:String(a.pinHash||"")};
-  }
-  async function sha256(value){
-    const bytes = new TextEncoder().encode(String(value||"").trim());
-    const digest = await crypto.subtle.digest("SHA-256", bytes);
-    return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join("");
-  }
-  function houseAccessKey(){
-    return HOUSE_ACCESS_SESSION_PREFIX + HOUSE_ID;
-  }
-  function houseUnlocked(){
-    if(superAdminActive()) return true;
-    const a = houseAccessSettings();
-    if(!a.enabled || !a.pinHash) return true;
-    try{return sessionStorage.getItem(houseAccessKey()) === a.pinHash;}catch(_){return false;}
-  }
-  function showHouseAccessGate(){
-    const gate=document.getElementById("houseAccessGate");
-    if(!gate) return;
-    const title=document.getElementById("houseAccessTitle");
-    if(title) title.textContent=(HOUSE_CONTEXT&&HOUSE_CONTEXT.name?HOUSE_CONTEXT.name:"Haus")+" geschützt";
-    gate.classList.add("show");
-    setTimeout(()=>document.getElementById("houseAccessPin")?.focus(),50);
-  }
-  async function unlockHouseAccess(){
-    const input=document.getElementById("houseAccessPin");
-    const status=document.getElementById("houseAccessStatus");
-    const pin=input?input.value:"";
-    const a=houseAccessSettings();
-    const hash=await sha256(pin);
-    if(hash && hash===a.pinHash){
-      try{sessionStorage.setItem(houseAccessKey(),hash);}catch(_){}
-      document.getElementById("houseAccessGate")?.classList.remove("show");
-      if(input) input.value="";
-      if(status) status.textContent="";
-      loadPlanner(location.hash || "overview", false);
-    }else{
-      if(status) status.textContent="PIN stimmt nicht.";
-      if(input) input.select();
-    }
-  }
-  function setupHouseAccessGate(){
-    document.getElementById("houseAccessUnlockBtn")?.addEventListener("click",()=>unlockHouseAccess());
-    document.getElementById("houseAccessPin")?.addEventListener("keydown",e=>{if(e.key==="Enter")unlockHouseAccess();});
-    document.getElementById("houseAccessBackBtn")?.addEventListener("click",()=>{location.href="index.html";});
-  }
-
 
   function escapeHtml(value){
     return String(value == null ? "" : value).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -612,7 +496,6 @@
     if(id==="zeiterfassung") return "zeiterfassung-dyn.html?" + p.toString();
     if(id==="monatsabschluss") return "monatsabschluss-dyn.html?" + p.toString();
 
-    // Dynamische Gruppen/Bereiche laufen getrennt von der alten bereich.html.
     return "bereich-dyn.html?" + p.toString();
   }
 
@@ -692,12 +575,6 @@
 
 
   function loadPlanner(id, pushHash=true){
-    if(!houseUnlocked()){
-      setupHouseAccessGate();
-      showHouseAccessGate();
-      loader.style.display = 'none';
-      return;
-    }
     id = normalize(id);
     activeId = id;
     loader.style.display = 'flex';
@@ -755,16 +632,13 @@
     if(!q) return false;
     if(HOUSE_CONTEXT && Array.isArray(HOUSE_CONTEXT.units) && HOUSE_CONTEXT.units.length) return false;
     const s = serverSession();
-    const adminTok = localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||'';
-    if(!s && !adminTok) return false;
+    if(!s) return false;
 
     try{
-      const headers={'Content-Type':'application/json'};
-      if(s&&s.access_token) headers.Authorization='Bearer '+s.access_token;
       const resp = await fetch('/api/org-structure', {
         method:'POST',
-        headers,
-        body:JSON.stringify({mode:'load',orgAdminToken:adminTok})
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},
+        body:JSON.stringify({mode:'load'})
       });
       const txt = await resp.text();
       let data = {};
@@ -772,7 +646,6 @@
       if(!resp.ok || data.ok===false || !data.organisationStructure) return false;
 
       saveOrgDraft(data.organisationStructure, data.updatedAt);
-      if(data.access && !superAdminActive()) localStorage.setItem(ACCESS_KEY, JSON.stringify(data.access));
       const sites = Array.isArray(data.organisationStructure.sites) ? data.organisationStructure.sites : [];
       const found = sites.find(site => String(site.id) === String(q));
       if(found && Array.isArray(found.units) && found.units.length){
@@ -785,17 +658,7 @@
   }
 
   window.addEventListener('hashchange', () => loadPlanner(location.hash, false));
-  setupHouseAccessGate();
-  ensureHouseContextFromServer().then(reloading => {
-    if(!reloading){
-      if(!houseUnlocked()){
-        showHouseAccessGate();
-        loader.style.display = 'none';
-      }else{
-        loadPlanner(location.hash || 'overview', false);
-      }
-    }
-  });
+  ensureHouseContextFromServer().then(reloading => { if(!reloading) loadPlanner(location.hash || 'overview', false); });
 
 
   // Supabase Server-Speicher für Split-Version
@@ -1097,10 +960,8 @@
   }
   function normalizeRoleValue(v){
     v = String(v || '').trim().toLowerCase();
-    if(['admin','administrator','gl','geschaeftsleitung','geschäftsleitung','business','leitung_gl'].includes(v)) return ROLE_ADMIN;
-    if(['leitung','hausleitung','site_lead','house_lead'].includes(v)) return ROLE_ADMIN;
+    if(['admin','administrator','leitung'].includes(v)) return ROLE_ADMIN;
     if(['planner','planer','planung'].includes(v)) return ROLE_PLANNER;
-    if(['tko','teamkoordination','teamkoordinator'].includes(v)) return 'tko';
     if(['employee','mitarbeiter','ma'].includes(v)) return ROLE_EMPLOYEE;
     return v || '';
   }
@@ -1127,38 +988,7 @@
     el.classList.toggle('ok', kind === 'ok');
     el.classList.toggle('bad', kind === 'bad');
   }
-
-  function orgAdminTokenActiveForPlanner(){
-    try{
-      const tok=localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||'';
-      const s=localStorage.getItem(SUPER_ADMIN_KEY);
-      if(superAdminActive()) return true;
-      if(tok){
-        const access={ok:true,email:'org-admin',role:'geschaeftsleitung',siteIds:['*'],unitIds:['*'],canManageOrganisation:true,superAdmin:true};
-        localStorage.setItem(ACCESS_KEY,JSON.stringify(access));
-        localStorage.setItem(SUPER_ADMIN_KEY,JSON.stringify({active:true,token:tok,createdAt:new Date().toISOString()}));
-        return true;
-      }
-    }catch(_){}
-    return false;
-  }
-
-
-  function hideAdminGateForSuperAdminEarly(){
-    try{
-      if(orgAdminTokenActiveForPlanner()){
-        const gate=document.getElementById('adminRoleGate');
-        if(gate){ gate.classList.add('hidden'); gate.setAttribute('aria-hidden','true'); }
-      }
-    }catch(_){}
-  }
-
   async function evaluateAdminAccess(showStatus=false){
-    if(orgAdminTokenActiveForPlanner()){
-      setAdminGate(false);
-      if(showStatus) setServerRoleInfo('Super-Admin aktiv · Zugriff erlaubt', 'ok');
-      return true;
-    }
     loadServerConfig();
     const cfg = getServerInputs();
     const session = await getActiveServerSession();
@@ -2298,7 +2128,6 @@
   document.getElementById('serverLocalBackupBtn')?.addEventListener('click', () => { const k = makeFullLocalBackup('manual_local_download', true); serverStatus('Notfallkopie heruntergeladen und lokal abgelegt: ' + k, 'ok'); });
   document.getElementById('serverRestoreBackupBtn')?.addEventListener('click', restoreLatestLocalEmergencyBackup);
   document.getElementById('serverAutosaveToggle')?.addEventListener('change', ev => { setAutosaveEnabled(!!ev.target.checked); serverStatus(ev.target.checked ? 'Auto-Speichern aktiv.' : 'Auto-Speichern ausgeschaltet.', 'ok'); });
-  hideAdminGateForSuperAdminEarly();
   document.getElementById('adminGateLoginBtn')?.addEventListener('click', adminGateLogin);
   document.getElementById('adminGatePortalBtn')?.addEventListener('click', () => { location.href = 'wunschportal.html'; });
   document.getElementById('adminGateRetryBtn')?.addEventListener('click', () => evaluateAdminAccess(true));
@@ -2334,53 +2163,6 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureSiteBadge);
   else ensureSiteBadge();
-})();
-</script>
-
-
-<script>
-(function(){
-  function superAdmin(){
-    try{
-      const tok=localStorage.getItem('ulmipoint_org_admin_token_v1')||'';
-      const s=JSON.parse(localStorage.getItem('ulmipoint_super_admin_v1')||'null');
-      return !!(tok || (s&&s.active&&(!s.expiresAt||new Date(s.expiresAt).getTime()>Date.now()+30000)));
-    }catch(_){return false;}
-  }
-  function hideGates(){
-    if(!superAdmin()) return;
-    ['adminRoleGate','houseAccessGate'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el){
-        el.classList.add('hidden');
-        el.classList.remove('show');
-        el.setAttribute('aria-hidden','true');
-        el.style.display='none';
-        el.style.pointerEvents='none';
-      }
-    });
-  }
-  function fileInputs(){ return Array.from(document.querySelectorAll('input[type="file"]')); }
-  function openImport(){
-    const inputs=fileInputs();
-    const inp=inputs.find(i=>{
-      const h=((i.id||'')+' '+(i.name||'')+' '+(i.accept||'')+' '+(i.className||'')).toLowerCase();
-      return h.includes('import')||h.includes('backup')||h.includes('restore')||h.includes('json');
-    }) || inputs[0];
-    if(inp){ inp.click(); return true; }
-    return false;
-  }
-  document.addEventListener('click',e=>{
-    const b=e.target&&e.target.closest?e.target.closest('button,a,label'):null;
-    if(!b) return;
-    const t=((b.textContent||'')+' '+(b.id||'')+' '+(b.className||'')+' '+(b.getAttribute('onclick')||'')).toLowerCase();
-    if(t.includes('import')||t.includes('sicherung laden')||t.includes('backup laden')||t.includes('datei auswählen')){
-      setTimeout(openImport,0);
-    }
-  },true);
-  window.__ulmipointForceImportDialog=openImport;
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',hideGates); else hideGates();
-  setTimeout(hideGates,300); setTimeout(hideGates,1200);
 })();
 </script>
 

@@ -1,0 +1,13 @@
+{
+  "paket": "ulmipoint-komplettpaket-sauber-v48",
+  "inhalt": [
+    "kompletter Basisstand",
+    "Organisation / Häuser / generische Seiten",
+    "Server-Autoload v34",
+    "dynamische Hausfunktionen",
+    "neue Datei bereich-dyn.html",
+    "planer.html routet dynamische Gruppen auf bereich-dyn.html",
+    "bereich.html bleibt unangetastet"
+  ],
+  "hinweis": "Vor dem ersten Speichern zuerst nur laden und prüfen."
+}

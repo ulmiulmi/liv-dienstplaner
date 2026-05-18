@@ -18,6 +18,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 /* Haus-Pikett optisch aufgeräumt */
 .hp-hero{align-items:stretch}.hero-text{max-width:980px}.hero-text p{max-width:980px}.hero-actions{display:grid;gap:10px;min-width:min(440px,100%);align-self:stretch}.action-group{border:1px solid var(--line);border-radius:18px;background:#fbfcfe;padding:10px}.action-title{font-size:12px;color:var(--muted);font-weight:950;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}.toolbar.slim{margin:0;gap:7px}.toolbar.slim button{padding:8px 11px;font-size:12px}.pikett-control{padding:16px}.control-head,.section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}.control-head h2,.section-head h2{margin:0;font-size:20px;letter-spacing:-.03em}.control-head p,.section-head p{margin:4px 0 0;color:var(--muted);font-size:13px;font-weight:800;line-height:1.35}.status-row{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.control-grid{display:grid;grid-template-columns:170px 130px 1fr;gap:10px;align-items:end}.fieldbox label{margin-bottom:5px}.fieldbox select{width:100%}.plan-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.hp-details{border:1px solid var(--line);border-radius:18px;background:#fbfcfe;padding:0;margin-top:12px;overflow:hidden}.hp-details>summary{cursor:pointer;padding:12px 14px;font-weight:950;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px}.hp-details>summary::-webkit-details-marker{display:none}.hp-details>summary:after{content:'öffnen';font-size:11px;color:var(--muted);font-weight:950;background:#eef2f7;border-radius:999px;padding:4px 8px}.hp-details[open]>summary:after{content:'schliessen'}.hp-details .groupbox{margin:0;padding:0 12px 12px}.summary{border:1px solid var(--line);border-radius:18px;background:#fbfcfe;padding:8px}.sum{box-shadow:0 6px 16px rgba(16,24,40,.04)}.sum .mini{text-transform:uppercase;letter-spacing:.04em;font-size:10px}.table-wrap{max-height:none}.side .section-head{margin-bottom:10px}.side .section-head h2{font-size:18px}.side .issue:first-of-type{margin-top:0}@media(max-width:980px){.hero-actions{margin-top:12px}.control-head,.section-head{display:block}.status-row{justify-content:flex-start;margin-top:8px}.control-grid{grid-template-columns:1fr 1fr}.plan-actions{grid-column:1/-1;justify-content:flex-start}.summary{grid-template-columns:1fr 1fr}}@media(max-width:560px){.app{padding:10px}.control-grid{grid-template-columns:1fr}.plan-actions button,.toolbar.slim button{width:100%;justify-content:center}.hero-actions{display:block}.action-group+.action-group{margin-top:8px}.summary{grid-template-columns:1fr 1fr}.sum .v{font-size:20px}}
 
+
 /* Haus-Pikett Plan optisch ruhiger */
 .pikett-plan-card{padding:16px;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(251,252,254,.98))}
 .pikett-plan-card .section-head{padding-bottom:10px;border-bottom:1px solid #edf1f6;margin-bottom:10px}
@@ -45,6 +46,8 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 #planTable .actions button{box-shadow:none}
 @media(max-width:780px){#planTable{font-size:12px}#planTable tbody td{padding:8px 7px}.pikett-table-wrap{overflow:auto}.day-badge{min-width:54px}.day-badge .day-num{font-size:18px}}
 
+
+
 /* Haus-Pikett rechte Detailseite klarer */
 .tag-side{position:sticky;top:12px}
 .tag-side .section-head{padding-bottom:10px;border-bottom:1px solid #edf1f6;margin-bottom:10px}
@@ -55,6 +58,8 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 .candidate-list{gap:8px}.candidate{padding:10px;border-radius:16px;box-shadow:0 5px 14px rgba(16,24,40,.04)}.candidate.best{border-color:#8fbaff;background:#f3f8ff;box-shadow:0 8px 22px rgba(37,99,235,.10)}.candidate.blocked{border-style:dashed}.candidate-name-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.candidate-chipline{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}.candidate-chip{display:inline-flex;align-items:center;border-radius:999px;background:#eef2f7;color:#475467;padding:3px 7px;font-size:10px;font-weight:950}.candidate-chip.good{background:#e7f7ef;color:#0f8a5f}.candidate-chip.warn{background:#fff4d8;color:#9a6700}.candidate-score{border-radius:10px;padding:5px 7px;background:#f8fafc}.candidate-score.green{background:#f7fffb;color:#0f8a5f}.candidate-score.red{background:#fffafa;color:#c73636}.candidate .actions{align-self:center}.candidate .actions button{min-width:70px}
 @media(max-width:980px){.tag-side{position:static}.detail-kpis{grid-template-columns:1fr 1fr 1fr}}
 @media(max-width:560px){.detail-kpis{grid-template-columns:1fr}.candidate{grid-template-columns:1fr}.candidate .actions{justify-content:flex-start}.candidate .actions button{width:100%}}
+
+
 
 /* Haus-Pikett Kontrolle */
 .hp-check{padding:16px}
@@ -73,6 +78,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 .check-empty{border:1px dashed #cbd5e1;border-radius:13px;background:rgba(255,255,255,.72);padding:10px;color:var(--muted);font-weight:850;font-size:13px}
 .check-fair-table{width:100%;font-size:12px;margin-top:6px}.check-fair-table th,.check-fair-table td{padding:5px;border-bottom:1px solid #edf1f6;text-align:left;white-space:nowrap}.check-fair-table th{position:static;background:transparent}
 @media(max-width:980px){.check-grid{grid-template-columns:1fr}.tag-side{position:static}}
+
 
 /* Haus-Pikett Entscheidungsanzeige */
 /* Jahresfairness aktiv: Monat zuerst, Jahr danach */
@@ -94,6 +100,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
     <div class="hero-text">
       <div class="eyebrow">ULMIPOINT · HAUS</div>
       <h1>Haus-Pikett</h1>
+      <p>Zentrale Pikett-Planung für das ganze Haus. Pro Tag wird genau <b>1 Pikett</b> geführt. P-Einträge aus den aktiven Gruppen können übernommen werden; offene Tage werden danach fair vorgeschlagen.</p>
     </div>
     <div class="hero-actions">
       <div class="action-group">
@@ -111,7 +118,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
     <div class="control-head">
       <div>
         <h2>Monat & Planung</h2>
-        <p></p>
+        <p>Monat wählen, aktive Wohngruppen prüfen und offene Pikett-Tage vorschlagen lassen.</p>
       </div>
       <div class="status-row">
         <input type="hidden" id="profileSelect" value="default"><input type="hidden" id="readProfileSelect" value="same"><span class="pill green">Speicher dieses Geräts</span>
@@ -133,11 +140,12 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
     </details>
   </section>
 
+
   <section class="card no-print hp-overview">
     <div class="section-head">
       <div>
         <h2>Haus-Pikett Übersicht</h2>
-        <p></p>
+        <p>Schneller Überblick über den aktuellen Monat, offene Tage und Hinweise.</p>
       </div>
       <span class="pill blue" id="sMonthPill">—</span>
     </div>
@@ -155,10 +163,13 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
     </div>
   </section>
 
+
+
   <section class="card no-print hp-check">
     <div class="section-head">
       <div>
         <h2>Haus-Pikett Kontrolle</h2>
+        <p>Offene Tage, Warnungen, Fairness und geladene Gruppendaten auf einen Blick.</p>
       </div>
       <span class="pill blue">Kontrolle</span>
     </div>
@@ -172,6 +183,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
       <div class="section-head no-print">
         <div>
           <h2>Pikett-Plan</h2>
+          <p>Alle Tage des Monats klar dargestellt. Ein Klick auf einen Tag öffnet rechts die Vorschläge.</p>
         </div>
         <span class="pill blue">Monatsübersicht</span>
       </div>
@@ -183,6 +195,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
       <div class="section-head">
         <div>
           <h2>Tag & Vorschläge</h2>
+          <p>Tag anklicken und passende Personen prüfen.</p>
         </div>
       </div>
       <div id="detailBox" class="issue blue"><b>Tag wählen</b><div>Klicke links auf einen Tag, um Vorschläge aus den angehakten Wohngruppen zu sehen.</div></div>
@@ -751,12 +764,13 @@ function renderPikettKontrolle(){
   const fairHtml=fair.people.length?`<div class="check-note">Monat-Ziel: ${fair.min}-${fair.max}× · Jahr bisher: ${yearFair.min}-${yearFair.max}× · Verteilung Monat: ${fair.ok?'ausgeglichen':'prüfen'}</div><table class="check-fair-table"><thead><tr><th>Name</th><th>Gruppe</th><th>P Monat</th><th>P Jahr</th></tr></thead><tbody>${fairRows.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc((p.groups||[]).join(', '))}</td><td><b class="${fair.max>0&&p.count>fair.max?'fair-warn':'fair-ok'}">${p.count}×</b></td><td><b class="${yearFair.max>0&&(p.yearCount||0)>yearFair.max?'fair-warn':'fair-ok'}">${p.yearCount||0}×</b></td></tr>`).join('')}</tbody></table>`:`<div class="check-empty">Noch keine verfügbaren Kandidaten aus aktiven Gruppen.</div>`;
   const sourceRows=GROUPS.map(g=>{const info=groupState(g.id);const activeFlag=!!state.activeGroups?.[g.id];return `<div class="check-row"><div><b>${g.name}</b><br><span>${info.found?`${info.employees.length} Mitarbeitende geladen`:'kein Stand gefunden'}</span></div><span class="pill ${activeFlag?'green':'yellow'}">${activeFlag?'aktiv':'aus'}</span></div>`;}).join('');
   el.innerHTML=`
-    <div class="check-panel ${openCls}"><h3>Offene Tage</h3>${openHtml}</div>
-    <div class="check-panel ${warnCls}"><h3>Hinweise & Konflikte</h3>${warnHtml}</div>
+    <div class="check-panel ${openCls}"><h3>Offene Tage</h3><div class="check-note">Tage ohne Haus-Pikett und der beste aktuelle Vorschlag.</div>${openHtml}</div>
+    <div class="check-panel ${warnCls}"><h3>Hinweise & Konflikte</h3><div class="check-note">Gelbe Hinweise stoppen den Plan nicht, sollten aber geprüft werden.</div>${warnHtml}</div>
     <div class="check-panel blue"><h3>Fairness</h3>${fairHtml}</div>
-    <div class="check-panel blue"><h3>Gruppendaten</h3><div class="check-list">${sourceRows}</div></div>
+    <div class="check-panel blue"><h3>Gruppendaten</h3><div class="check-note">Welche Gruppen für Haus-Pikett verwendet werden.</div><div class="check-list">${sourceRows}</div></div>
   `;
 }
+
 
 function writeBackMessage(html,kind='blue'){
   const el=q('writeBackStatus');
@@ -817,6 +831,7 @@ function downloadCSV(){const rows=[['Datum','Haus-Pikett','Wohngruppe','Status']
 function copyPlanText(){const txt=dates.map(date=>{const a=assignedOnDate(date);return `${date}: ${a?`${a.empName} · ${a.groupName}`:'offen'}`;}).join('\n');navigator.clipboard?.writeText(txt);toast('Plan kopiert','ok');}
 function exportSicherung(){saveState(false);const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`polypoint_haus_pikett_${monthKey()}_dieses_geraet_backup.json`;a.click();URL.revokeObjectURL(a.href);}
 function importSicherung(ev){const file=ev.target.files?.[0];if(!file)return;const r=new FileReader();r.onload=()=>{try{const obj=JSON.parse(String(r.result||''));state={...defaultState(),...obj};normalizeState();makeDates();saveState(false);renderAll();toast('Pikett-Sicherung geladen','ok');}catch(e){console.warn(e);toast('Sicherung laden nicht möglich','bad');}};r.readAsText(file);ev.target.value='';}
+
 
 // Zentraler Export-Dialog: Funktionen explizit ans Fenster hängen
 window.openPrintPDFPage=openPrintPDFPage;

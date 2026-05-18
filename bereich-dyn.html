@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ULMIPOINT Bereich dynamisch</title>
+<title>ULMIPOINT Bereich</title>
 <style>
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--purple:#6f42c1;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
@@ -129,11 +129,11 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 
 <div id="startupStorageBackdrop" class="clear-modal-backdrop no-print">
   <div class="clear-modal" role="dialog" aria-modal="true" aria-labelledby="startupStorageTitle">
-    <h2 id="startupStorageTitle">Speicher für Azoren gefunden</h2>
-    <div class="mini">Du öffnest jetzt den Bereich <b>Azoren</b>. Du kannst den gespeicherten Plan laden oder nur die Stammdaten übernehmen. Bei „Frischer Plan“ bleiben Mitarbeitende, Regeln und Sollstunden erhalten; alte Dienste werden nicht geladen.</div>
+    <h2 id="startupStorageTitle">Speicher für diesen Bereich gefunden</h2>
+    <div class="mini">Du öffnest jetzt den Bereich <b id="startupAreaName">Bereich</b>. Du kannst den gespeicherten Plan laden oder nur die Stammdaten übernehmen. Bei „Frischer Plan“ bleiben Mitarbeitende, Regeln und Sollstunden erhalten; alte Dienste werden nicht geladen.</div>
     <div id="startupStorageInfo" class="issue yellow" style="margin-top:12px"></div>
     <div class="clear-modal-actions" style="justify-content:flex-start">
-      <button class="primary" onclick="chooseStartupStorage('load')">Lokaler Zwischenspeicher laden</button>
+      <button class="primary" onclick="chooseStartupStorage('load')">Speicher dieses Geräts laden</button>
       <button onclick="chooseStartupStorage('ignore')">Frischer Plan ohne alte Dienste</button>
     </div>
     <div class="clear-danger-note">Azoren speichert getrennt von den anderen Wohnbereichen. Die frühere PC/Handy-Auswahl wird nicht mehr angezeigt; alte Stände bleiben über „Daten retten“ auffindbar.</div>
@@ -149,7 +149,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
 
 <main class="app">
   <section class="hero no-print">
-    <div><div class="eyebrow">POLYPOINT Adapter · AZOREN</div><h1>Azoren · V13.0.203</h1></div>
+    <div><div class="eyebrow" id="dynEyebrow">ULMIPOINT Adapter · Bereich</div><h1 id="dynTitle">Bereich</h1></div>
     <div class="toolbar"><button class="primary" onclick="saveState(true)">Speichern</button><button onclick="loadState(true,{allowFallback:false})">Laden</button><button class="okbtn" onclick="rescueBestStoredState(true)">Daten retten</button><button onclick="makePlan(true)">Monat planen</button><button onclick="fixCurrentMonth()">Monat sperren</button><button onclick="unfixCurrentMonth()">Monat freigeben</button></div>
   </section>
   <nav class="tabs no-print">
@@ -240,14 +240,14 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:950;margin-bot
     <details class="control-accordion"><summary>Klare Befehle an die KI</summary><div class="cmd-box">Diese Befehle sind die Planungsanweisung. Planung, Kontrolle und Korrektur sollen dieselben Befehle verwenden.</div><div id="aiCommandList" class="commandgrid"></div></details>
     <div class="toolbar control-actions"><button class="primary" onclick="renderRules(); renderChecks()">Kontrolle aktualisieren</button><button onclick="makePlan(true); renderRules(); renderChecks()">Neu berechnen & kontrollieren</button></div><div id="planningPhaseLog" class="issue green" style="display:none;margin-top:10px"></div><div class="control-results-title"><span>Prüfung & Konflikte</span><span class="mini">Ergebnis der aktuellen Kontrolle</span></div><div id="issueList" style="margin-top:12px"></div></article></section>
 
-  <section id="system" class="view"><article class="card"><div class="section"><h2>Speicher & System</h2><span class="pill blue">Azoren · V13.0.203</span></div><div class="toolbar"><button onclick="tryMigrateV12()">alte Daten suchen</button><button class="okbtn" onclick="rescueBestStoredState(true)">Daten retten</button><button class="danger" onclick="clearV13Storage()">Lokaler Zwischenspeicher löschen</button></div><div id="systemInfo" class="issue green" style="margin-top:12px"></div>
+  <section id="system" class="view"><article class="card"><div class="section"><h2>Speicher & System</h2><span class="pill blue">Azoren · V13.0.203</span></div><div class="toolbar"><button onclick="tryMigrateV12()">alte Daten suchen</button><button class="okbtn" onclick="rescueBestStoredState(true)">Daten retten</button><button class="danger" onclick="clearV13Storage()">Speicher dieses Geräts löschen</button></div><div id="systemInfo" class="issue green" style="margin-top:12px"></div>
     <details open style="margin-top:12px"><summary><b>OpenAI API direkt ohne Server</b></summary>
-      <div class="issue yellow" style="margin-top:10px"><b>Hinweis</b><div>Der API-Key wird lokal im Browser gehalten und bei Sicherungen mitgenommen. Diese Datei und Sicherungs deshalb privat halten.</div></div>
+      <div class="issue yellow" style="margin-top:10px"><b>Hinweis</b><div>Der API-Key wird lokal im Browser gespeichert und im Sicherung mit exportiert. Diese Datei und Sicherungs deshalb privat halten.</div></div>
       <div class="formgrid">
         <div><label>OpenAI API-Key</label><input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" onchange="saveAPISettings(true)" onblur="saveAPISettings(false)"></div>
         <div><label>Modell</label><input id="apiModel" value="gpt-5.2" onchange="saveAPISettings(true)" onblur="saveAPISettings(false)"></div>
       </div>
-      <label style="display:flex;gap:6px;align-items:center;margin-top:8px"><input id="apiRememberSession" type="checkbox" checked onchange="saveAPISettings(true)"> API-Key im Browser speichern</label>
+      <label style="display:flex;gap:6px;align-items:center;margin-top:8px"><input id="apiRememberSession" type="checkbox" checked onchange="saveAPISettings(true)"> API-Key im Browser + Sicherung speichern</label>
       <div class="toolbar" style="margin-top:10px"><button class="primary" onclick="saveAPISettings(true)">API-Daten speichern</button><button class="primary" onclick="askOpenAIDirect()">Externe KI kontrollieren lassen</button><button onclick="forgetApiKey()">API-Key vergessen</button><button onclick="copyAIPayload()">gesendete Daten kopieren</button></div>
       <div id="apiResult" class="issue" style="margin-top:10px"><b>Bereit</b><div>Die externe KI bekommt nur den aktuell gewählten Monat, Regeln, Dienstkatalog, Mitarbeiter und Konflikte. Sie ändert den Plan nicht automatisch.</div></div>
     </details>
@@ -2582,12 +2582,12 @@ function setDeviceProfile(profile){
   try{localStorage.removeItem(DEVICE_PROFILE_KEY);}catch(e){}
   saveState(false,{force:true});
   renderSystem();
-  toast('Lokaler Zwischenspeicher aktiv','ok');
+  toast('Speicher dieses Geräts aktiv','ok');
 }
 function forgetDeviceProfile(){
   try{localStorage.removeItem(DEVICE_PROFILE_KEY);}catch(e){}
   renderSystem();
-  toast('Lokaler Zwischenspeicher bleibt aktiv','warn');
+  toast('Speicher dieses Geräts bleibt aktiv','warn');
 }
 function saveState(show=true,opts={}){
   syncOpenEditorsBeforeSave({quiet:true});
@@ -6439,11 +6439,11 @@ function importSicherung(ev){const file=ev.target.files[0];if(!file)return;const
 function download(name,content,type){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function csv(v){return '"'+String(v??'').replace(/"/g,'""')+'"';}
 function renderSystem(){const el=q('systemInfo');if(!el)return;normalizeEmployeeLimits();
-  normalizeAPISettings();const apiStored=!!state.api.key;const infos=storedStates();el.innerHTML=`<b>Speicher</b><div>Bereich: <b>${esc(PLANER_GROUP_NAME)}</b></div><div>Speicher: <b>dieses Gerät</b></div><div>Gespeichert: ${state.savedAt?new Date(state.savedAt).toLocaleString('de-CH'):'noch nicht'}</div><div>Mitarbeiter: ${state.employees.length}</div><div>Plan-Einträge: ${Object.keys(state.plan).length}</div><div>Monats-Sollstunden: ${Object.keys(state.monthTargets||{}).length}</div><div>POLYPOINT-Salden: ${Object.keys(state.balanceCarryovers||{}).length}</div><div>API-Key im Browser/Sicherung: ${apiStored?'gespeichert':'nicht gespeichert'}</div><div>API-Modell: ${esc(state.api.model||'gpt-5.2')}</div><div style="margin-top:8px"><b>Gefundene Speicherstände für ${esc(PLANER_GROUP_NAME)}:</b>${infos.length?infos.map(x=>`<div>${esc(x.label)} · ${esc(x.savedAt?new Date(x.savedAt).toLocaleString('de-CH'):'ohne Datum')} · MA ${x.employees} · Plan ${x.plan}</div>`).join(''):'<div>keine</div>'}</div><div class="mini" style="margin-top:8px">Jeder Bereich wird über den Hauptplaner synchronisiert. Alte getrennte Speicherstände werden bei Bedarf automatisch gesucht und können über „Daten retten“ übernommen werden.</div>`;}
+  normalizeAPISettings();const apiStored=!!state.api.key;const infos=storedStates();el.innerHTML=`<b>Speicher</b><div>Bereich: <b>${esc(PLANER_GROUP_NAME)}</b></div><div>Speicher: <b>dieses Gerät</b></div><div>Gespeichert: ${state.savedAt?new Date(state.savedAt).toLocaleString('de-CH'):'noch nicht'}</div><div>Mitarbeiter: ${state.employees.length}</div><div>Plan-Einträge: ${Object.keys(state.plan).length}</div><div>Monats-Sollstunden: ${Object.keys(state.monthTargets||{}).length}</div><div>POLYPOINT-Salden: ${Object.keys(state.balanceCarryovers||{}).length}</div><div>API-Key im Browser/Sicherung: ${apiStored?'gespeichert':'nicht gespeichert'}</div><div>API-Modell: ${esc(state.api.model||'gpt-5.2')}</div><div style="margin-top:8px"><b>Gefundene Speicherstände für ${esc(PLANER_GROUP_NAME)}:</b>${infos.length?infos.map(x=>`<div>${esc(x.label)} · ${esc(x.savedAt?new Date(x.savedAt).toLocaleString('de-CH'):'ohne Datum')} · MA ${x.employees} · Plan ${x.plan}</div>`).join(''):'<div>keine</div>'}</div><div class="mini" style="margin-top:8px">Jeder Bereich nutzt den Server als Hauptspeicher und diesen Browser nur als Zwischenspeicher. Vorhandene Speicherstände werden bei Bedarf automatisch gesucht und können über „Daten retten“ übernommen werden.</div>`;}
 function tryMigrateV12(){try{const raw=localStorage.getItem(OLD_KEY);if(!raw){toast('Keine alten Browserdaten gefunden','warn');return;}const old=JSON.parse(raw);if(Array.isArray(old.employees)){state.employees=old.employees.map((e,i)=>({id:String(e.id||e.key||'m'+i),name:e.name||e.n||('MA'+i),role:e.role||'FABE',pct:e.pct||e.percent||80,group:e.group!==false,fp:!!(e.fp||e.isFP),tv:canTakeTV({role:e.role||'FABE'}),split:!!e.split,officePct:e.office||e.officePct||0,apprenticeYear:e.apprenticeYear||e.year||'',schoolDays:e.schoolDays||e.school||[],officeDays:e.officeDays||[],schoolFreeDays:e.schoolFreeDays||[],activeFrom:e.activeFrom||'',activeUntil:e.activeUntil||'',active:e.active!==false}));}
 if(Array.isArray(old.duties)&&old.duties.length){/* Dienstkatalog bewusst nicht blind überschreiben */}
 if(old.clientStatus)state.dayStatus={...state.dayStatus,...old.clientStatus};saveState(true);renderAll();toast('V12-Stammdaten übernommen','ok');}catch(e){console.warn(e);toast('Migration fehlgeschlagen','bad');}}
-function clearV13Storage(){const key=currentStorageKey();if(confirm('Lokaler Zwischenspeicher wirklich löschen?')){try{localStorage.removeItem(key);}catch(e){}state=defaultState();makeDates();resetDemoData(false);renderAll();toast('Lokaler Zwischenspeicher gelöscht','warn');}}
+function clearV13Storage(){const key=currentStorageKey();if(confirm('Speicher dieses Geräts wirklich löschen?')){try{localStorage.removeItem(key);}catch(e){}state=defaultState();makeDates();resetDemoData(false);renderAll();toast('Speicher dieses Geräts gelöscht','warn');}}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 
@@ -6544,5 +6544,27 @@ window.addEventListener('load',init);
   setTimeout(applyDynamicLabels,1200);
 })();
 </script>
+
+<script>
+(function(){
+  function param(name,fallback){
+    try{return new URLSearchParams(location.search||'').get(name)||fallback||'';}catch(_){return fallback||'';}
+  }
+  function applyDynamicAreaLabels(){
+    var unitName=param('unitName','Bereich');
+    var siteName=param('siteName','Haus');
+    document.title='ULMIPOINT · '+unitName;
+    var h1=document.getElementById('dynTitle') || document.querySelector('.hero h1');
+    if(h1) h1.textContent=unitName;
+    var eyebrow=document.getElementById('dynEyebrow') || document.querySelector('.hero .eyebrow');
+    if(eyebrow) eyebrow.textContent='ULMIPOINT Adapter · '+siteName;
+    var startup=document.getElementById('startupAreaName');
+    if(startup) startup.textContent=unitName;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',applyDynamicAreaLabels);
+  else applyDynamicAreaLabels();
+})();
+</script>
+
 </body>
 </html>

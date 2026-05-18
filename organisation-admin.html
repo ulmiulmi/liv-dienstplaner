@@ -8,9 +8,9 @@
 :root{--bg:#f6f8fc;--card:#fff;--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--red:#c73636;--yellow:#9a6700;--shadow:0 12px 30px rgba(16,24,40,.08)}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
 .app{max-width:1320px;margin:0 auto;padding:14px}.hero,.card{background:#fff;border:1px solid var(--line);border-radius:26px;padding:16px;box-shadow:var(--shadow)}.card{margin-top:12px}
-.hero{display:block}.org-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;margin-bottom:12px}.org-title{min-width:0;text-align:center;justify-self:center}.liv-logo{display:block;height:64px;width:auto;max-width:min(360px,34vw);object-fit:contain;background:#fff;border-radius:8px}.brand-logo{display:block;height:96px;width:auto;max-width:min(440px,38vw);border-radius:17px;background:#08101a;box-shadow:0 8px 18px rgba(16,24,40,.10);object-fit:contain}.eyebrow{font-size:12px;font-weight:950;color:var(--blue);letter-spacing:.06em;text-transform:uppercase}
+.hero{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}.eyebrow{font-size:12px;font-weight:950;color:var(--blue);letter-spacing:.06em;text-transform:uppercase}
 h1{margin:3px 0 2px;font-size:clamp(34px,5vw,58px);line-height:.95;letter-spacing:-.07em}h2{margin:0 0 8px;font-size:22px;letter-spacing:-.04em}h3{margin:0;font-size:18px;letter-spacing:-.03em}.mini{font-size:12px;color:var(--muted);font-weight:850;line-height:1.35}
-.toolbar,.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hero>.toolbar{justify-content:center}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.toolbar,.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
 input,select{width:100%;border:1px solid var(--line);border-radius:13px;background:#fff;padding:9px;font-weight:850;color:var(--text)}
 button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 13px;font-weight:950;cursor:pointer;color:var(--text)}button:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(16,24,40,.08)}
 button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button.ok{background:#e7f7ef;border-color:#b7e4ca;color:var(--green)}button.bad{background:#ffe7e7;border-color:#f2a3a3;color:#c73636}
@@ -21,25 +21,21 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
 .units{display:flex;gap:7px;flex-wrap:wrap}.unit-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fbfcfe;border-radius:999px;padding:7px 9px;font-size:12px;font-weight:900}.unit-chip button{padding:2px 6px;font-size:10px;background:#fffafa;color:#c73636;border-color:#f2a3a3}
 .edit-panel{display:none;border:1px solid #c9dcff;background:#f7fbff;border-radius:18px;padding:10px}.edit-panel.show{display:block}.edit-grid{display:grid;grid-template-columns:1fr 150px 110px;gap:8px;margin-bottom:8px}.unit-row{display:grid;grid-template-columns:1fr 150px 150px auto;gap:8px;align-items:center;margin-top:6px}
 .empty{border:1px dashed #c9dcff;background:#f7fbff;border-radius:24px;padding:24px;text-align:center;color:#175cd3;font-weight:900}
-@media(max-width:760px){.app{padding:10px}.hero{border-radius:0 0 24px 24px;margin:-10px -10px 10px}.org-head{grid-template-columns:minmax(0,1fr) auto;gap:8px}.liv-logo{height:44px;max-width:min(210px,42vw)}.brand-logo{height:60px;max-width:min(295px,58vw);border-radius:14px}.org-title{grid-column:1/-1;grid-row:2;text-align:center}.edit-grid,.unit-row{grid-template-columns:1fr}.site-head{display:block}.actions{margin-top:8px}}
+@media(max-width:760px){.app{padding:10px}.hero{border-radius:0 0 24px 24px;margin:-10px -10px 10px}.edit-grid,.unit-row{grid-template-columns:1fr}.site-head{display:block}.actions{margin-top:8px}}
 
 .lock{position:fixed;inset:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px}
 .lock-card{max-width:520px;width:100%;background:#fff;border:1px solid var(--line);border-radius:28px;padding:18px;box-shadow:var(--shadow)}
 .lock-card h1{font-size:42px;margin:0 0 10px}
 .auto-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:10px 0}
 .auto-toggle{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:14px;padding:9px;font-weight:950;font-size:12px}
-.auto-toggle input{width:auto}.role-row{display:grid;grid-template-columns:1.3fr 160px 1fr 1fr auto;gap:8px;align-items:end;margin-top:8px}.role-row button{margin-bottom:0}.role-help{border:1px solid #c9dcff;background:#f7fbff;color:#175cd3;border-radius:14px;padding:9px;font-size:12px;font-weight:850;margin-top:8px}@media(max-width:900px){.role-row{grid-template-columns:1fr}}
+.auto-toggle input{width:auto}
 </style>
 </head>
 <body>
 <div id="orgLock" class="lock">
   <div class="lock-card">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
-      <img class="liv-logo" src="assets/liv-logo-titlebar.jpg?v=20260516-2" alt="LIV – Leben in Vielfalt" style="height:42px;max-width:190px">
-      <img class="brand-logo" src="assets/ulmipoint-titlebar.png?v=20260515-3" alt="ULMIPOINT KI-Planer" style="height:54px;max-width:210px">
-    </div>
     <div class="eyebrow">ULMIPOINT Verwaltung</div>
-    <h1>Organisation verwalten</h1>
+    <h1>Admin-Zugriff</h1>
     <div class="mini">Organisation verwalten ist geschützt.</div>
     <div style="margin-top:12px">
       <label><span class="mini">Admin-Passwort</span><input id="orgAdminPassword" type="password" autocomplete="current-password" placeholder="Admin-Passwort"></label>
@@ -53,16 +49,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
 </div>
 <div class="app">
   <section class="hero">
-    <div class="org-head">
-      <div class="brand">
-        <img class="liv-logo" src="assets/liv-logo-titlebar.jpg?v=20260516-2" alt="LIV – Leben in Vielfalt">
-      </div>
-      <div class="org-title">
-        <div class="eyebrow">ULMIPOINT Verwaltung</div>
-        <h1>Organisation</h1>
-      </div>
-      <img class="brand-logo" src="assets/ulmipoint-titlebar.png?v=20260515-3" alt="ULMIPOINT KI-Planer">
-    </div>
+    <div><div class="eyebrow">ULMIPOINT Verwaltung</div><h1>Organisation</h1></div>
     <div class="toolbar">
       <button class="primary" id="loadBtn">Laden</button>
       <button class="ok" id="saveBtn">Speichern</button>
@@ -79,16 +66,6 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     </div>
     <div id="status" class="notice" style="margin-top:10px">Noch nicht geladen.</div>
   </section>
-  <section class="card" id="accessCard">
-    <div class="toolbar" style="justify-content:space-between;margin-bottom:8px">
-      <h2 style="margin:0">Zugriffsrechte</h2>
-      <button type="button" id="addRoleBtn">+ Benutzerrecht</button>
-    </div>
-    <div class="role-help">
-      Geschäftsleitung sieht alles und darf Organisation verwalten. Leitung sieht zugeteilte Häuser komplett. TKO sieht nur zugeteilte Gruppen.
-    </div>
-    <div id="roleRows"></div>
-  </section>
   <section class="card">
     <div class="toolbar" style="justify-content:space-between;margin-bottom:10px">
       <h2 style="margin:0">Häuser und Bereiche</h2>
@@ -101,13 +78,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
 (function(){
   const SERVER_TOKEN_KEY='polypoint_server_session_v1';
   const ORG_ADMIN_TOKEN_KEY='ulmipoint_org_admin_token_v1';
-  const SUPER_ADMIN_KEY='ulmipoint_super_admin_v1';
-  const ACCESS_KEY='ulmipoint_current_access_v1';
   let org={organisation:{id:'liv',name:'LIV – Leben in Vielfalt'},payrollProfileDefault:'CH_BS_PERSONALRECHT_DEFAULT',sites:[]};
-  let accessRoles={};
-  const ORG_DRAFT_KEY='ulmipoint_org_structure_draft_v1';
-  let autoSaveTimer=null;
-  let autoSaving=false;
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const slug=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'default';
@@ -126,15 +97,6 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       nachtwache:a.nachtwache===undefined?def.nachtwache:!!a.nachtwache,
       pikett:a.pikett===undefined?def.pikett:!!a.pikett,
       hausdienstplan:a.hausdienstplan===undefined?def.hausdienstplan:!!a.hausdienstplan
-    };
-  }
-
-  function accessSettings(site){
-    const a = site && site.access && typeof site.access === 'object' ? site.access : {};
-    return {
-      enabled: !!a.enabled,
-      pinHash: String(a.pinHash || ''),
-      updatedAt: String(a.updatedAt || '')
     };
   }
   function realUnits(site){return (site.units||[]).filter(u=>!['pikett','hausdienstplan','nachtwache'].includes(u.type))}
@@ -159,151 +121,21 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   function session(){try{const s=JSON.parse(localStorage.getItem(SERVER_TOKEN_KEY)||'{}'); if(s&&s.access_token)return s;}catch(_){} return null}
   function requireSession(){const s=session(); if(!s||!s.access_token)throw new Error('Bitte im Hauptplaner über ☁️ Server einloggen.'); if(s.expires_at&&s.expires_at<Date.now()+30000)throw new Error('Server-Sitzung ist abgelaufen. Bitte neu einloggen.'); return s}
   async function api(body){
-    const s=session();
-    const headers={'Content-Type':'application/json'};
-    if(s&&s.access_token&&(!s.expires_at||s.expires_at>Date.now()+30000)){
-      headers.Authorization='Bearer '+s.access_token;
-    }
-    const resp=await fetch('/api/org-structure',{method:'POST',headers,body:JSON.stringify(Object.assign({},body,{orgAdminToken:localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||''}))});
+    const s=requireSession();
+    const resp=await fetch('/api/org-structure',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},body:JSON.stringify(Object.assign({},body,{orgAdminToken:localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||''}))});
     const txt=await resp.text(); let data={}; try{data=txt?JSON.parse(txt):{};}catch(_){data={message:txt};}
     if(!resp.ok||data.ok===false)throw new Error(data.message||('HTTP '+resp.status));
-    if(data.access) localStorage.setItem('ulmipoint_current_access_v1',JSON.stringify(data.access));
     return data;
-  }
-
-  function saveDraftLocal(){
-    try{
-      cleanupAutoUnits();
-      localStorage.setItem(ORG_DRAFT_KEY,JSON.stringify({
-        organisationStructure:org,
-        savedAt:new Date().toISOString()
-      }));
-    }catch(_){}
-  }
-  function loadDraftLocal(){
-    try{
-      const d=JSON.parse(localStorage.getItem(ORG_DRAFT_KEY)||'null');
-      if(d&&d.organisationStructure&&Array.isArray(d.organisationStructure.sites)) return d;
-    }catch(_){}
-    return null;
-  }
-  function orgSiteCount(struct){
-    try{
-      return struct && Array.isArray(struct.sites) ? struct.sites.length : 0;
-    }catch(_){
-      return 0;
-    }
-  }
-  function localDraftIsSaferThanServer(serverOrg){
-    const draft=loadDraftLocal();
-    if(!draft || !draft.organisationStructure) return false;
-    const draftCount=orgSiteCount(draft.organisationStructure);
-    const serverCount=orgSiteCount(serverOrg);
-    return draftCount > serverCount;
-  }
-  function restoreLocalDraft(reason){
-    const draft=loadDraftLocal();
-    if(!draft || !draft.organisationStructure) return false;
-    org=draft.organisationStructure;
-    cleanupAutoUnits();
-    render();
-    const when=draft.savedAt ? new Date(draft.savedAt).toLocaleString('de-CH') : 'unbekannt';
-    status('Lokaler Organisationsstand wiederhergestellt ('+reason+'). Entwurf: '+when+'. Wird wieder auf Server gespeichert …','ok');
-    setTimeout(()=>saveQuiet('lokalen Organisationsstand wiederhergestellt').catch(e=>{
-      status('Lokaler Organisationsstand ist sichtbar, aber Server-Speichern fehlgeschlagen: '+e.message,'bad');
-    }),300);
-    return true;
-  }
-  function preventAccidentalEmptySave(){
-    const draft=loadDraftLocal();
-    if(draft && draft.organisationStructure && orgSiteCount(draft.organisationStructure)>0 && orgSiteCount(org)===0){
-      org=draft.organisationStructure;
-      cleanupAutoUnits();
-      render();
-      status('Leerer Stand wurde abgefangen. Lokaler Organisationsstand bleibt erhalten.','ok');
-      return true;
-    }
-    return false;
-  }
-  async function saveQuiet(reason='Änderung'){
-    if(autoSaving) return;
-    preventAccidentalEmptySave();
-    autoSaving=true;
-    try{
-      syncFromInputs();
-      cleanupAutoUnits();
-      saveDraftLocal();
-      dedupeAccessRoles();
-      const data=await api({mode:'save',organisationStructure:Object.assign({},org,{accessRoles})});
-      org=data.organisationStructure||org;
-      saveDraftLocal();
-      status('Automatisch gespeichert: '+reason,'ok');
-    }catch(e){
-      saveDraftLocal();
-      status('Lokal gesichert, Server-Speichern fehlgeschlagen: '+e.message,'bad');
-      throw e;
-    }finally{
-      autoSaving=false;
-    }
-  }
-  function scheduleAutoSave(reason='Änderung'){
-    saveDraftLocal();
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer=setTimeout(()=>saveQuiet(reason).catch(()=>{}),700);
   }
   function lockStatus(t,k=''){const el=$('orgAdminLoginStatus'); if(el){el.textContent=t; el.className='notice'+(k?' '+k:'');}}
   function unlockOrgAdmin(){const el=$('orgLock'); if(el)el.style.display='none';}
-
-  function serverSession(){
-    try{
-      const s=JSON.parse(localStorage.getItem(SERVER_TOKEN_KEY)||'{}');
-      if(s&&s.access_token&&(!s.expires_at||s.expires_at>Date.now()+30000)) return s;
-    }catch(_){}
-    return null;
-  }
-  async function requireGeschaeftsleitung(){
-    const s=serverSession();
-    if(!s) throw new Error('Bitte zuerst im Planer über ☁️ Server einloggen.');
-    const resp=await fetch('/api/org-structure',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token},
-      body:JSON.stringify({mode:'load'})
-    });
-    const txt=await resp.text(); let data={}; try{data=txt?JSON.parse(txt):{};}catch(_){data={message:txt};}
-    if(!resp.ok||data.ok===false) throw new Error(data.message||('HTTP '+resp.status));
-    if(!data.access || !data.access.canManageOrganisation){
-      throw new Error('Organisation verwalten ist nur für Geschäftsleitung freigegeben.');
-    }
-    if(data.access) localStorage.setItem('ulmipoint_current_access_v1',JSON.stringify(data.access));
-    return data.access;
-  }
-
-
-  function setSuperAdminSession(data){
-    const expiresAt=data&&data.expiresAt?data.expiresAt:new Date(Date.now()+8*60*60*1000).toISOString();
-    const access={ok:true,email:'org-admin',role:'geschaeftsleitung',configured:0,siteIds:['*'],unitIds:['*'],canManageOrganisation:true,superAdmin:true,expiresAt};
-    try{
-      localStorage.setItem(SUPER_ADMIN_KEY,JSON.stringify({active:true,token:localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||'',expiresAt,createdAt:new Date().toISOString()}));
-      localStorage.setItem(ACCESS_KEY,JSON.stringify(access));
-    }catch(_){}
-    return access;
-  }
-  function superAdminActive(){
-    try{
-      const s=JSON.parse(localStorage.getItem(SUPER_ADMIN_KEY)||'null');
-      if(s&&s.active&&(!s.expiresAt||new Date(s.expiresAt).getTime()>Date.now()+30000)) return s;
-    }catch(_){}
-    return null;
-  }
-
   async function orgAdminLogin(){
     const pw=$('orgAdminPassword').value;
-    lockStatus('Admin-Passwort wird geprüft …');
+    lockStatus('Admin-Zugriff wird geprüft …');
     const resp=await fetch('/api/org-admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'login',password:pw})});
     const txt=await resp.text(); let data={}; try{data=txt?JSON.parse(txt):{};}catch(_){data={message:txt};}
     if(!resp.ok||data.ok===false)throw new Error(data.message||('HTTP '+resp.status));
     localStorage.setItem(ORG_ADMIN_TOKEN_KEY,data.token);
-    setSuperAdminSession(data);
     unlockOrgAdmin();
     status('Admin-Zugriff aktiv. Organisation kann gespeichert werden.','ok');
     await load();
@@ -314,10 +146,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     try{
       const resp=await fetch('/api/org-admin-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'check',token:tok})});
       const data=await resp.json();
-      if(data.ok&&data.authenticated){
-        setSuperAdminSession({expiresAt:data.expiresAt||''});
-        unlockOrgAdmin();return true;
-      }
+      if(data.ok&&data.authenticated){unlockOrgAdmin();return true;}
     }catch(_){}
     return false;
   }
@@ -348,7 +177,6 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       canton:'BS',
       active:true,
       automaticFunctions:defaultAutoFunctions(type),
-      access:{enabled:false,pinHash:'',updatedAt:''},
       units:[]
     };
   }
@@ -364,101 +192,6 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     org.organisation.id=slug(org.organisation.name);
     org.payrollProfileDefault=$('payrollProfile').value.trim()||'CH_BS_PERSONALRECHT_DEFAULT';
   }
-
-
-  function roleRank(role){
-    return role==='geschaeftsleitung' ? 3 : role==='leitung' ? 2 : role==='tko' ? 1 : 0;
-  }
-  function mergeRoleEntry(a,b){
-    a=a||{role:'tko',siteIds:[],unitIds:[]};
-    b=b||{role:'tko',siteIds:[],unitIds:[]};
-    const role=roleRank(a.role)>=roleRank(b.role)?a.role:b.role;
-    return {
-      role,
-      siteIds:Array.from(new Set([...(a.siteIds||[]),...(b.siteIds||[])])),
-      unitIds:Array.from(new Set([...(a.unitIds||[]),...(b.unitIds||[])]))
-    };
-  }
-  function dedupeAccessRoles(){
-    const next={};
-    Object.entries(accessRoles||{}).forEach(([email,r])=>{
-      const key=String(email||'').trim().toLowerCase();
-      if(!key) return;
-      next[key]=mergeRoleEntry(next[key],r);
-    });
-    accessRoles=next;
-  }
-
-  function roleLabel(role){
-    return ({geschaeftsleitung:'Geschäftsleitung',leitung:'Leitung',tko:'TKO'})[role]||role;
-  }
-  function roleOptions(selected){
-    return ['geschaeftsleitung','leitung','tko'].map(r=>`<option value="${r}" ${selected===r?'selected':''}>${roleLabel(r)}</option>`).join('');
-  }
-  function siteOptions(selected){
-    const ids=Array.isArray(selected)?selected:[];
-    return (org.sites||[]).map(s=>`<option value="${esc(s.id)}" ${ids.includes(s.id)?'selected':''}>${esc(s.name)}</option>`).join('');
-  }
-  function unitOptions(selected){
-    const ids=Array.isArray(selected)?selected:[];
-    let opts='';
-    (org.sites||[]).forEach(site=>{
-      realUnits(site).forEach(u=>{
-        const key=site.id+'::'+(u.plannerKey||u.id);
-        opts+=`<option value="${esc(key)}" ${ids.includes(key)?'selected':''}>${esc(site.name)} · ${esc(u.name)}</option>`;
-      });
-    });
-    return opts;
-  }
-  function renderRoles(){
-    dedupeAccessRoles();
-    const rows=$('roleRows');
-    if(!rows) return;
-    const entries=Object.entries(accessRoles||{});
-    rows.innerHTML=entries.map(([email,r],idx)=>`
-      <div class="role-row">
-        <label><span class="mini">E-Mail</span><input data-role-index="${idx}" data-role-field="email" value="${esc(email)}"></label>
-        <label><span class="mini">Rolle</span><select data-role-index="${idx}" data-role-field="role">${roleOptions(r.role||'tko')}</select></label>
-        <label><span class="mini">Häuser für Leitung</span><select data-role-index="${idx}" data-role-field="siteIds" multiple size="3">${siteOptions(r.siteIds||[])}</select></label>
-        <label><span class="mini">Gruppen für TKO</span><select data-role-index="${idx}" data-role-field="unitIds" multiple size="3">${unitOptions(r.unitIds||[])}</select></label>
-        <button type="button" class="bad" onclick="window.__removeRole(${idx})">löschen</button>
-      </div>
-    `).join('') || '<div class="empty">Noch keine Benutzerrechte erfasst.</div>';
-    rows.querySelectorAll('[data-role-index]').forEach(el=>{
-      el.onchange=()=>{syncRolesFromInputs();scheduleAutoSave('Zugriffsrechte geändert');};
-      el.oninput=()=>{syncRolesFromInputs();saveDraftLocal();};
-    });
-  }
-  function syncRolesFromInputs(){
-    const entries=Object.entries(accessRoles||{}).map(([email,r])=>({email,role:r.role||'tko',siteIds:r.siteIds||[],unitIds:r.unitIds||[]}));
-    document.querySelectorAll('[data-role-index]').forEach(el=>{
-      const i=Number(el.dataset.roleIndex), f=el.dataset.roleField;
-      if(!entries[i]) return;
-      if(f==='siteIds' || f==='unitIds'){
-        entries[i][f]=Array.from(el.selectedOptions||[]).map(o=>o.value).filter(Boolean);
-      }else{
-        entries[i][f]=el.value.trim();
-      }
-    });
-    const next={};
-    entries.forEach(r=>{
-      const email=String(r.email||'').trim().toLowerCase();
-      if(!email) return;
-      const entry={role:r.role||'tko',siteIds:r.siteIds||[],unitIds:r.unitIds||[]};
-      next[email]=mergeRoleEntry(next[email],entry);
-    });
-    accessRoles=next;
-  }
-
-  window.__removeRole=idx=>{
-    syncRolesFromInputs();
-    const entries=Object.entries(accessRoles||{});
-    entries.splice(idx,1);
-    accessRoles=Object.fromEntries(entries);
-    renderRoles();
-    scheduleAutoSave('Benutzerrecht entfernt');
-  };
-
   function render(){
     cleanupAutoUnits();
     $('orgName').value=org.organisation?.name||'LIV – Leben in Vielfalt';
@@ -498,14 +231,6 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
             <label class="auto-toggle"><input type="checkbox" data-site="${si}" data-auto="pikett" ${autoFunctions(site).pikett?'checked':''}> Haus-Pikett</label>
             <label class="auto-toggle"><input type="checkbox" data-site="${si}" data-auto="hausdienstplan" ${autoFunctions(site).hausdienstplan?'checked':''}> Haus-Dienstplan</label>
           </div>
-          <div class="access-box">
-            <h4>Haus-Schutz</h4>
-            <div class="access-grid">
-              <label class="access-toggle"><input type="checkbox" data-site="${si}" data-access-enabled ${accessSettings(site).enabled?'checked':''}> PIN beim Öffnen verlangen</label>
-              <label><span class="mini">Neuer PIN / neues Passwort</span><input type="password" data-site="${si}" data-access-pin placeholder="${accessSettings(site).pinHash?'PIN ist gesetzt':'noch kein PIN gesetzt'}" autocomplete="new-password"></label>
-            </div>
-            <div class="mini">Der PIN gilt nur für diesen Standort. Leer lassen = bestehenden PIN behalten.</div>
-          </div>
           <div class="actions">
             <button type="button" onclick="window.__orgAddUnit(${si})">+ Gruppe/Bereich</button>
             <button type="button" onclick="window.__orgAddDayUnit(${si})">+ Tageszentrum-Team</button>
@@ -523,34 +248,11 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
         </div>
       </article>
     `).join('') || '<div class="empty">Noch keine Häuser oder Tageszentren erstellt.</div>';
-    renderRoles();
-    document.querySelectorAll('[data-site]').forEach(el=>{
-      el.oninput=()=>{syncFromInputs();saveDraftLocal();};
-      el.onchange=async()=>{
-        if(el.dataset.accessPin!==undefined){
-          const si=Number(el.dataset.site);
-          const pin=el.value.trim();
-          if(pin && org.sites[si]){
-            org.sites[si].access=accessSettings(org.sites[si]);
-            org.sites[si].access.pinHash=await hashPin(pin);
-            org.sites[si].access.enabled=true;
-            org.sites[si].access.updatedAt=new Date().toISOString();
-            el.value='';
-            render();
-            $('edit-'+si)?.classList.add('show');
-            scheduleAutoSave('Haus-PIN gesetzt');
-            return;
-          }
-        }
-        syncFromInputs();
-        scheduleAutoSave('Änderung');
-      };
-    });
+    document.querySelectorAll('[data-site]').forEach(el=>{el.oninput=syncFromInputs;el.onchange=syncFromInputs;});
   }
   function syncFromInputs(){
     cleanupAutoUnits();
     syncBasics();
-    syncRolesFromInputs();
     document.querySelectorAll('[data-site]:not([data-unit])').forEach(el=>{
       const si=Number(el.dataset.site), f=el.dataset.field;
       if(org.sites[si]){org.sites[si][f]=el.value; if(f==='name')org.sites[si].id=slug(el.value);}
@@ -562,101 +264,37 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
         org.sites[si].automaticFunctions[f]=!!el.checked;
       }
     });
-    document.querySelectorAll('[data-access-enabled]').forEach(el=>{
-      const si=Number(el.dataset.site);
-      if(org.sites[si]){
-        org.sites[si].access=accessSettings(org.sites[si]);
-        org.sites[si].access.enabled=!!el.checked;
-      }
-    });
     document.querySelectorAll('[data-unit]').forEach(el=>{
       const si=Number(el.dataset.site), ui=Number(el.dataset.unit), f=el.dataset.field;
       if(org.sites[si]&&org.sites[si].units[ui]){org.sites[si].units[ui][f]=el.value; if(f==='name')org.sites[si].units[ui].id=slug(el.value);}
     });
   }
-  window.__orgOpenSite=async si=>{
+  window.__orgOpenSite=si=>{
     syncFromInputs();
     const site=org.sites[si];
     if(!site)return;
-    try{
-      status('Organisation wird vor dem Öffnen gespeichert …');
-      await saveQuiet('vor Öffnen gespeichert');
-    }catch(e){
-      status('Konnte nicht auf Server speichern. Haus wird nur lokal geöffnet: '+e.message,'bad');
-    }
-    const fresh=org.sites.find(s=>s.id===site.id)||site;
     localStorage.setItem('ulmipoint_selected_site_v1',JSON.stringify({
-      id:fresh.id,
-      name:fresh.name,
-      type:fresh.type,
-      canton:fresh.canton||'BS',
-      automaticFunctions:autoFunctions(fresh),
-      access:accessSettings(fresh),
-      units:realUnits(fresh),
+      id:site.id,
+      name:site.name,
+      type:site.type,
+      canton:site.canton||'BS',
+      units:site.units||[],
       selectedAt:new Date().toISOString()
     }));
-    location.href='planer.html?site='+encodeURIComponent(fresh.id);
+    window.open('planer.html?site='+encodeURIComponent(site.id),'_blank');
   };
   window.__orgToggle=si=>{const el=$('edit-'+si); if(el)el.classList.toggle('show')};
-  window.__orgAddUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; if(realUnits(s).length>=4){status('Pro Haus sind maximal 4 Gruppen/Räume vorgesehen.','bad'); return;} s.units.push(defaultUnit(s,'wohngruppe')); render(); $('edit-'+si)?.classList.add('show'); scheduleAutoSave('Gruppe/Bereich hinzugefügt')};
-  window.__orgAddDayUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; if(realUnits(s).length>=4){status('Pro Haus sind maximal 4 Gruppen/Räume vorgesehen.','bad'); return;} s.units.push(defaultUnit(s,'tageszentrum')); render(); $('edit-'+si)?.classList.add('show'); scheduleAutoSave('Team hinzugefügt')};
-  window.__orgRemoveUnit=(si,ui)=>{syncFromInputs(); if(org.sites[si])org.sites[si].units.splice(ui,1); render(); scheduleAutoSave('Bereich entfernt')};
-  window.__orgRemoveSite=si=>{syncFromInputs(); if(confirm('Standort wirklich löschen?')){org.sites.splice(si,1); render(); scheduleAutoSave('Standort entfernt')}};
-  async function load(){
-    status('Organisation wird geladen …');
-    try{
-      const data=await api({mode:'load'});
-      accessRoles=data.accessRoles||accessRoles||{};
-      const serverOrg=data.organisationStructure||org;
-
-      if(localDraftIsSaferThanServer(serverOrg)){
-        restoreLocalDraft('Serverstand hatte weniger Häuser');
-        return;
-      }
-
-      org=serverOrg;
-      saveDraftLocal();
-      render();
-      status('Organisation geladen.','ok');
-    }catch(e){
-      const draft=loadDraftLocal();
-      if(draft){
-        org=draft.organisationStructure;
-        cleanupAutoUnits();
-        render();
-        status('Server konnte nicht geladen werden. Lokaler Entwurf wurde wiederhergestellt: '+(draft.savedAt?new Date(draft.savedAt).toLocaleString('de-CH'):''),'bad');
-        return;
-      }
-      throw e;
-    }
-  }
-  async function save(){
-    syncFromInputs();
-    dedupeAccessRoles();
-    cleanupAutoUnits();
-    preventAccidentalEmptySave();
-    saveDraftLocal();
-    status('Organisation wird gespeichert …');
-    dedupeAccessRoles();
-      const data=await api({mode:'save',organisationStructure:Object.assign({},org,{accessRoles})});
-    org=data.organisationStructure||org;
-    saveDraftLocal();
-    render();
-    status('Organisation gespeichert.','ok');
-  }
-  function addSite(type){syncFromInputs(); org.sites=org.sites||[]; org.sites.push(defaultSite(type)); render(); scheduleAutoSave(type==='wohnheim'?'Haus hinzugefügt':type==='tageszentrum'?'Tageszentrum hinzugefügt':'Standort hinzugefügt');}
+  window.__orgAddUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; if(realUnits(s).length>=4){status('Pro Haus sind maximal 4 Gruppen/Räume vorgesehen.','bad'); return;} s.units.push(defaultUnit(s,'wohngruppe')); render(); $('edit-'+si)?.classList.add('show')};
+  window.__orgAddDayUnit=si=>{syncFromInputs(); const s=org.sites[si]; if(!s)return; s.units=s.units||[]; if(realUnits(s).length>=4){status('Pro Haus sind maximal 4 Gruppen/Räume vorgesehen.','bad'); return;} s.units.push(defaultUnit(s,'tageszentrum')); render(); $('edit-'+si)?.classList.add('show')};
+  window.__orgRemoveUnit=(si,ui)=>{syncFromInputs(); if(org.sites[si])org.sites[si].units.splice(ui,1); render();};
+  window.__orgRemoveSite=si=>{syncFromInputs(); if(confirm('Standort wirklich löschen?')){org.sites.splice(si,1); render();}};
+  async function load(){status('Organisation wird geladen …'); const data=await api({mode:'load'}); org=data.organisationStructure||org; render(); status('Organisation geladen.','ok');}
+  async function save(){syncFromInputs(); cleanupAutoUnits(); status('Organisation wird gespeichert …'); const data=await api({mode:'save',organisationStructure:org}); org=data.organisationStructure||org; render(); status('Organisation gespeichert.','ok');}
+  function addSite(type){syncFromInputs(); org.sites=org.sites||[]; org.sites.push(defaultSite(type)); render();}
   $('newHouseBtn').onclick=()=>addSite('wohnheim'); $('newDayBtn').onclick=()=>addSite('tageszentrum'); $('newOtherBtn').onclick=()=>addSite('sonstiges');
-  $('addRoleBtn').onclick=()=>{syncRolesFromInputs(); const email='benutzer'+(Object.keys(accessRoles).length+1)+'@liv.ch'; accessRoles[email]={role:'tko',siteIds:[],unitIds:[]}; renderRoles(); scheduleAutoSave('Benutzerrecht hinzugefügt');};
   $('loadBtn').onclick=()=>load().catch(e=>status('Fehler: '+e.message,'bad')); $('saveBtn').onclick=()=>save().catch(e=>status('Fehler: '+e.message,'bad'));
   $('orgName').oninput=syncBasics; $('payrollProfile').oninput=syncBasics;
   render();
-  if(superAdminActive()){
-    lockStatus('Super-Admin aktiv. Admin-Passwort ist bereits gültig.','ok');
-  } else requireGeschaeftsleitung().then(()=>{
-    lockStatus('Geschäftsleitung bestätigt. Bitte Admin-Passwort eingeben.','ok');
-  }).catch(()=>{
-    lockStatus('Bitte Admin-Passwort eingeben. Server-/Rollenprüfung erfolgt danach, falls verfügbar.');
-  });
   const loginBtn=$('orgAdminLoginBtn');
   if(loginBtn) loginBtn.onclick=()=>orgAdminLogin().catch(e=>lockStatus('Fehler: '+e.message,'bad'));
   const pwInput=$('orgAdminPassword');
