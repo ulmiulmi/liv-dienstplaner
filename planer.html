@@ -612,7 +612,8 @@
     if(id==="zeiterfassung") return "zeiterfassung-dyn.html?" + p.toString();
     if(id==="monatsabschluss") return "monatsabschluss-dyn.html?" + p.toString();
 
-    return "bereich.html?" + p.toString();
+    // Dynamische Gruppen/Bereiche laufen getrennt von der alten bereich.html.
+    return "bereich-dyn.html?" + p.toString();
   }
 
 
