@@ -27,6 +27,9 @@ async function verifySupabaseUser(req){
   if(!resp.ok || !user || !user.id) throw new Error('Server-Sitzung ungültig oder abgelaufen. Bitte neu einloggen.');
   return user;
 }
+async function verifySupabaseUserOptional(req){
+  try{return await verifySupabaseUser(req);}catch(_){return null;}
+}
 function assertAdminAccess(data,user){
   const email=normEmail(user.email);
   const roles=roleStore(data);
@@ -64,11 +67,27 @@ function defaultOrganisation(){
   };
 }
 function ensureOrg(data){
+  let changed=false;
   if(!data.organisationStructure || typeof data.organisationStructure!=='object'){
     data.organisationStructure=defaultOrganisation();
+    changed=true;
   }
-  if(!Array.isArray(data.organisationStructure.sites)) data.organisationStructure.sites=[];
-  return data.organisationStructure;
+  if(!Array.isArray(data.organisationStructure.sites)){
+    data.organisationStructure.sites=[];
+    changed=true;
+  }
+  // Notfall-Sicherung: ein leer gespeicherter Organisationsstand darf die Häuser nicht verschwinden lassen.
+  if(data.organisationStructure.sites.length===0){
+    const def=defaultOrganisation();
+    data.organisationStructure=Object.assign({}, def, {
+      organisation: data.organisationStructure.organisation || def.organisation,
+      payrollProfileDefault: data.organisationStructure.payrollProfileDefault || def.payrollProfileDefault,
+      createdAt: data.organisationStructure.createdAt || def.createdAt,
+      updatedAt: new Date().toISOString()
+    });
+    changed=true;
+  }
+  return {org:data.organisationStructure,changed};
 }
 function defaultAutomaticFunctions(type){
   type=safe(type)||'wohnheim';
@@ -104,6 +123,8 @@ function sanitizeUnit(unit){
   if(type==='pikett' || type==='hausdienstplan' || type==='nachtwache') return null;
   return {id,name,type,plannerKey:safe(unit.plannerKey)||id,active:unit.active!==false};
 }
+function accessForOrgAdmin(){return {ok:true,email:'org-admin-password',role:'org-admin-password',configured:1};}
+function accessForPublicLoad(){return {ok:true,email:'',role:'public-organisation-load',configured:0};}
 
 module.exports=async function handler(req,res){
   if(allow(req,res))return;
@@ -113,23 +134,40 @@ module.exports=async function handler(req,res){
     const mode=safe(body.mode||'load');
     const row=await fetchStore();
     const data=row.data||{};
-    const user=await verifySupabaseUser(req);
-    const access=assertAdminAccess(data,user);
-    const org=ensureOrg(data);
+    const ensured=ensureOrg(data);
+    const org=ensured.org;
+    const hasOrgAdmin=validOrgAdminSession(data, body.orgAdminToken);
+    let user=null;
+    let access=null;
 
-    // Lesen darf mit normaler Admin-/Planer-Server-Sitzung erfolgen.
-    // Speichern bleibt zusätzlich mit dem Admin-Passwort-Token geschützt.
     if(mode==='load'){
-      return send(res,200,{ok:true,mode,organisationStructure:org,access,updatedAt:row.updated_at});
-    }
-
-    if(!validOrgAdminSession(data, body.orgAdminToken)){
-      return send(res,401,{ok:false,message:'Organisation speichern nur mit Admin-Passwort.'});
+      if(hasOrgAdmin){
+        access=accessForOrgAdmin();
+      }else{
+        user=await verifySupabaseUserOptional(req);
+        if(user){
+          try{ access=assertAdminAccess(data,user); }catch(_){ access=accessForPublicLoad(); }
+        }else{
+          access=accessForPublicLoad();
+        }
+      }
+      return send(res,200,{ok:true,mode,organisationStructure:org,access,updatedAt:row.updated_at,seeded:ensured.changed});
     }
 
     if(mode==='save'){
+      if(hasOrgAdmin){
+        access=accessForOrgAdmin();
+        user={id:'org-admin-password',email:'org-admin-password'};
+      }else{
+        user=await verifySupabaseUser(req);
+        access=assertAdminAccess(data,user);
+      }
+
       const incoming=body.organisationStructure;
       if(!incoming || typeof incoming!=='object') throw new Error('Keine Organisationsstruktur übergeben.');
+      let sites=Array.isArray(incoming.sites)?incoming.sites.map(sanitizeSite):[];
+      // Auch beim Speichern nie versehentlich komplett leeren.
+      if(sites.length===0) sites=defaultOrganisation().sites;
       const next={
         version:'1.0',
         organisation:{
@@ -137,7 +175,7 @@ module.exports=async function handler(req,res){
           name:safe(incoming.organisation?.name)||'LIV – Leben in Vielfalt'
         },
         payrollProfileDefault:safe(incoming.payrollProfileDefault)||'CH_BS_PERSONALRECHT_DEFAULT',
-        sites:Array.isArray(incoming.sites)?incoming.sites.map(sanitizeSite):[],
+        sites,
         createdAt:org.createdAt||new Date().toISOString(),
         updatedAt:new Date().toISOString(),
         updatedBy:{email:user.email||'',id:user.id||''}
