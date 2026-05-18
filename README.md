@@ -1,32 +1,28 @@
-# LIV Dienstplaner
-
-Aktueller produktiver Stand bleibt auf `main`.
-
-## Branches
-
-- `main`: produktive Version, deployed durch Vercel.
-- `sicherung-vor-umbau-v13`: Rettungsstand vor groesserem Umbau.
-- `umbau-projektstruktur`: Arbeitsbranch fuer die Aufteilung der grossen Ein-Datei-App.
-
-## Zielstruktur
-
-Die bisherige grosse `index.html` wird schrittweise aufgeteilt:
-
-```text
-index.html
-bereiche/
-  overview.html
-  azoren.html
-  bali.html
-  capri.html
-  delos.html
-  nachtwache.html
-  pikett.html
-  hausdienstplan.html
-data/
-  planer-manifest.json
-tools/
-  split_embedded_planer.py
-```
-
-Die Planungsdaten bleiben weiterhin in Supabase. Die Aufteilung betrifft nur den App-Code, nicht die gespeicherten Serverdaten.
+{
+  "auf_github_loeschen_wenn_vorhanden": [
+    "*.zip",
+    "*.txt",
+    "upload_hinweis*",
+    "alte Patch-ZIP-Dateien v35-v49"
+  ],
+  "nicht_loeschen": [
+    "index.html",
+    "planer.html",
+    "organisation-admin.html",
+    "organisation.html",
+    "haus.html",
+    "bereich.html",
+    "bereich-dyn.html",
+    "azoren.html",
+    "bali.html",
+    "capri.html",
+    "delos.html",
+    "nachtwache-dyn.html",
+    "pikett-dyn.html",
+    "hausdienstplan-dyn.html",
+    "zeiterfassung-dyn.html",
+    "monatsabschluss-dyn.html",
+    "api/",
+    "assets/"
+  ]
+}

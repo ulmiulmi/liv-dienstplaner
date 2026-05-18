@@ -1,58 +1,85 @@
-<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ULMIPOINT Deploy Check</title>
-<style>
-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;background:#f6f8fc;color:#172033}
-main{max-width:900px;margin:0 auto;padding:18px}
-.card{background:#fff;border:1px solid #d9e2ef;border-radius:22px;padding:16px;margin:12px 0;box-shadow:0 12px 30px rgba(16,24,40,.08)}
-h1{font-size:42px;line-height:.95;letter-spacing:-.06em;margin:0 0 8px}
-button{border:0;border-radius:999px;background:#2563eb;color:#fff;font-weight:900;padding:10px 14px}
-pre{white-space:pre-wrap;background:#111827;color:#fff;border-radius:16px;padding:12px;overflow:auto}
-.ok{color:#0f8a5f;font-weight:900}.bad{color:#c73636;font-weight:900}.warn{color:#9a6700;font-weight:900}
-</style>
-</head>
-<body>
-<main>
-  <div class="card">
-    <div style="font-size:12px;font-weight:950;color:#2563eb;letter-spacing:.08em;text-transform:uppercase">ULMIPOINT</div>
-    <h1>Deploy Check</h1>
-    <p>Prüft nur lesend, ob Seiten und API erreichbar sind.</p>
-    <button onclick="run()">Prüfen</button>
-  </div>
-  <div class="card" id="result">Noch nicht geprüft.</div>
-</main>
-<script>
-async function check(path, method){
-  const r={path,ok:false,status:0,type:'',text:''};
-  try{
-    const resp=await fetch(path,{method:method||'GET',cache:'no-store'});
-    r.status=resp.status;
-    r.type=resp.headers.get('content-type')||'';
-    r.text=(await resp.text()).slice(0,500);
-    r.ok=resp.ok;
-  }catch(e){r.text=String(e&&e.message||e);}
-  return r;
+// ULMIPOINT Monatsabschluss Regeln – Standard Basel-Stadt
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function isoDate(y,m,d){ return y + '-' + pad2(m) + '-' + pad2(d); }
+
+function easterSunday(year){
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const mm = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * mm + 114) / 31);
+  const day = ((h + l - 7 * mm + 114) % 31) + 1;
+  return new Date(Date.UTC(year, month - 1, day));
 }
-function line(r){
-  const codeVisible = r.path.includes('/api/') && r.text.includes('module.exports') && r.text.includes('const ');
-  const klass = codeVisible ? 'bad' : (r.ok?'ok':(r.status?'warn':'bad'));
-  const note = codeVisible ? ' ⚠️ Quellcode sichtbar' : '';
-  return `<div class="${klass}">${r.ok?'✓':'!'} ${r.path} · ${r.status||'Fehler'} · ${r.type}${note}</div>`;
+function addDays(date, days){ const d = new Date(date.getTime()); d.setUTCDate(d.getUTCDate() + days); return d; }
+function dateToIso(date){ return isoDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()); }
+
+function baselStadtHolidays(year){
+  const easter = easterSunday(year);
+  return [
+    {date: isoDate(year,1,1), code:'NEUJAHR', name:'Neujahrstag', type:'cantonal_legal'},
+    {date: dateToIso(addDays(easter,-2)), code:'KARFREITAG', name:'Karfreitag', type:'cantonal_legal'},
+    {date: dateToIso(addDays(easter,1)), code:'OSTERMONTAG', name:'Ostermontag', type:'cantonal_legal'},
+    {date: isoDate(year,5,1), code:'TAG_DER_ARBEIT', name:'Tag der Arbeit', type:'cantonal_legal'},
+    {date: dateToIso(addDays(easter,39)), code:'AUFFAHRT', name:'Auffahrt', type:'cantonal_legal'},
+    {date: dateToIso(addDays(easter,50)), code:'PFINGSTMONTAG', name:'Pfingstmontag', type:'cantonal_legal'},
+    {date: isoDate(year,8,1), code:'BUNDESFEIERTAG', name:'Bundesfeiertag', type:'federal_legal'},
+    {date: isoDate(year,12,25), code:'WEIHNACHTEN', name:'Weihnachtstag', type:'cantonal_legal'},
+    {date: isoDate(year,12,26), code:'STEPHANSTAG', name:'Stephanstag', type:'cantonal_legal'}
+  ].sort((a,b)=>a.date.localeCompare(b.date));
 }
-async function run(){
-  const tests=[
-    await check('/index.html'),
-    await check('/planer.html'),
-    await check('/organisation-admin.html'),
-    await check('/bereich-dyn.html'),
-    await check('/api/org-structure','POST'),
-    await check('/api/org-structure.js','POST')
-  ];
-  document.getElementById('result').innerHTML=tests.map(line).join('')+'<pre>'+JSON.stringify(tests,null,2)+'</pre>';
+function isBaselStadtHoliday(dateIso){
+  const y = Number(String(dateIso||'').slice(0,4));
+  if(!y) return null;
+  return baselStadtHolidays(y).find(h => h.date === String(dateIso).slice(0,10)) || null;
 }
-</script>
-</body>
-</html>
+function isSunday(dateIso){
+  const d = new Date(String(dateIso).slice(0,10) + 'T12:00:00Z');
+  return d.getUTCDay() === 0;
+}
+
+const BASEL_STADT_DEFAULT_RULESET = {
+  id: 'CH_BS_PERSONALRECHT_DEFAULT',
+  canton: 'BS',
+  cantonName: 'Basel-Stadt',
+  holidayProfile: 'CH-BS',
+  sundayAndHolidayEquivalent: true,
+  statusCodes: {
+    sick: ['KR'],
+    vacation: ['FER'],
+    school: ['SCH','SCHF'],
+    training: ['WB','WB%'],
+    compensation: ['KGL','KF'],
+    free: ['FR']
+  },
+  controlRules: {
+    plannedDutyRequiresClockIn: true,
+    plannedDutyRequiresClockOut: true,
+    absenceNormallyRequiresNoStamp: true,
+    warnIfStampedOnSickVacationSchool: true,
+    warnIfClockOutBeforeClockIn: true
+  },
+  allowanceBasis: {
+    holidayHoursUseBaselStadtCalendar: true,
+    sundayHoursUseCalendarSunday: true,
+    sundayAndHolidayDoNotDoubleCount: true,
+    nightWindowStart: '20:00',
+    nightWindowEnd: '06:00',
+    nightWindowEditable: true,
+    saturdayAllowanceEditable: true,
+    sundayHolidayAllowanceEditable: true,
+    pikettEditable: true,
+    ratesEditable: true
+  }
+};
+
+module.exports = { BASEL_STADT_DEFAULT_RULESET, baselStadtHolidays, isBaselStadtHoliday, isSunday };

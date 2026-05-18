@@ -1,90 +1,390 @@
-<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ULMIPOINT Haus</title>
-<style>
-:root{--text:#172033;--muted:#667085;--line:#d9e2ef;--blue:#2563eb;--green:#0f8a5f;--yellow:#9a6700;--brown:#7c2d12;--shadow:0 12px 30px rgba(16,24,40,.08)}
-*{box-sizing:border-box}
-body{margin:0;background:linear-gradient(135deg,#edf5ff,#fbfcff 55%,#f6f8fc);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);padding:14px}
-.hero,.house{background:#fff;border:1px solid var(--line);border-radius:28px;padding:16px;box-shadow:var(--shadow)}
-.hero{margin-bottom:12px}.eyebrow{font-size:12px;font-weight:950;color:var(--blue);letter-spacing:.06em;text-transform:uppercase}
-h1{margin:3px 0 4px;font-size:clamp(38px,7vw,74px);letter-spacing:-.08em;line-height:.9}.mini{font-size:13px;color:var(--muted);font-weight:850}
-.house{position:relative;overflow:hidden;min-height:520px;background:linear-gradient(180deg,#dff3ff 0 30%,#fff 30% 100%)}
-.roof{position:absolute;left:8%;right:8%;top:26px;height:120px;background:linear-gradient(135deg,#4b5563,#111827);clip-path:polygon(50% 0,100% 100%,0 100%);opacity:.92}
-.facade{position:relative;margin-top:84px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.9);border-radius:26px;padding:18px;box-shadow:0 18px 40px rgba(16,24,40,.12)}
-.top-functions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:-58px 0 14px;position:relative;z-index:2}
-.fn{border:1px solid rgba(255,255,255,.35);border-radius:22px;padding:14px 18px;font-weight:950;cursor:pointer;box-shadow:0 12px 28px rgba(16,24,40,.18)}
-.fn.night{background:linear-gradient(135deg,#111827,#1e3a8a);color:#fff;min-width:230px}.fn.pikett{background:#fff7e6;color:#9a6700;border-color:#f3d28f}.fn.plan{background:#eaf2ff;color:#2563eb;border-color:#c9dcff}
-.rooms{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.room{min-height:150px;border:1px solid rgba(255,255,255,.7);border-radius:24px;padding:16px;text-align:left;box-shadow:0 12px 26px rgba(16,24,40,.12);cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden}
-.room:before{content:"";position:absolute;inset:10px;border:1px solid rgba(255,255,255,.55);border-radius:18px;pointer-events:none}.room strong{font-size:clamp(24px,4vw,38px);letter-spacing:-.06em;line-height:.9;position:relative;z-index:1}.room small{font-size:12px;font-weight:950;opacity:.8;position:relative;z-index:1}.emoji{font-size:34px;position:absolute;right:16px;top:14px}.empty{background:linear-gradient(135deg,#f8fafc,#eef2f7);color:#667085;cursor:default}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.btn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:10px 14px;font-weight:950;text-decoration:none;color:var(--text)}
-@media(max-width:700px){body{padding:10px}.house{min-height:auto;border-radius:22px}.rooms{grid-template-columns:1fr}.top-functions{margin:-40px 0 12px}.fn.night{min-width:auto;width:100%}}
-</style>
-</head>
-<body>
-<section class="hero">
-  <div class="eyebrow" id="siteType">ULMIPOINT</div>
-  <h1 id="siteName">Haus</h1>
-  <div class="mini">Eigene Startseite für diesen Standort.</div>
-</section>
+const {allow,send,readBody,fetchStore,saveStore}=require('./_wishlib');
+const {BASEL_STADT_DEFAULT_RULESET, baselStadtHolidays, isBaselStadtHoliday, isSunday}=require('./_timeClockRules');
 
-<main class="house">
-  <div class="roof"></div>
-  <section class="facade">
-    <div class="top-functions" id="functionButtons"></div>
-    <div class="rooms" id="rooms"></div>
-    <div class="actions">
-      <a class="btn" href="organisation-admin.html" target="_blank">Organisation bearbeiten</a>
-    </div>
-  </section>
-</main>
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.ULMIPOINT_SUPABASE_URL || process.env.POLYPOINT_SUPABASE_URL;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SECRET_KEY;
 
-<script>
-(function(){
-  const p=new URLSearchParams(location.search);
-  const site={
-    id:p.get('siteId')||'haus',
-    name:p.get('siteName')||'Haus',
-    type:p.get('siteType')||'wohnheim',
-    canton:p.get('canton')||'BS'
-  };
-  function safeJson(v,fallback){try{return JSON.parse(v||'')}catch(_){return fallback}}
-  const units=safeJson(p.get('units'),[]).slice(0,4);
-  const auto=Object.assign(site.type==='wohnheim'?{nachtwache:true,pikett:true,hausdienstplan:true}:{nachtwache:false,pikett:false,hausdienstplan:false}, safeJson(p.get('auto'),{}));
-  const palettes=[
-    {emoji:'🌿',bg:'linear-gradient(135deg,#d8f3dc,#95d5b2)',text:'#1b4332'},
-    {emoji:'🌊',bg:'linear-gradient(135deg,#caf0f8,#48cae4)',text:'#023e8a'},
-    {emoji:'🌸',bg:'linear-gradient(135deg,#ffe5ec,#ffafcc)',text:'#7a1134'},
-    {emoji:'☀️',bg:'linear-gradient(135deg,#fff3b0,#f9c74f)',text:'#7c4a03'}
-  ];
-  function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-  function slug(s){return String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'bereich'}
-  function open(id){parent.postMessage({type:'loadPlanner',id},'*')}
-  document.title='ULMIPOINT · '+site.name;
-  document.getElementById('siteName').textContent=site.name;
-  document.getElementById('siteType').textContent='ULMIPOINT · '+(site.type==='tageszentrum'?'Tageszentrum':'Haus');
+function safe(v){return String(v||'').trim();}
+function normEmail(v){return safe(v).toLowerCase();}
+function parseJsonMaybe(v){ if(!v||typeof v!=='string')return null; try{return JSON.parse(v)}catch(_){return null} }
+function normText(v){ return String(v||'').trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' '); }
+function groupKey(v){return normText(v||'allgemein')}
+function pad2(n){return String(n).padStart(2,'0')}
+function isoDate(y,m,d){return y+'-'+pad2(m)+'-'+pad2(d)}
+function minutesToHours(m){return Math.round((m/60)*100)/100}
+function normalizeRole(v){v=safe(v).toLowerCase(); if(['admin','administrator','leitung'].includes(v))return 'admin'; if(['planner','planer','planung'].includes(v))return 'planner'; if(['employee','mitarbeiter','ma'].includes(v))return 'employee'; return v;}
+function roleStore(data){const roles=(data&&typeof data==='object')?(data.accessRoles||data.roles||{}):{}; return roles&&typeof roles==='object'?roles:{};}
 
-  const f=[];
-  if(auto.nachtwache) f.push('<button class="fn night" data-id="nachtwache">Nachtwache</button>');
-  if(auto.pikett) f.push('<button class="fn pikett" data-id="pikett">Haus-Pikett</button>');
-  if(auto.hausdienstplan) f.push('<button class="fn plan" data-id="hausdienstplan">Haus-Dienstplan</button>');
-  document.getElementById('functionButtons').innerHTML=f.join('');
+async function verifySupabaseUser(req){
+  const auth=safe(req.headers.authorization || req.headers.Authorization);
+  const token=auth.replace(/^Bearer\s+/i,'');
+  if(!token) throw new Error('Keine Server-Sitzung übergeben. Bitte im Hauptplaner über ☁️ Server einloggen.');
+  if(!SUPABASE_URL || !SERVICE_KEY) throw new Error('Server-Umgebung fehlt: SUPABASE_URL oder SERVICE KEY.');
+  const resp=await fetch(SUPABASE_URL + '/auth/v1/user', {method:'GET', headers:{'apikey':SERVICE_KEY,'Authorization':'Bearer '+token}});
+  const txt=await resp.text(); let user=null; try{user=txt?JSON.parse(txt):null;}catch(_){}
+  if(!resp.ok || !user || !user.id) throw new Error('Server-Sitzung ungültig oder abgelaufen. Bitte neu einloggen.');
+  return user;
+}
+function assertAdminAccess(data,user){
+  const email=normEmail(user.email);
+  const roles=roleStore(data);
+  const configured=Object.keys(roles).length;
+  if(!configured) return {ok:true,email,role:'transition',configured};
+  const entry=roles[email];
+  const role=normalizeRole(typeof entry==='string'?entry:entry?.role);
+  if(role==='admin' || role==='planner') return {ok:true,email,role,configured};
+  throw new Error('Keine Admin-/Planer-Rolle für '+(email||'diese Sitzung')+'.');
+}
 
-  const cards=[];
-  units.forEach((u,i)=>{
-    const id=slug(u.plannerKey||u.id||u.name);
-    const pal=palettes[i%palettes.length];
-    cards.push('<button class="room" data-id="'+esc(id)+'" style="background:'+pal.bg+';color:'+pal.text+'"><span class="emoji">'+pal.emoji+'</span><strong>'+esc(u.name||('Gruppe '+(i+1)))+'</strong><small>'+esc(u.type||'Gruppe')+'</small></button>');
+function groupFromKey(key,obj){
+  const raw=String(obj?.planerGroupName || obj?.groupName || key || '').replace(/^polypoint_/,'').replace(/_/g,' ').trim();
+  if(/azoren/i.test(raw))return 'Azoren'; if(/bali/i.test(raw))return 'Bali'; if(/capri/i.test(raw))return 'Capri'; if(/delos/i.test(raw))return 'Delos'; if(/nacht/i.test(raw))return 'Nachtwache'; if(/pikett/i.test(raw))return 'Haus-Pikett'; if(/haus.*dienst|hausdienst/i.test(raw))return 'Haus-Dienstplan';
+  return raw || 'Allgemein';
+}
+function extractEmployeesWithState(data){
+  const out=[]; const items=data?.items||{};
+  Object.entries(items).forEach(([key,val])=>{
+    const st=parseJsonMaybe(val); if(!st||!Array.isArray(st.employees))return;
+    const group=groupFromKey(key,st);
+    st.employees.forEach((emp,idx)=>{
+      if(!emp||emp.active===false)return; const name=safe(emp.name); if(!name)return;
+      out.push({id:String(emp.id||name),name,role:String(emp.role||''),group,groupKey:groupKey(group),sourceKey:key,index:idx,state:st});
+    });
   });
-  for(let i=units.length;i<4;i++){
-    cards.push('<div class="room empty"><span class="emoji">➕</span><strong>Raum frei</strong><small>in Organisation erfassen</small></div>');
+  const seen=new Set(), uniq=[];
+  out.forEach(e=>{const k=(e.group+'|'+e.id+'|'+e.name).toLowerCase(); if(seen.has(k))return; seen.add(k); uniq.push(e);});
+  uniq.sort((a,b)=>a.group.localeCompare(b.group,'de')||a.name.localeCompare(b.name,'de'));
+  return uniq;
+}
+function dutyByCode(st,code){return (Array.isArray(st?.duties)?st.duties:[]).find(d=>safe(d.code).toUpperCase()===safe(code).toUpperCase())||null}
+function planEntryForEmployee(st,emp,date){
+  const plan=st?.plan&&typeof st.plan==='object'?st.plan:{};
+  const ids=[emp.id, emp.name].filter(Boolean).map(String);
+  for(const id of ids){ const e=plan[date+'__'+id]; if(e)return e; }
+  for(const [k,e] of Object.entries(plan)){
+    if(!String(k).startsWith(date+'__'))continue;
+    const pid=String(k).split('__')[1]||'';
+    if(normText(pid)===normText(emp.name)||String(pid)===String(emp.id))return e;
   }
-  document.getElementById('rooms').innerHTML=cards.join('');
-  document.querySelectorAll('[data-id]').forEach(btn=>btn.onclick=()=>open(btn.dataset.id));
-})();
-</script>
-</body>
-</html>
+  return null;
+}
+function statusFromCode(code){
+  code=safe(code).toUpperCase();
+  const st=BASEL_STADT_DEFAULT_RULESET.statusCodes;
+  if(st.sick.includes(code))return 'krank';
+  if(st.vacation.includes(code))return 'ferien';
+  if(st.school.includes(code))return 'schule';
+  if(st.training.includes(code))return 'weiterbildung';
+  if(st.compensation.includes(code))return 'kompensation';
+  if(st.free.includes(code) || !code)return 'frei';
+  return 'dienst';
+}
+function dutyLabel(st,entry){
+  const code=safe(entry?.code).toUpperCase(); if(!code)return 'frei / leer';
+  const d=dutyByCode(st,code);
+  const name=safe(d?.name||entry?.name);
+  const time=d?.start&&d?.end ? d.start+'–'+d.end : '';
+  return [code,name,time].filter(Boolean).join(' · ');
+}
+function plannedMinutes(st,entry){
+  const code=safe(entry?.code).toUpperCase(); const d=dutyByCode(st,code);
+  const start=safe(d?.start), end=safe(d?.end);
+  if(!start||!end)return 0;
+  const [sh,sm]=start.split(':').map(Number); const [eh,em]=end.split(':').map(Number);
+  if(!Number.isFinite(sh)||!Number.isFinite(eh))return 0;
+  let s=sh*60+(sm||0), e=eh*60+(em||0);
+  if(e<=s)e+=1440;
+  return Math.max(0,e-s);
+}
+function eventEmpKey(e){return [e.employee?.groupKey||groupKey(e.group), e.employeeId||'', e.employeeName||''].join('|').toLowerCase();}
+function empKey(e){return [e.groupKey||groupKey(e.group), e.id||'', e.name||''].join('|').toLowerCase();}
+function eventAt(e){const d=new Date(e.at); return Number.isFinite(d.getTime())?d:null}
+function minutesBetween(a,b){return Math.max(0,Math.round((b.getTime()-a.getTime())/60000))}
+function dateOnly(d){return d.toISOString().slice(0,10)}
+function localIsoDay(iso){return String(iso||'').slice(0,10)}
+
+function pairEventsForEmployee(events,emp){
+  const key=empKey(emp);
+  const list=events.filter(e=>eventEmpKey(e)===key).map(e=>Object.assign({},e,{_date:eventAt(e)})).filter(e=>e._date).sort((a,b)=>a._date-b._date);
+  const pairs=[]; let open=null;
+  for(const e of list){
+    const act=safe(e.action).toLowerCase();
+    if(act.includes('kommen')){
+      if(open)pairs.push({start:open._date,end:null,startEvent:open,endEvent:null,warning:'Kommen ohne Gehen vor nächstem Kommen'});
+      open=e;
+    }else if(act.includes('gehen')){
+      if(open){ pairs.push({start:open._date,end:e._date,startEvent:open,endEvent:e}); open=null; }
+      else pairs.push({start:null,end:e._date,startEvent:null,endEvent:e,warning:'Gehen ohne Kommen'});
+    }
+  }
+  if(open)pairs.push({start:open._date,end:null,startEvent:open,endEvent:null,warning:'Kommen ohne Gehen'});
+  return pairs;
+}
+function pairsStartingOnDate(pairs,date){
+  return pairs.filter(p=>p.start && dateOnly(p.start)===date);
+}
+function nightMinutes(start,end){
+  if(!start||!end)return 0;
+  let min=0; const cur=new Date(start.getTime());
+  while(cur<end){
+    const next=new Date(Math.min(end.getTime(), cur.getTime()+15*60000));
+    const h=cur.getUTCHours(), m=cur.getUTCMinutes(); const tod=h*60+m;
+    if(tod>=20*60 || tod<6*60) min+=minutesBetween(cur,next);
+    cur.setTime(next.getTime());
+  }
+  return min;
+}
+function saturdayMinutes(start,end){
+  if(!start||!end)return 0;
+  let min=0; const cur=new Date(start.getTime());
+  while(cur<end){
+    const next=new Date(Math.min(end.getTime(), cur.getTime()+15*60000));
+    const day=dateOnly(cur);
+    const d=new Date(day+'T12:00:00Z');
+    if(d.getUTCDay()===6 && !isBaselStadtHoliday(day)) min+=minutesBetween(cur,next);
+    cur.setTime(next.getTime());
+  }
+  return min;
+}
+function sundayHolidayMinutes(start,end){
+  if(!start||!end)return 0;
+  let min=0; const cur=new Date(start.getTime());
+  while(cur<end){
+    const next=new Date(Math.min(end.getTime(), cur.getTime()+15*60000));
+    const day=dateOnly(cur);
+    if(isSunday(day) || isBaselStadtHoliday(day)) min+=minutesBetween(cur,next);
+    cur.setTime(next.getTime());
+  }
+  return min;
+}
+function rateNumber(v){
+  const n=Number(v);
+  return Number.isFinite(n)?Math.max(0,n):0;
+}
+function allowanceRatesFromBody(body){
+  const r=body&&body.allowanceRates&&typeof body.allowanceRates==='object'?body.allowanceRates:{};
+  return {
+    night: rateNumber(r.night),
+    saturday: rateNumber(r.saturday),
+    sundayHoliday: rateNumber(r.sundayHoliday),
+    pikett: rateNumber(r.pikett)
+  };
+}
+
+function monthDays(monthKey){
+  const [y,m]=String(monthKey).split('-').map(Number);
+  const n=new Date(Date.UTC(y,m,0)).getUTCDate();
+  const out=[]; for(let d=1;d<=n;d++)out.push(isoDate(y,m,d));
+  return out;
+}
+
+module.exports=async function handler(req,res){
+  if(allow(req,res))return;
+  if(req.method!=='POST')return send(res,405,{ok:false,message:'Nur POST erlaubt.'});
+  try{
+    const body=await readBody(req);
+    const monthKey=safe(body.monthKey || new Date().toISOString().slice(0,7));
+    if(!/^\d{4}-\d{2}$/.test(monthKey)) throw new Error('Monat fehlt oder ist ungültig.');
+    const row=await fetchStore();
+    const data=row.data||{};
+    const user=await verifySupabaseUser(req);
+    const access=assertAdminAccess(data,user);
+
+    if(!data.timeClock || typeof data.timeClock!=='object') data.timeClock={version:'1.0',events:[],locations:{},api:{mode:'prepared'}};
+    if(!data.timeClock.monthlyClose || typeof data.timeClock.monthlyClose!=='object') data.timeClock.monthlyClose={rules:{},drafts:{}};
+    if(!data.timeClock.monthlyClose.rules || typeof data.timeClock.monthlyClose.rules!=='object') data.timeClock.monthlyClose.rules={};
+    if(!data.timeClock.monthlyClose.drafts || typeof data.timeClock.monthlyClose.drafts!=='object') data.timeClock.monthlyClose.drafts={};
+    if(!data.timeClock.monthlyClose.employeeDrafts || typeof data.timeClock.monthlyClose.employeeDrafts!=='object') data.timeClock.monthlyClose.employeeDrafts={};
+
+    const mode=safe(body.mode||'calculate');
+
+    if(mode==='load_rules'){
+      const rules=data.timeClock.monthlyClose.rules || {};
+      return send(res,200,{ok:true,mode,rules,access,updatedAt:row.updated_at});
+    }
+
+    if(mode==='save_rules'){
+      const next=allowanceRatesFromBody(body);
+      data.timeClock.monthlyClose.rules.allowanceRates=next;
+      data.timeClock.monthlyClose.rules.updatedAt=new Date().toISOString();
+      data.timeClock.monthlyClose.rules.updatedBy={email:user.email||'',id:user.id||''};
+      const saved=await saveStore(data);
+      return send(res,200,{ok:true,mode,rules:data.timeClock.monthlyClose.rules,access,updatedAt:saved.updated_at||data.timeClock.monthlyClose.rules.updatedAt});
+    }
+
+    if(mode==='load_draft'){
+      const draft=data.timeClock.monthlyClose.drafts[monthKey] || null;
+      const employeeDrafts=data.timeClock.monthlyClose.employeeDrafts[monthKey] || {};
+      return send(res,200,{ok:true,mode,monthKey,draft,employeeDrafts,access,updatedAt:row.updated_at});
+    }
+
+    if(mode==='list_drafts'){
+      const drafts=data.timeClock.monthlyClose.drafts || {};
+      const employeeDrafts=data.timeClock.monthlyClose.employeeDrafts || {};
+      const months=Array.from(new Set(Object.keys(drafts).concat(Object.keys(employeeDrafts)))).sort().reverse();
+      return send(res,200,{ok:true,mode,months:months.map(m=>({monthKey:m,monthDraft:!!drafts[m],employeeCount:employeeDrafts[m]?Object.keys(employeeDrafts[m]).length:0,savedAt:drafts[m]?.savedAt||''})),access,updatedAt:row.updated_at});
+    }
+
+    const allowanceRates=Object.assign(
+      {},
+      data.timeClock.monthlyClose.rules.allowanceRates || {},
+      body.allowanceRates ? allowanceRatesFromBody(body) : {}
+    );
+
+    let employees=extractEmployeesWithState(data);
+    const bulkMode = mode === 'save_all_drafts';
+    if(!bulkMode && body.group) employees=employees.filter(e=>safe(e.group).toLowerCase()===safe(body.group).toLowerCase());
+    if(!bulkMode && body.employeeName) employees=employees.filter(e=>safe(e.name).toLowerCase().includes(safe(body.employeeName).toLowerCase()));
+    const allEvents=Array.isArray(data.timeClock?.events)?data.timeClock.events:[];
+    const days=monthDays(monthKey);
+    const [year]=monthKey.split('-').map(Number);
+    const holidayList=baselStadtHolidays(year);
+
+    const employeeSummaries=[];
+    const detailRows=[];
+
+    for(const emp of employees){
+      const pairs=pairEventsForEmployee(allEvents,emp);
+      const sum={employeeId:emp.id,employeeName:emp.name,group:emp.group,plannedMinutes:0,workedMinutes:0,diffMinutes:0,nightMinutes:0,saturdayMinutes:0,sundayHolidayMinutes:0,nightAllowance:0,saturdayAllowance:0,sundayHolidayAllowance:0,totalAllowance:0,krank:0,ferien:0,schule:0,weiterbildung:0,frei:0,dienstTage:0,warnings:0};
+
+      for(const date of days){
+        const st=emp.state; const entry=planEntryForEmployee(st,emp,date); const code=safe(entry?.code).toUpperCase();
+        const status=statusFromCode(code);
+        const planned= status==='dienst' ? plannedMinutes(st,entry) : 0;
+        const holiday=isBaselStadtHoliday(date); const sunday=isSunday(date);
+        const dayPairs=pairsStartingOnDate(pairs,date);
+        let worked=0, night=0, sat=0, sh=0, first='', last='';
+        const warnings=[];
+
+        dayPairs.forEach(p=>{
+          if(p.warning) warnings.push(p.warning);
+          if(p.start && !first) first=p.start.toISOString();
+          if(p.end) last=p.end.toISOString();
+          if(p.start && p.end){
+            const wm=minutesBetween(p.start,p.end);
+            worked+=wm; night+=nightMinutes(p.start,p.end); sat+=saturdayMinutes(p.start,p.end); sh+=sundayHolidayMinutes(p.start,p.end);
+          }
+        });
+
+        if(status==='dienst'){
+          sum.dienstTage++; sum.plannedMinutes+=planned;
+          if(!dayPairs.some(p=>p.start)) warnings.push('Dienst geplant, kein Kommen');
+          if(dayPairs.some(p=>p.start&&!p.end)) warnings.push('Kommen vorhanden, Gehen fehlt');
+        }else{
+          if(status==='krank')sum.krank++;
+          if(status==='ferien')sum.ferien++;
+          if(status==='schule')sum.schule++;
+          if(status==='weiterbildung')sum.weiterbildung++;
+          if(status==='frei')sum.frei++;
+          if(dayPairs.length) warnings.push('Stempelung trotz '+status);
+        }
+        if(dayPairs.some(p=>p.start&&p.end&&p.end<p.start)) warnings.push('Gehen vor Kommen');
+
+        const nightAllowance=minutesToHours(night)*allowanceRates.night;
+        const saturdayAllowance=minutesToHours(sat)*allowanceRates.saturday;
+        const sundayHolidayAllowance=minutesToHours(sh)*allowanceRates.sundayHoliday;
+        const totalAllowance=nightAllowance+saturdayAllowance+sundayHolidayAllowance;
+
+        sum.workedMinutes+=worked; sum.nightMinutes+=night; sum.saturdayMinutes+=sat; sum.sundayHolidayMinutes+=sh;
+        sum.nightAllowance+=nightAllowance; sum.saturdayAllowance+=saturdayAllowance; sum.sundayHolidayAllowance+=sundayHolidayAllowance; sum.totalAllowance+=totalAllowance;
+        sum.warnings+=warnings.length;
+
+        detailRows.push({
+          date,
+          weekday:['So','Mo','Di','Mi','Do','Fr','Sa'][new Date(date+'T12:00:00Z').getUTCDay()],
+          employeeId:emp.id, employeeName:emp.name, group:emp.group,
+          code, planLabel:dutyLabel(st,entry), status,
+          holiday: holiday?holiday.name:'',
+          sunday,
+          plannedHours:minutesToHours(planned),
+          workedHours:minutesToHours(worked),
+          diffHours:minutesToHours(worked-planned),
+          nightHours:minutesToHours(night),
+          saturdayHours:minutesToHours(sat),
+          sundayHolidayHours:minutesToHours(sh),
+          nightAllowance:Math.round(nightAllowance*100)/100,
+          saturdayAllowance:Math.round(saturdayAllowance*100)/100,
+          sundayHolidayAllowance:Math.round(sundayHolidayAllowance*100)/100,
+          totalAllowance:Math.round(totalAllowance*100)/100,
+          firstClock:first, lastClock:last,
+          warnings
+        });
+      }
+      sum.diffMinutes=sum.workedMinutes-sum.plannedMinutes;
+      employeeSummaries.push(Object.assign({},sum,{
+        plannedHours:minutesToHours(sum.plannedMinutes),
+        workedHours:minutesToHours(sum.workedMinutes),
+        diffHours:minutesToHours(sum.diffMinutes),
+        nightHours:minutesToHours(sum.nightMinutes),
+        saturdayHours:minutesToHours(sum.saturdayMinutes),
+        sundayHolidayHours:minutesToHours(sum.sundayHolidayMinutes),
+        nightAllowance:Math.round(sum.nightAllowance*100)/100,
+        saturdayAllowance:Math.round(sum.saturdayAllowance*100)/100,
+        sundayHolidayAllowance:Math.round(sum.sundayHolidayAllowance*100)/100,
+        totalAllowance:Math.round(sum.totalAllowance*100)/100
+      }));
+    }
+
+    const totals=employeeSummaries.reduce((a,e)=>{
+      ['plannedMinutes','workedMinutes','diffMinutes','nightMinutes','saturdayMinutes','sundayHolidayMinutes','nightAllowance','saturdayAllowance','sundayHolidayAllowance','totalAllowance','krank','ferien','schule','weiterbildung','frei','dienstTage','warnings'].forEach(k=>a[k]=(a[k]||0)+(e[k]||0));
+      return a;
+    },{});
+    Object.assign(totals,{
+      plannedHours:minutesToHours(totals.plannedMinutes||0),
+      workedHours:minutesToHours(totals.workedMinutes||0),
+      diffHours:minutesToHours(totals.diffMinutes||0),
+      nightHours:minutesToHours(totals.nightMinutes||0),
+      saturdayHours:minutesToHours(totals.saturdayMinutes||0),
+      sundayHolidayHours:minutesToHours(totals.sundayHolidayMinutes||0),
+      nightAllowance:Math.round((totals.nightAllowance||0)*100)/100,
+      saturdayAllowance:Math.round((totals.saturdayAllowance||0)*100)/100,
+      sundayHolidayAllowance:Math.round((totals.sundayHolidayAllowance||0)*100)/100,
+      totalAllowance:Math.round((totals.totalAllowance||0)*100)/100
+    });
+
+    const result={ok:true,mode,monthKey,canton:'BS',holidayProfile:'CH-BS',ruleset:BASEL_STADT_DEFAULT_RULESET,allowanceRates,holidays:holidayList,totals,employees:employeeSummaries,days:detailRows,access,updatedAt:row.updated_at};
+
+    if(mode==='save_draft' || mode==='save_all_drafts'){
+      const now=new Date().toISOString();
+      const status = mode === 'save_all_drafts' ? 'bulk_draft' : 'draft';
+      data.timeClock.monthlyClose.drafts[monthKey]={
+        monthKey,
+        savedAt:now,
+        savedBy:{email:user.email||'',id:user.id||''},
+        allowanceRates,
+        totals,
+        employees:employeeSummaries,
+        days:detailRows,
+        canton:'BS',
+        holidayProfile:'CH-BS',
+        status
+      };
+
+      const employeeMap={};
+      for(const emp of employeeSummaries){
+        const key=[emp.group,emp.employeeId,emp.employeeName].join('|').toLowerCase();
+        employeeMap[key]={
+          monthKey,
+          savedAt:now,
+          savedBy:{email:user.email||'',id:user.id||''},
+          allowanceRates,
+          employee:emp,
+          days:detailRows.filter(d=>d.employeeId===emp.employeeId && d.employeeName===emp.employeeName && d.group===emp.group),
+          canton:'BS',
+          holidayProfile:'CH-BS',
+          status
+        };
+      }
+      data.timeClock.monthlyClose.employeeDrafts[monthKey]=employeeMap;
+
+      const saved=await saveStore(data);
+      result.savedDraft=data.timeClock.monthlyClose.drafts[monthKey];
+      result.savedEmployeeDrafts=Object.keys(employeeMap).length;
+      result.updatedAt=saved.updated_at||now;
+    }
+
+    return send(res,200,result);
+  }catch(err){
+    return send(res,400,{ok:false,message:err.message||String(err)});
+  }
+};
