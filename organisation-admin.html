@@ -233,6 +233,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
       syncFromInputs();
       cleanupAutoUnits();
       saveDraftLocal();
+      dedupeAccessRoles();
       const data=await api({mode:'save',organisationStructure:Object.assign({},org,{accessRoles})});
       org=data.organisationStructure||org;
       saveDraftLocal();
@@ -364,6 +365,30 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     org.payrollProfileDefault=$('payrollProfile').value.trim()||'CH_BS_PERSONALRECHT_DEFAULT';
   }
 
+
+  function roleRank(role){
+    return role==='geschaeftsleitung' ? 3 : role==='leitung' ? 2 : role==='tko' ? 1 : 0;
+  }
+  function mergeRoleEntry(a,b){
+    a=a||{role:'tko',siteIds:[],unitIds:[]};
+    b=b||{role:'tko',siteIds:[],unitIds:[]};
+    const role=roleRank(a.role)>=roleRank(b.role)?a.role:b.role;
+    return {
+      role,
+      siteIds:Array.from(new Set([...(a.siteIds||[]),...(b.siteIds||[])])),
+      unitIds:Array.from(new Set([...(a.unitIds||[]),...(b.unitIds||[])]))
+    };
+  }
+  function dedupeAccessRoles(){
+    const next={};
+    Object.entries(accessRoles||{}).forEach(([email,r])=>{
+      const key=String(email||'').trim().toLowerCase();
+      if(!key) return;
+      next[key]=mergeRoleEntry(next[key],r);
+    });
+    accessRoles=next;
+  }
+
   function roleLabel(role){
     return ({geschaeftsleitung:'Geschäftsleitung',leitung:'Leitung',tko:'TKO'})[role]||role;
   }
@@ -386,6 +411,7 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     return opts;
   }
   function renderRoles(){
+    dedupeAccessRoles();
     const rows=$('roleRows');
     if(!rows) return;
     const entries=Object.entries(accessRoles||{});
@@ -408,17 +434,22 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
     document.querySelectorAll('[data-role-index]').forEach(el=>{
       const i=Number(el.dataset.roleIndex), f=el.dataset.roleField;
       if(!entries[i]) return;
-      if(f==='siteIds' || f==='unitIds') entries[i][f]=Array.from(el.selectedOptions||[]).map(o=>o.value).filter(Boolean);
-      else entries[i][f]=el.value.trim();
+      if(f==='siteIds' || f==='unitIds'){
+        entries[i][f]=Array.from(el.selectedOptions||[]).map(o=>o.value).filter(Boolean);
+      }else{
+        entries[i][f]=el.value.trim();
+      }
     });
     const next={};
     entries.forEach(r=>{
       const email=String(r.email||'').trim().toLowerCase();
       if(!email) return;
-      next[email]={role:r.role||'tko',siteIds:r.siteIds||[],unitIds:r.unitIds||[]};
+      const entry={role:r.role||'tko',siteIds:r.siteIds||[],unitIds:r.unitIds||[]};
+      next[email]=mergeRoleEntry(next[email],entry);
     });
     accessRoles=next;
   }
+
   window.__removeRole=idx=>{
     syncRolesFromInputs();
     const entries=Object.entries(accessRoles||{});
@@ -601,11 +632,13 @@ button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button
   }
   async function save(){
     syncFromInputs();
+    dedupeAccessRoles();
     cleanupAutoUnits();
     preventAccidentalEmptySave();
     saveDraftLocal();
     status('Organisation wird gespeichert …');
-    const data=await api({mode:'save',organisationStructure:Object.assign({},org,{accessRoles})});
+    dedupeAccessRoles();
+      const data=await api({mode:'save',organisationStructure:Object.assign({},org,{accessRoles})});
     org=data.organisationStructure||org;
     saveDraftLocal();
     render();
