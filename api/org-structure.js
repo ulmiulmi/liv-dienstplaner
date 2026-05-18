@@ -191,13 +191,12 @@ module.exports=async function handler(req,res){
 
     let user=null;
     let access=null;
-    try{
+    if(orgAdminOk){
+      access={ok:true,email:'org-admin',role:'geschaeftsleitung',configured:Object.keys(roleStore(data)).length,siteIds:['*'],unitIds:['*'],canManageOrganisation:true,orgAdminOnly:true,superAdmin:true};
+      user={id:'org-admin',email:'org-admin'};
+    }else{
       user=await verifySupabaseUser(req);
       access=assertAdminAccess(data,user);
-    }catch(authErr){
-      if(!orgAdminOk) throw authErr;
-      access={ok:true,email:'org-admin',role:'geschaeftsleitung',configured:Object.keys(roleStore(data)).length,siteIds:['*'],unitIds:['*'],canManageOrganisation:true,orgAdminOnly:true};
-      user={id:'org-admin',email:'org-admin'};
     }
 
     // Lesen darf mit normaler Admin-/Planer-Server-Sitzung erfolgen.
