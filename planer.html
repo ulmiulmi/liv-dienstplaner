@@ -518,13 +518,15 @@
     iframe.className = 'planner-frame';
     iframe.dataset.planner = id;
     iframe.title = labels[id];
-    if(id === "overview" && HOUSE_CONTEXT && !IS_HAUS_1){
-      iframe.src = dynamicHouseUrl();
-    } else if(HOUSE_CONTEXT && !IS_HAUS_1){
-      iframe.src = genericPageUrl(id);
+
+    // Startseite bleibt Startseite/Hausseite.
+    // Alle Gruppen/Bereiche laufen einheitlich über die dynamischen Seiten.
+    if(id === "overview"){
+      iframe.src = (HOUSE_CONTEXT && !IS_HAUS_1) ? dynamicHouseUrl() : "overview.html";
     } else {
-      iframe.src = id + '.html';
+      iframe.src = genericPageUrl(id);
     }
+
     iframe.addEventListener('load', () => { cleanVisibleLocalButtonsInFrame(iframe); if(activeId === id) loader.style.display = 'none'; });
     frameWrap.appendChild(iframe);
     frames.set(id, iframe);

@@ -1,0 +1,63 @@
+name: Build Wunschportal Android
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Build APK and AAB
+        working-directory: android-wunschportal
+        run: |
+          gradle :app:assembleDebug --no-daemon
+          gradle :app:bundleRelease --no-daemon
+
+      - name: Prepare files
+        run: |
+          mkdir -p release-files
+          cp android-wunschportal/app/build/outputs/apk/debug/app-debug.apk release-files/ulmipoint-wunschportal.apk
+          cp android-wunschportal/app/build/outputs/bundle/release/app-release.aab release-files/ulmipoint-wunschportal.aab
+          ls -lh release-files
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ULMIPOINT-Wunschportal-Android
+          path: release-files/*
+
+      - name: Recreate public release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete wunschportal-android-latest --yes --cleanup-tag || true
+          gh release create wunschportal-android-latest \
+            release-files/ulmipoint-wunschportal.apk \
+            release-files/ulmipoint-wunschportal.aab \
+            --title "ULMIPOINT Wunschportal Android" \
+            --notes "Aktuelle Android-App für das ULMIPOINT Wunschportal." \
+            --latest
+
+      - name: Verify public APK link
+        run: |
+          curl -I -L --fail https://github.com/ulmiulmi/liv-dienstplaner/releases/latest/download/ulmipoint-wunschportal.apk
