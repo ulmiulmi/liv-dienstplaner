@@ -1083,8 +1083,10 @@
   }
   function normalizeRoleValue(v){
     v = String(v || '').trim().toLowerCase();
-    if(['admin','administrator','leitung'].includes(v)) return ROLE_ADMIN;
+    if(['admin','administrator','gl','geschaeftsleitung','geschäftsleitung','business','leitung_gl'].includes(v)) return ROLE_ADMIN;
+    if(['leitung','hausleitung','site_lead','house_lead'].includes(v)) return ROLE_ADMIN;
     if(['planner','planer','planung'].includes(v)) return ROLE_PLANNER;
+    if(['tko','teamkoordination','teamkoordinator'].includes(v)) return 'tko';
     if(['employee','mitarbeiter','ma'].includes(v)) return ROLE_EMPLOYEE;
     return v || '';
   }
@@ -1111,7 +1113,38 @@
     el.classList.toggle('ok', kind === 'ok');
     el.classList.toggle('bad', kind === 'bad');
   }
+
+  function orgAdminTokenActiveForPlanner(){
+    try{
+      const tok=localStorage.getItem(ORG_ADMIN_TOKEN_KEY)||'';
+      const s=localStorage.getItem(SUPER_ADMIN_KEY);
+      if(superAdminActive()) return true;
+      if(tok){
+        const access={ok:true,email:'org-admin',role:'geschaeftsleitung',siteIds:['*'],unitIds:['*'],canManageOrganisation:true,superAdmin:true};
+        localStorage.setItem(ACCESS_KEY,JSON.stringify(access));
+        localStorage.setItem(SUPER_ADMIN_KEY,JSON.stringify({active:true,token:tok,createdAt:new Date().toISOString()}));
+        return true;
+      }
+    }catch(_){}
+    return false;
+  }
+
+
+  function hideAdminGateForSuperAdminEarly(){
+    try{
+      if(orgAdminTokenActiveForPlanner()){
+        const gate=document.getElementById('adminRoleGate');
+        if(gate){ gate.classList.add('hidden'); gate.setAttribute('aria-hidden','true'); }
+      }
+    }catch(_){}
+  }
+
   async function evaluateAdminAccess(showStatus=false){
+    if(orgAdminTokenActiveForPlanner()){
+      setAdminGate(false);
+      if(showStatus) setServerRoleInfo('Super-Admin aktiv · Zugriff erlaubt', 'ok');
+      return true;
+    }
     loadServerConfig();
     const cfg = getServerInputs();
     const session = await getActiveServerSession();
@@ -2251,6 +2284,7 @@
   document.getElementById('serverLocalBackupBtn')?.addEventListener('click', () => { const k = makeFullLocalBackup('manual_local_download', true); serverStatus('Notfallkopie heruntergeladen und lokal abgelegt: ' + k, 'ok'); });
   document.getElementById('serverRestoreBackupBtn')?.addEventListener('click', restoreLatestLocalEmergencyBackup);
   document.getElementById('serverAutosaveToggle')?.addEventListener('change', ev => { setAutosaveEnabled(!!ev.target.checked); serverStatus(ev.target.checked ? 'Auto-Speichern aktiv.' : 'Auto-Speichern ausgeschaltet.', 'ok'); });
+  hideAdminGateForSuperAdminEarly();
   document.getElementById('adminGateLoginBtn')?.addEventListener('click', adminGateLogin);
   document.getElementById('adminGatePortalBtn')?.addEventListener('click', () => { location.href = 'wunschportal.html'; });
   document.getElementById('adminGateRetryBtn')?.addEventListener('click', () => evaluateAdminAccess(true));
